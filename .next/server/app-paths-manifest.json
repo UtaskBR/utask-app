@@ -1,0 +1,13 @@
+{
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/notifications/route": "app/api/notifications/route.js",
+  "/api/services/[id]/route": "app/api/services/[id]/route.js",
+  "/api/services/[id]/bids/[bidId]/accept/route": "app/api/services/[id]/bids/[bidId]/accept/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/users/[id]/appointments/route": "app/api/users/[id]/appointments/route.js",
+  "/(main)/page": "app/(main)/page.js",
+  "/(main)/meus-servicos/page": "app/(main)/meus-servicos/page.js",
+  "/(main)/explorar/page": "app/(main)/explorar/page.js",
+  "/(main)/servicos/[id]/page": "app/(main)/servicos/[id]/page.js",
+  "/(main)/agenda/page": "app/(main)/agenda/page.js"
+}
