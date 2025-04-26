@@ -17,7 +17,6 @@ type RouteParams = {
 export async function GET(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const { id: serviceId, bidId } = params;
@@ -59,7 +58,6 @@ export async function GET(
 export async function PATCH(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const session = await getServerSession(authOptions);

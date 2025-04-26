@@ -15,7 +15,6 @@ type RouteParams = {
 export async function GET(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const id = await context.params.id;
@@ -75,7 +74,6 @@ export async function GET(
 export async function PATCH(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -407,7 +405,6 @@ export async function PATCH(
 export async function DELETE(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const session = await getServerSession(authOptions);

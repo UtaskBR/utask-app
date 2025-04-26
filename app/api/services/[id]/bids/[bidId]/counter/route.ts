@@ -16,7 +16,6 @@ type RouteParams = {
 export async function POST(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     console.log('API counter: Iniciando processamento de contraproposta');

@@ -15,7 +15,6 @@ type RouteParams = {
 export async function POST(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const session = await getServerSession(authOptions);

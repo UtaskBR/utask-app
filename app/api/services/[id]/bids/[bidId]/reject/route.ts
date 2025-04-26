@@ -16,7 +16,6 @@ type RouteParams = {
 export async function POST(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     console.log('API reject: Iniciando processamento de rejeição de proposta');

@@ -16,7 +16,6 @@ type RouteParams = {
 export async function POST(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     console.log('API reject-provider: Iniciando processamento de rejeição de contraproposta pelo prestador');

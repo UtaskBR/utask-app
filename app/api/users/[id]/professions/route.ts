@@ -15,7 +15,6 @@ type RouteParams = {
 export async function GET(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const { id } = params;
@@ -49,7 +48,6 @@ export async function GET(
 export async function PUT(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const { id } = params;
@@ -75,7 +73,7 @@ export async function PUT(
     const { professionIds } = body;
     
     // Validação básica
-    if (!professionIds || !Array.isArray(professionIds)) {
+    if (!professionIds || !Array.isArray(professionIds) {
       return NextResponse.json(
         { error: "Lista de IDs de profissões não fornecida ou inválida" },
         { status: 400 }
@@ -125,7 +123,6 @@ export async function PUT(
 export async function POST(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const { id } = params;
@@ -218,7 +215,6 @@ export async function POST(
 export async function DELETE(
   request: NextRequest,
   context: RouteParams
-)
 ) {
   try {
     const { id } = params;
