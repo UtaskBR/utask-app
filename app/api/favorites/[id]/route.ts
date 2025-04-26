@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // DELETE /api/favorites/[id] - Remover um serviço dos favoritos
 export async function DELETE(

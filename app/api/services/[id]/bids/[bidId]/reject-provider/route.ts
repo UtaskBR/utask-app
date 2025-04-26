@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 // POST /api/services/[id]/bids/[bidId]/reject-provider - Prestador rejeita contraproposta do contratante
 export async function POST(
