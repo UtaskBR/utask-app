@@ -1,123 +1,116 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from "@/api/auth/[...nextauth]/route";
-import prisma from '@/lib/prisma';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
+import cloudinary from "@/lib/cloudinary";
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
-    console.log('API de fotos: Iniciando processamento');
+    console.log("Iniciando upload de fotos para o Cloudinary");
     
     // Verificar autenticação
     const session = await getServerSession(authOptions);
-    if (!session) {
-      console.log('API de fotos: Usuário não autenticado');
-      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
-    }
-
-    // Verificar se a requisição é multipart/form-data
-    const contentType = request.headers.get('content-type');
-    if (!contentType || !contentType.includes('multipart/form-data')) {
-      console.log('API de fotos: Tipo de conteúdo inválido', contentType);
-      return NextResponse.json({ error: 'Tipo de conteúdo inválido' }, { status: 400 });
-    }
-
-    // Processar o FormData
-    let formData;
-    try {
-      formData = await request.formData();
-    } catch (error) {
-      console.error('API de fotos: Erro ao processar FormData', error);
-      return NextResponse.json({ error: 'Erro ao processar dados do formulário' }, { status: 400 });
+    if (!session || !session.user) {
+      console.log("Usuário não autenticado");
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
     }
     
-    const serviceId = formData.get('serviceId');
-    const photos = formData.getAll('photos');
-
-    console.log(`API de fotos: Recebido ${photos.length} fotos para o serviço ${serviceId}`);
-
+    // Obter dados do formulário
+    const formData = await request.formData();
+    const serviceId = formData.get("serviceId") as string;
+    const files = formData.getAll("files") as File[];
+    
+    console.log(`Recebido ${files.length} arquivos para o serviço ${serviceId}`);
+    
     if (!serviceId) {
-      console.log('API de fotos: ID do serviço não fornecido');
-      return NextResponse.json({ error: 'ID do serviço é obrigatório' }, { status: 400 });
+      console.log("ID do serviço não fornecido");
+      return NextResponse.json(
+        { error: "ID do serviço é obrigatório" },
+        { status: 400 }
+      );
     }
-
-    if (!photos || photos.length === 0) {
-      console.log('API de fotos: Nenhuma foto fornecida');
-      return NextResponse.json({ error: 'Nenhuma foto fornecida' }, { status: 400 });
+    
+    if (files.length === 0) {
+      console.log("Nenhum arquivo enviado");
+      return NextResponse.json(
+        { error: "Nenhum arquivo enviado" },
+        { status: 400 }
+      );
     }
-
+    
     // Verificar se o serviço existe e pertence ao usuário
     const service = await prisma.service.findUnique({
-      where: { id: serviceId },
+      where: { id: serviceId }
     });
-
+    
     if (!service) {
-      console.log('API de fotos: Serviço não encontrado');
-      return NextResponse.json({ error: 'Serviço não encontrado' }, { status: 404 });
+      console.log("Serviço não encontrado");
+      return NextResponse.json(
+        { error: "Serviço não encontrado" },
+        { status: 404 }
+      );
     }
-
+    
     if (service.creatorId !== session.user.id) {
-      console.log('API de fotos: Usuário não é o criador do serviço');
-      return NextResponse.json({ error: 'Você não tem permissão para adicionar fotos a este serviço' }, { status: 403 });
+      console.log("Usuário não é o criador do serviço");
+      return NextResponse.json(
+        { error: "Você não tem permissão para adicionar fotos a este serviço" },
+        { status: 403 }
+      );
     }
-
-    // Criar diretório de uploads se não existir
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadDir)) {
-      console.log('API de fotos: Criando diretório de uploads', uploadDir);
-      try {
-        await mkdir(uploadDir, { recursive: true });
-      } catch (err) {
-        console.error('API de fotos: Erro ao criar diretório de uploads', err);
-        return NextResponse.json({ error: 'Erro ao criar diretório de uploads' }, { status: 500 });
-      }
-    }
-
-    // Processar cada foto
+    
+    // Array para armazenar as fotos salvas
     const savedPhotos = [];
-    for (const photo of photos) {
+    
+    // Processar cada arquivo
+    for (const file of files) {
       try {
-        if (!photo || typeof photo.arrayBuffer !== 'function') {
-          console.error('API de fotos: Objeto de foto inválido', photo);
-          continue;
-        }
-
-        // Gerar nome de arquivo único
-        const bytes = await photo.arrayBuffer();
+        // Converter o arquivo para um buffer
+        const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.jpg`;
-        const filePath = join(uploadDir, fileName);
         
-        // Salvar arquivo
-        console.log('API de fotos: Salvando arquivo', filePath);
-        await writeFile(filePath, buffer);
+        // Converter o buffer para base64
+        const base64 = buffer.toString('base64');
+        const base64File = `data:${file.type};base64,${base64}`;
         
-        // Criar registro no banco de dados
-        const savedPhoto = await prisma.photo.create({
-          data: {
-            url: `/uploads/${fileName}`,
-            serviceId: serviceId,
-          },
+        // Fazer upload para o Cloudinary
+        const result = await cloudinary.uploader.upload(base64File, {
+          folder: "utask",
+          resource_type: "auto"
         });
         
-        savedPhotos.push(savedPhoto);
-      } catch (err) {
-        console.error('API de fotos: Erro ao processar foto', err);
-        // Continuar processando outras fotos mesmo se uma falhar
+        console.log(`Arquivo enviado para o Cloudinary: ${result.secure_url}`);
+        
+        // Salvar a referência no banco de dados
+        const photo = await prisma.photo.create({
+          data: {
+            url: result.secure_url,
+            publicId: result.public_id,
+            service: {
+              connect: {
+                id: serviceId
+              }
+            }
+          }
+        });
+        
+        savedPhotos.push(photo);
+      } catch (error) {
+        console.error(`Erro ao processar arquivo: ${error}`);
       }
     }
-
-    if (savedPhotos.length === 0) {
-      console.log('API de fotos: Nenhuma foto foi salva com sucesso');
-      return NextResponse.json({ error: 'Não foi possível salvar nenhuma foto' }, { status: 500 });
-    }
-
-    console.log(`API de fotos: ${savedPhotos.length} fotos salvas com sucesso`);
-    return NextResponse.json({ photos: savedPhotos });
+    
+    console.log(`${savedPhotos.length} fotos salvas com sucesso`);
+    
+    return NextResponse.json(savedPhotos, { status: 201 });
   } catch (error) {
-    console.error('API de fotos: Erro não tratado', error);
-    return NextResponse.json({ error: 'Erro ao processar upload de fotos: ' + (error.message || 'Erro desconhecido') }, { status: 500 });
+    console.error("Erro ao fazer upload de fotos:", error);
+    return NextResponse.json(
+      { error: "Erro ao processar a solicitação: " + (error instanceof Error ? error.message : String(error)) },
+      { status: 500 }
+    );
   }
 }
