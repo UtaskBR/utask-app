@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import prisma from "@/app/lib/prisma";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/lib/auth";
 
 
 // Tipo correto para os parâmetros no Next.js 15
@@ -73,7 +73,7 @@ export async function PUT(
     const { professionIds } = body;
     
     // Validação básica
-    if (!professionIds || !Array.isArray(professionIds) {
+    if (!professionIds || !Array.isArray(professionIds)) {
       return NextResponse.json(
         { error: "Lista de IDs de profissões não fornecida ou inválida" },
         { status: 400 }

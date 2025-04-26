@@ -1,9 +1,9 @@
 // app/api/upload/avatar/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from "@/lib/auth";
-import prisma from '@/lib/prisma';
-import cloudinary from '@/lib/cloudinary';
+import { authOptions } from "@/app/lib/auth";
+import prisma from '@/app/lib/prisma';
+import cloudinary from '@/app/lib/cloudinary';
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
 
     // Tenta remover avatar antigo do Cloudinary se existir
-    if (user.image && user.image.includes("res.cloudinary.com") {
+    if (user.image && user.image.includes("res.cloudinary.com")) {
       try {
         const segments = user.image.split('/');
         const fileName = segments.pop();
