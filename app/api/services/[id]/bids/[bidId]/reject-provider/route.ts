@@ -3,10 +3,20 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+    bidId: string;
+  };
+};
+
 // POST /api/services/[id]/bids/[bidId]/reject-provider - Prestador rejeita contraproposta do contratante
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; bidId: string } }
+  context: RouteParams
+)
 ) {
   try {
     console.log('API reject-provider: Iniciando processamento de rejeição de contraproposta pelo prestador');

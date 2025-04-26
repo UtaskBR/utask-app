@@ -3,10 +3,19 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
 // GET /api/users/[id]/professions - Listar profissões de um usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const { id } = params;
@@ -39,7 +48,8 @@ export async function GET(
 // PUT /api/users/[id]/professions - Atualizar profissões do usuário
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const { id } = params;
@@ -114,7 +124,8 @@ export async function PUT(
 // POST /api/users/[id]/professions - Adicionar profissão ao usuário
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const { id } = params;
@@ -206,7 +217,8 @@ export async function POST(
 // DELETE /api/users/[id]/professions - Remover profissão do usuário
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const { id } = params;

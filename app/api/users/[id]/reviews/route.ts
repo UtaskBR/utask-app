@@ -3,10 +3,19 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
 // POST /api/users/[id]/reviews - Criar uma avaliação para um usuário
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +27,7 @@ export async function POST(
       );
     }
     
-    const receiverId = params.id;
+    const receiverId = context.params.id;
     const giverId = session.user.id;
     
     // Verificar se o usuário não está avaliando a si mesmo
@@ -110,10 +119,11 @@ export async function POST(
 // GET /api/users/[id]/reviews - Listar avaliações de um usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
-    const receiverId = params.id;
+    const receiverId = context.params.id;
     
     const reviews = await prisma.review.findMany({
       where: {

@@ -3,10 +3,19 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
 // POST /api/services/[id]/problem - Reportar um problema com o serviço
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +27,7 @@ export async function POST(
       );
     }
     
-    const id = await params.id;
+    const id = await context.params.id;
     const body = await request.json();
     
     // Verificar se o serviço existe

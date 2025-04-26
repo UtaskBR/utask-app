@@ -3,10 +3,19 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
 // GET /api/users/[id]/appointments - Obter serviços para a agenda do usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +27,7 @@ export async function GET(
       );
     }
     
-    const userId = params.id;
+    const userId = context.params.id;
     
     // Verificar se o usuário está tentando acessar sua própria agenda
     if (userId !== session.user.id) {

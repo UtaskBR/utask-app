@@ -3,13 +3,22 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
 // GET /api/services/[id]/bids - Listar todas as propostas para um serviço
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
-    const serviceId = params.id;
+    const serviceId = context.params.id;
     
     const bids = await prisma.serviceBid.findMany({
       where: { serviceId },
@@ -41,7 +50,8 @@ export async function GET(
 // POST /api/services/[id]/bids - Criar uma nova proposta para um serviço
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: RouteParams
+)
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -53,7 +63,7 @@ export async function POST(
       );
     }
     
-    const serviceId = params.id;
+    const serviceId = context.params.id;
     const body = await request.json();
     const { value, message, proposedDate } = body;
     
