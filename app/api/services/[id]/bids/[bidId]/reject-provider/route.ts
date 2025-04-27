@@ -15,7 +15,7 @@ type RouteParams = {
 // POST /api/services/[id]/bids/[bidId]/reject-provider - Prestador rejeita contraproposta do contratante
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string, bidId: string } }
+  context: { params: { id: string, bidId: string } }
 ) {
   try {
     console.log('API reject-provider: Iniciando processamento de rejeição de contraproposta pelo prestador');

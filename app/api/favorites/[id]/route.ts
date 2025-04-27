@@ -7,7 +7,7 @@ import { authOptions } from "@/lib/auth";
 // DELETE /api/favorites/[id] - Remover um serviço dos favoritos
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);

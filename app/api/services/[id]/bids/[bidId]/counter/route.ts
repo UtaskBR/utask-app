@@ -15,7 +15,7 @@ type RouteParams = {
 // POST /api/services/[id]/bids/[bidId]/counter - Fazer uma contraproposta
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string, bidId: string } }
+  context: { params: { id: string, bidId: string } }
 ) {
   try {
     console.log('API counter: Iniciando processamento de contraproposta');

@@ -15,7 +15,7 @@ type RouteParams = {
 // POST /api/services/[id]/bids/[bidId]/accept - Aceitar uma proposta
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string, bidId: string } }
+  context: { params: { id: string, bidId: string } }
 ) {
   try {
     console.log('API accept: Iniciando processamento de aceitação de proposta');

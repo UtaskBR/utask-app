@@ -16,7 +16,7 @@ type RouteParams = {
 // GET /api/services/[id]/bids/[bidId] - Obter detalhes de uma proposta específica
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string, bidId: string } }
+  context: { params: { id: string, bidId: string } }
 ) {
   try {
     const { id: serviceId, bidId } = params;
@@ -57,7 +57,7 @@ export async function GET(
 // PATCH /api/services/[id]/bids/[bidId] - Atualizar status de uma proposta (aceitar, rejeitar, contra-proposta)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string, bidId: string } }
+  context: { params: { id: string, bidId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);

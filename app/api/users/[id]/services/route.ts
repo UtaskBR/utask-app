@@ -14,7 +14,7 @@ type RouteParams = {
 // GET /api/users/[id]/services - Obter todos os serviços relacionados ao usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);

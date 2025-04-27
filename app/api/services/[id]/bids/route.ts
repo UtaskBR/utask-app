@@ -14,7 +14,7 @@ type RouteParams = {
 // GET /api/services/[id]/bids - Listar todas as propostas para um serviço
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const serviceId = params.id;
@@ -49,7 +49,7 @@ export async function GET(
 // POST /api/services/[id]/bids - Criar uma nova proposta para um serviço
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);

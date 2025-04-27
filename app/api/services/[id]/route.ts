@@ -14,7 +14,7 @@ type RouteParams = {
 // GET /api/services/[id] - Obter detalhes de um serviço específico
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const id = await params.id;
@@ -73,7 +73,7 @@ export async function GET(
 // PATCH /api/services/[id] - Atualizar um serviço
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -404,7 +404,7 @@ export async function PATCH(
 // DELETE /api/services/[id] - Excluir um serviço
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);

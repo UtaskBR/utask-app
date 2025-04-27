@@ -14,7 +14,7 @@ type RouteParams = {
 // POST /api/services/[id]/problem - Reportar um problema com o serviço
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
