@@ -8,9 +8,9 @@ import toast from 'react-hot-toast';
 
 export default function CarteiraPage() {
   const { data: session } = useSession();
-  const [wallet, setWallet] = useState(null);
+  const [wallet, setWallet] = useState<WalletResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [transactionForm, setTransactionForm] = useState({
+  const [transactionForm, setTransactionForm] = useState<TransactionForm>({
     amount: '',
     type: 'DEPOSIT',
     description: ''
@@ -39,12 +39,33 @@ export default function CarteiraPage() {
     fetchWallet();
   }, []);
 
-  const handleTransactionChange = (e) => {
+  interface TransactionForm {
+    amount: string;
+    type: 'DEPOSIT' | 'WITHDRAWAL';
+    description: string;
+  }
+
+  interface TransactionChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLSelectElement> {}
+
+  const handleTransactionChange = (e: TransactionChangeEvent) => {
     const { name, value } = e.target;
-    setTransactionForm(prev => ({ ...prev, [name]: value }));
+    setTransactionForm((prev: TransactionForm) => ({ ...prev, [name]: value }));
   };
 
-  const handleTransactionSubmit = async (e) => {
+  interface TransactionResponse {
+    id: string;
+    amount: number;
+    type: 'DEPOSIT' | 'WITHDRAWAL' | 'PAYMENT' | 'RECEIPT';
+    description: string | null;
+    createdAt: string;
+  }
+
+  interface WalletResponse {
+    balance: number;
+    transactions: TransactionResponse[];
+  }
+
+  const handleTransactionSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!transactionForm.amount || parseFloat(transactionForm.amount) <= 0) {
@@ -55,7 +76,7 @@ export default function CarteiraPage() {
     try {
       setIsLoading(true);
       
-      const response = await fetch('/api/wallet/transactions', {
+      const response: Response = await fetch('/api/wallet/transactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -68,13 +89,13 @@ export default function CarteiraPage() {
       });
       
       if (!response.ok) {
-        const data = await response.json();
+        const data: { error?: string } = await response.json();
         throw new Error(data.error || 'Erro ao processar transação');
       }
       
       // Recarregar dados da carteira
-      const walletResponse = await fetch('/api/wallet');
-      const walletData = await walletResponse.json();
+      const walletResponse: Response = await fetch('/api/wallet');
+      const walletData: WalletResponse = await walletResponse.json();
       setWallet(walletData);
       
       // Limpar formulário
@@ -87,16 +108,16 @@ export default function CarteiraPage() {
       setShowTransactionForm(false);
       
       toast.success('Transação realizada com sucesso');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Erro ao processar transação:', error);
-      toast.error(error.message || 'Não foi possível processar a transação');
+      toast.error((error as Error).message || 'Não foi possível processar a transação');
     } finally {
       setIsLoading(false);
     }
   };
 
   // Função para formatar valor monetário
-  const formatCurrency = (value) => {
+  const formatCurrency = (value: number): string => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -104,7 +125,7 @@ export default function CarteiraPage() {
   };
 
   // Função para formatar data
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',

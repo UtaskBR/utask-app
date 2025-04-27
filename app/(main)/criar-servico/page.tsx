@@ -11,11 +11,16 @@ export default function CreateServicePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [professions, setProfessions] = useState([]);
+  interface Profession {
+    id: string;
+    name: string;
+  }
+
+  const [professions, setProfessions] = useState<Profession[]>([]);
   const [error, setError] = useState('');
-  const [photos, setPhotos] = useState([]);
-  const [photoPreview, setPhotoPreview] = useState([]);
-  const fileInputRef = useRef(null);
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreview, setPhotoPreview] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -48,13 +53,27 @@ export default function CreateServicePage() {
     fetchProfessions();
   }, [status, router]);
 
-  const handleChange = (e) => {
+  interface FormData {
+    title: string;
+    description: string;
+    date: string;
+    timeWindow: number;
+    value: string;
+    professionId: string;
+    latitude: number | null;
+    longitude: number | null;
+    address: string;
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handlePhotoChange = (e) => {
-    const files = Array.from(e.target.files);
+  interface PhotoChangeEvent extends React.ChangeEvent<HTMLInputElement> {}
+
+  const handlePhotoChange = (e: PhotoChangeEvent) => {
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     // Limitar a 5 fotos
@@ -65,17 +84,21 @@ export default function CreateServicePage() {
     }
 
     // Adicionar novas fotos
-    setPhotos(prev => [...prev, ...files]);
+    setPhotos((prev: File[]) => [...prev, ...files]);
 
     // Criar previews
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setPhotoPreview(prev => [...prev, ...newPreviews]);
+    const newPreviews = files.map((file: File) => URL.createObjectURL(file));
+    setPhotoPreview((prev: string[]) => [...prev, ...newPreviews]);
   };
 
-  const removePhoto = (index) => {
+  interface RemovePhotoParams {
+    index: number;
+  }
+
+  const removePhoto = (index: RemovePhotoParams['index']): void => {
     // Remover foto e preview
-    const newPhotos = [...photos];
-    const newPreviews = [...photoPreview];
+    const newPhotos: File[] = [...photos];
+    const newPreviews: string[] = [...photoPreview];
     
     // Liberar URL do objeto para evitar vazamento de memória
     URL.revokeObjectURL(newPreviews[index]);
@@ -87,11 +110,15 @@ export default function CreateServicePage() {
     setPhotoPreview(newPreviews);
   };
 
-  const uploadPhotos = async (serviceId) => {
+  interface UploadPhotosResponse {
+    photos: any[]; // Replace `any` with the actual type if known
+  }
+
+  const uploadPhotos = async (serviceId: string): Promise<UploadPhotosResponse> => {
     try {
       // Criar FormData para upload de fotos
       const photoFormData = new FormData();
-      photos.forEach(photo => {
+      photos.forEach((photo: File) => {
         photoFormData.append('photos', photo);
       });
       photoFormData.append('serviceId', serviceId);
@@ -140,7 +167,7 @@ export default function CreateServicePage() {
       
       // Tentar analisar como JSON
       try {
-        const photoData = JSON.parse(responseText);
+        const photoData: UploadPhotosResponse = JSON.parse(responseText);
         console.log('Fotos enviadas com sucesso:', photoData);
         return photoData;
       } catch (jsonError) {
@@ -154,7 +181,25 @@ export default function CreateServicePage() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
+
+  interface CreateServiceResponse {
+    id: string;
+  }
+
+  interface CreateServiceRequest {
+    title: string;
+    description: string;
+    date: string;
+    timeWindow: number | null;
+    value: number | null;
+    professionId: string;
+    latitude: number | null;
+    longitude: number | null;
+    address: string;
+  }
+
+  const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
     e.preventDefault();
     setError('');
     
@@ -168,16 +213,18 @@ export default function CreateServicePage() {
     
     try {
       // Primeiro, criar o serviço
+      const requestBody: CreateServiceRequest = {
+        ...formData,
+        value: formData.value ? parseFloat(formData.value) : null,
+        timeWindow: formData.timeWindow ? parseInt(formData.timeWindow.toString()) : null
+      };
+
       const response = await fetch('/api/services', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          ...formData,
-          value: formData.value ? parseFloat(formData.value) : null,
-          timeWindow: formData.timeWindow ? parseInt(formData.timeWindow) : null
-        })
+        body: JSON.stringify(requestBody)
       });
       
       if (!response.ok) {
@@ -185,7 +232,7 @@ export default function CreateServicePage() {
         throw new Error(errorData.error || 'Erro ao criar serviço');
       }
       
-      const data = await response.json();
+      const data: CreateServiceResponse = await response.json();
       const serviceId = data.id;
       
       // Se houver fotos, fazer upload
@@ -193,7 +240,7 @@ export default function CreateServicePage() {
         try {
           await uploadPhotos(serviceId);
           toast.success('Serviço criado com sucesso com fotos!');
-        } catch (photoErr) {
+        } catch (photoErr: any) {
           console.error('Exceção ao fazer upload de fotos:', photoErr);
           // Não interromper o fluxo, mas mostrar erro específico
           toast.error(`Serviço criado, mas erro no upload de fotos: ${photoErr.message}`);
@@ -207,7 +254,7 @@ export default function CreateServicePage() {
       
       // Redirecionar para a página do serviço criado
       router.push(`/servicos/${serviceId}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao criar serviço:', err);
       setError(err.message);
       setIsLoading(false);
@@ -287,7 +334,7 @@ export default function CreateServicePage() {
               />
               <button
                 type="button"
-                onClick={() => fileInputRef.current.click()}
+                onClick={() => fileInputRef.current?.click()}
                 className="btn-outline py-2 px-4"
               >
                 Adicionar Fotos

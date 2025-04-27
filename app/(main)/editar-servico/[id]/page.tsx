@@ -1,18 +1,22 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 
-export default function EditarServicoPage({ params }) {
+// Definir interface para os parâmetros da página
+interface EditarServicoParams {
+  id: string;
+}
+
+export default function EditarServicoPage({ params }: { params: EditarServicoParams }) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
-  const [professions, setProfessions] = useState([]);
+  const [professions, setProfessions] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -20,8 +24,8 @@ export default function EditarServicoPage({ params }) {
     timeWindow: 60,
     value: '',
     professionId: '',
-    latitude: null,
-    longitude: null,
+    latitude: null as number | null,
+    longitude: null as number | null,
     address: ''
   });
 
@@ -30,7 +34,6 @@ export default function EditarServicoPage({ params }) {
     if (status === 'unauthenticated') {
       router.push('/auth/login');
     }
-
     if (status === 'authenticated' && params.id) {
       fetchServiceDetails();
       fetchProfessions();
@@ -49,16 +52,14 @@ export default function EditarServicoPage({ params }) {
       const service = await response.json();
       
       // Verificar se o usuário é o criador do serviço
-      if (service.creatorId !== session.user.id) {
-        toast.error('Você não tem permissão para editar este serviço');
-        router.push('/meus-servicos');
+      if (session?.user?.id !== service.creatorId) {
+        setError('Você não tem permissão para editar este serviço');
         return;
       }
       
-      // Verificar se o serviço está aberto para edição
+      // Verificar se o serviço já foi aceito
       if (service.status !== 'OPEN') {
-        toast.error('Este serviço não pode mais ser editado');
-        router.push('/meus-servicos');
+        setError('Este serviço não pode ser editado porque já foi aceito ou está em andamento');
         return;
       }
       
@@ -70,19 +71,19 @@ export default function EditarServicoPage({ params }) {
       }
       
       setFormData({
-        title: service.title || '',
-        description: service.description || '',
+        title: service.title,
+        description: service.description,
         date: formattedDate,
         timeWindow: service.timeWindow || 60,
-        value: service.value !== null ? service.value.toString() : '',
+        value: service.value ? service.value.toString() : '',
         professionId: service.professionId || '',
-        latitude: service.latitude || null,
-        longitude: service.longitude || null,
+        latitude: service.latitude,
+        longitude: service.longitude,
         address: service.address || ''
       });
     } catch (error) {
       console.error('Erro ao carregar serviço:', error);
-      setError('Não foi possível carregar os detalhes do serviço');
+      toast.error('Erro ao carregar detalhes do serviço');
     } finally {
       setIsLoading(false);
     }
@@ -91,42 +92,47 @@ export default function EditarServicoPage({ params }) {
   const fetchProfessions = async () => {
     try {
       const response = await fetch('/api/professions');
+      
+      if (!response.ok) {
+        throw new Error('Erro ao carregar profissões');
+      }
+      
       const data = await response.json();
       setProfessions(data);
-    } catch (err) {
-      console.error('Erro ao carregar profissões:', err);
+    } catch (error) {
+      console.error('Erro ao carregar profissões:', error);
+      toast.error('Erro ao carregar categorias de serviço');
     }
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    
-    // Validação básica
-    if (!formData.title || !formData.description) {
-      setError('Título e descrição são obrigatórios');
-      return;
-    }
-    
-    setIsSaving(true);
     
     try {
-      const response = await fetch('/api/services', {
+      setIsSaving(true);
+      
+      // Preparar os dados para envio
+      const serviceData = {
+        ...formData,
+        value: formData.value ? parseFloat(formData.value) : null,
+        timeWindow: parseInt(formData.timeWindow.toString()),
+        professionId: formData.professionId || null
+      };
+      
+      const response = await fetch(`/api/services/${params.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          id: params.id,
-          ...formData,
-          value: formData.value ? parseFloat(formData.value) : null,
-          timeWindow: formData.timeWindow ? parseInt(formData.timeWindow) : null
-        })
+        body: JSON.stringify(serviceData)
       });
       
       if (!response.ok) {
@@ -136,41 +142,50 @@ export default function EditarServicoPage({ params }) {
       
       toast.success('Serviço atualizado com sucesso!');
       router.push('/meus-servicos');
-    } catch (err) {
-      console.error('Erro ao atualizar serviço:', err);
-      setError(err.message);
+    } catch (error: any) {
+      console.error('Erro ao atualizar serviço:', error);
+      toast.error(error.message || 'Erro ao atualizar serviço');
+    } finally {
       setIsSaving(false);
     }
   };
 
-  if (status === 'loading' || isLoading) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p>Carregando...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <h2 className="text-xl font-semibold text-red-700 mb-2">Erro</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <Link
+            href="/meus-servicos"
+            className="inline-block py-2 px-4 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-md transition-colors"
+          >
+            Voltar para Meus Serviços
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-secondary-900">Editar Serviço</h1>
-        <p className="mt-2 text-secondary-600">
-          Atualize os detalhes do seu serviço
-        </p>
-      </div>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Editar Serviço</h1>
       
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
-        <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="p-6 space-y-6">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-secondary-700">
-              Título do Serviço *
+              Título *
             </label>
             <input
               id="title"

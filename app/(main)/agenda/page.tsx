@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import { Value } from 'react-calendar/dist/cjs/shared/types';
 
 // Definir interface para o tipo de compromisso
 interface Appointment {
@@ -82,6 +83,18 @@ export default function AgendaPage() {
       toast.error('Erro ao carregar compromissos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Função para lidar com a mudança de data no calendário
+  const handleDateChange = (value: Value) => {
+    // Converter o valor para Date | null
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    } else if (Array.isArray(value) && value.length > 0 && value[0] instanceof Date) {
+      setSelectedDate(value[0]);
+    } else {
+      setSelectedDate(null);
     }
   };
 
@@ -204,7 +217,7 @@ export default function AgendaPage() {
             <div className="mb-8">
               <div className="calendar-container mb-6">
                 <Calendar
-                  onChange={setSelectedDate}
+                  onChange={handleDateChange}
                   value={selectedDate}
                   tileContent={tileContent}
                   className="rounded-lg shadow-md border border-gray-200 p-4 w-full"
