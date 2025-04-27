@@ -29,7 +29,7 @@ export async function POST(
       );
     }
     
-    const { id: serviceId, bidId } = params;
+    const { id: serviceId, bidId } = await params;
     console.log(`API accept: Aceitando proposta ${bidId} para serviço ${serviceId}`);
     
     // Verificar se a proposta existe

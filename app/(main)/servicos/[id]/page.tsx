@@ -13,7 +13,23 @@ export default function ServiceDetailPage() {
   const router = useRouter();
   const serviceId = params.id;
   
-  const [service, setService] = useState(null);
+  interface Service {
+    creatorId: string;
+    status: string;
+    bids?: { id: string; providerId: string; status: string; value?: number; proposedDate?: string; message?: string; provider?: { rating: number } }[];
+    completionConfirmations?: { userId: string }[];
+    creator: { id: string; name: string; rating: number; about?: string };
+    title: string;
+    value?: number;
+    description: string;
+    date?: string;
+    timeWindow?: number;
+    address?: string;
+    profession?: { name: string };
+    photos?: { url: string }[];
+  }
+
+  const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [bidForm, setBidForm] = useState({
@@ -51,7 +67,7 @@ export default function ServiceDetailPage() {
         setService(data);
       } catch (err) {
         console.error('Erro ao buscar serviço:', err);
-        setError(err.message);
+        setError((err as Error).message);
       } finally {
         setIsLoading(false);
       }
@@ -62,17 +78,40 @@ export default function ServiceDetailPage() {
     }
   }, [serviceId]);
 
-  const handleBidChange = (e) => {
+  interface BidForm {
+    value: string;
+    message: string;
+    proposedDate: string;
+  }
+
+  const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setBidForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCounterOfferChange = (e) => {
+  interface CounterOfferForm {
+    value: string;
+    message: string;
+    proposedDate: string;
+    bidId: string;
+  }
+
+  const handleCounterOfferChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCounterOfferForm(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleBidSubmit = async (e) => {
+  interface BidSubmitForm {
+    value: string;
+    message: string;
+    proposedDate: string;
+  }
+
+  interface BidSubmitResponse {
+    error?: string;
+  }
+
+  const handleBidSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!session) {
@@ -96,7 +135,7 @@ export default function ServiceDetailPage() {
         })
       });
       
-      const data = await response.json();
+      const data: BidSubmitResponse = await response.json();
       
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao enviar proposta');
@@ -108,14 +147,25 @@ export default function ServiceDetailPage() {
       window.location.reload();
     } catch (err) {
       console.error('Erro ao enviar proposta:', err);
-      toast.error(err.message);
-      setError(err.message);
+      toast.error((err as Error).message);
+      setError((err as Error).message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCounterOfferSubmit = async (e) => {
+  interface CounterOfferSubmitForm {
+    value: string;
+    message: string;
+    proposedDate: string;
+    bidId: string;
+  }
+
+  interface CounterOfferSubmitResponse {
+    error?: string;
+  }
+
+  const handleCounterOfferSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     if (!session) {
@@ -139,7 +189,7 @@ export default function ServiceDetailPage() {
         })
       });
       
-      const data = await response.json();
+      const data: CounterOfferSubmitResponse = await response.json();
       
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao enviar contraproposta');
@@ -152,25 +202,39 @@ export default function ServiceDetailPage() {
       window.location.reload();
     } catch (err) {
       console.error('Erro ao enviar contraproposta:', err);
-      toast.error(err.message);
+      toast.error((err as Error).message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleAcceptBid = (bidId) => {
+  interface AcceptBidHandler {
+    (bidId: string): void;
+  }
+
+  const handleAcceptBid: AcceptBidHandler = (bidId) => {
     setSelectedBidId(bidId);
     setConfirmationAction('accept-bid');
     setShowConfirmationModal(true);
   };
 
-  const handleRejectBid = (bidId) => {
+  interface RejectBidHandler {
+    (bidId: string): void;
+  }
+
+  const handleRejectBid: RejectBidHandler = (bidId) => {
     setSelectedBidId(bidId);
     setConfirmationAction('reject-bid');
     setShowConfirmationModal(true);
   };
 
-  const handleCounterOffer = (bid) => {
+  interface Bid {
+    id: string;
+    value?: string;
+    proposedDate?: string;
+  }
+
+  const handleCounterOffer = (bid: Bid): void => {
     setCounterOfferForm({
       value: bid.value || '',
       message: '',
@@ -180,13 +244,21 @@ export default function ServiceDetailPage() {
     setShowCounterOfferForm(true);
   };
 
-  const handleAcceptCounterOffer = (bidId) => {
+  interface AcceptCounterOfferHandler {
+    (bidId: string): void;
+  }
+
+  const handleAcceptCounterOffer: AcceptCounterOfferHandler = (bidId) => {
     setSelectedBidId(bidId);
     setConfirmationAction('accept-counter');
     setShowConfirmationModal(true);
   };
 
-  const handleRejectCounterOffer = (bidId) => {
+  interface RejectCounterOfferHandler {
+    (bidId: string): void;
+  }
+
+  const handleRejectCounterOffer: RejectCounterOfferHandler = (bidId) => {
     setSelectedBidId(bidId);
     setConfirmationAction('reject-counter');
     setShowConfirmationModal(true);
@@ -308,7 +380,7 @@ export default function ServiceDetailPage() {
       }
     } catch (err) {
       console.error('Erro ao executar ação:', err);
-      toast.error(err.message);
+      toast.error((err as Error).message);
     } finally {
       setIsSubmitting(false);
       setShowConfirmationModal(false);
@@ -352,7 +424,11 @@ export default function ServiceDetailPage() {
       setProblemReason('');
     } catch (err) {
       console.error('Erro ao reportar problema:', err);
-      toast.error(err.message);
+      if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error('Ocorreu um erro desconhecido');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -526,14 +602,14 @@ export default function ServiceDetailPage() {
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
                             <span className="text-primary-700 font-medium">
-                              {bid.provider.name.charAt(0)}
+                              {bid.providerId.charAt(0)}
                             </span>
                           </div>
                           <div className="ml-3">
-                            <p className="text-sm font-medium text-secondary-900">{bid.provider.name}</p>
+                            <p className="text-sm font-medium text-secondary-900">{bid.providerId}</p>
                             <div className="flex items-center">
                               <span className="text-yellow-400">★</span>
-                              <span className="ml-1 text-sm text-secondary-600">{bid.provider.rating}</span>
+                              <span className="ml-1 text-sm text-secondary-600">{bid.provider?.rating || 'N/A'}</span>
                             </div>
                           </div>
                         </div>
@@ -585,7 +661,7 @@ export default function ServiceDetailPage() {
                             Aceitar
                           </button>
                           <button 
-                            onClick={() => handleCounterOffer(bid)}
+                            onClick={() => handleCounterOffer({ ...bid, value: bid.value?.toString() })}
                             className="btn-outline py-1 px-3 text-sm"
                           >
                             Contra-proposta

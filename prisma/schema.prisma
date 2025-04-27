@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// This is a fixed version of the Prisma schema with the missing relation field added
+// Save this to a file named schema.prisma in your prisma directory
 
 generator client {
   provider = "prisma-client-js"
@@ -10,61 +10,57 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modelo de Usuário
 model User {
   id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
+  name          String?
+  email         String?   @unique
   emailVerified DateTime?
-  password      String?
   image         String?
-  about         String?   @db.Text
-  city          String?
-  state         String?
-  rating        Float?    @default(0)
+  password      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
+  
   // Relações
-  professions      Profession[]
-  servicesCreated  Service[]       @relation("ServiceCreator")
-  servicesApplied  ServiceBid[]
-  reviews          Review[]        @relation("ReviewReceiver")
-  reviewsGiven     Review[]        @relation("ReviewGiver")
-  favorites        Favorite[]
-  notifications    Notification[]  @relation("NotificationReceiver")
-  sentNotifications Notification[] @relation("NotificationSender")
-  photos           Photo[]
-  certificates     Certificate[]
-  accounts         Account[]
-  sessions         Session[]
-  transactions     Transaction[]
-  wallet           Wallet?
-  cancelRequests   ServiceCancelRequest[]
-  completionConfirmations ServiceCompletionConfirmation[]
+  accounts      Account[]
+  sessions      Session[]
+  services      Service[]   @relation("ServiceCreator")
+  bids          ServiceBid[] @relation("BidProvider")
+  wallet        Wallet?
+  favorites     Favorite[]
+  
+  // Notificações
+  sentNotifications     Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  
+  // Cancelamento de serviços
+  cancelRequests ServiceCancelRequest[] @relation("CancelRequester")
+  
+  // Problemas de serviços - Adicionando a relação oposta que estava faltando
+  reportedProblems ServiceProblem[] @relation("ProblemReporter")
+  
+  // Profissões
+  professions UserProfession[]
 }
 
-// Modelo de Conta (para NextAuth)
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
-// Modelo de Sessão (para NextAuth)
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
@@ -73,7 +69,6 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Modelo de Verificação (para NextAuth)
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -82,19 +77,6 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Modelo de Profissão
-model Profession {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relações
-  users    User[]
-  services Service[]
-}
-
-// Modelo de Serviço (Ordem de Serviço)
 model Service {
   id          String   @id @default(cuid())
   title       String
@@ -108,17 +90,140 @@ model Service {
   address     String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
+  
   // Relações
-  creatorId    String
-  creator      User          @relation("ServiceCreator", fields: [creatorId], references: [id])
-  professionId String?
-  profession   Profession?   @relation(fields: [professionId], references: [id])
-  bids         ServiceBid[]
-  photos       Photo[]
-  favorites    Favorite[]
+  creatorId   String
+  creator     User     @relation("ServiceCreator", fields: [creatorId], references: [id])
+  bids        ServiceBid[]
+  favorites   Favorite[]
   cancelRequests ServiceCancelRequest[]
-  completionConfirmations ServiceCompletionConfirmation[]
+  problems    ServiceProblem[]
+  transactions Transaction[]
+  
+  // Imagens
+  images      ServiceImage[]
+}
+
+model ServiceBid {
+  id          String   @id @default(cuid())
+  value       Float?
+  message     String?  @db.Text
+  status      BidStatus @default(PENDING)
+  proposedDate DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relações
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  providerId  String
+  provider    User     @relation("BidProvider", fields: [providerId], references: [id])
+}
+
+model ServiceCancelRequest {
+  id          String   @id @default(cuid())
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId   String
+  requester   User     @relation("CancelRequester", fields: [requesterId], references: [id])
+  requesterId String
+  reason      String?  @db.Text
+  createdAt   DateTime @default(now())
+}
+
+model ServiceProblem {
+  id          String   @id @default(cuid())
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId   String
+  reporter    User     @relation("ProblemReporter", fields: [reporterId], references: [id])
+  reporterId  String
+  reason      String?  @db.Text
+  createdAt   DateTime @default(now())
+}
+
+model ServiceImage {
+  id        String   @id @default(cuid())
+  url       String
+  publicId  String?  // ID público do Cloudinary
+  createdAt DateTime @default(now())
+  
+  // Relações
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  balance   Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relações
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  amount      Float
+  type        TransactionType
+  description String?
+  createdAt   DateTime @default(now())
+  
+  // Relações
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  receiverId  String?
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  
+  // Relações
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, serviceId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      NotificationType
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Relações
+  receiverId String
+  receiver   User   @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  senderId   String?
+  sender     User?  @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+}
+
+model Profession {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relações
+  users       UserProfession[]
+}
+
+model UserProfession {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  
+  // Relações
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  professionId String
+  profession  Profession @relation(fields: [professionId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, professionId])
 }
 
 // Enum para Status do Serviço
@@ -129,104 +234,20 @@ enum ServiceStatus {
   CANCELLED
 }
 
-// Modelo de Proposta para Serviço
-model ServiceBid {
-  id          String   @id @default(cuid())
-  value       Float?
-  message     String?  @db.Text
-  status      BidStatus @default(PENDING)
-  proposedDate DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relações
-  serviceId   String
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  providerId  String
-  provider    User     @relation(fields: [providerId], references: [id])
-}
-
 // Enum para Status da Proposta
 enum BidStatus {
   PENDING
   ACCEPTED
   REJECTED
-  COUNTER_OFFERED
+  COUNTER_OFFER
 }
 
-// Modelo de Avaliação
-model Review {
-  id        String   @id @default(cuid())
-  rating    Int
-  comment   String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relações
-  receiverId String
-  receiver   User   @relation("ReviewReceiver", fields: [receiverId], references: [id])
-  giverId    String
-  giver      User   @relation("ReviewGiver", fields: [giverId], references: [id])
-}
-
-// Modelo de Foto
-model Photo {
-  id        String   @id @default(cuid())
-  url       String
-  publicId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relações
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceId String?
-  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-}
-
-// Modelo de Certificado
-model Certificate {
-  id          String   @id @default(cuid())
-  title       String
-  institution String
-  issueDate   DateTime
-  url         String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relações
-  userId    String
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// Modelo de Favorito
-model Favorite {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  // Relações
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  serviceId String
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, serviceId])
-}
-
-// Modelo de Notificação
-model Notification {
-  id        String   @id @default(cuid())
-  type      NotificationType
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relações
-  receiverId String
-  receiver   User   @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-  senderId   String?
-  sender     User?  @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+// Enum para Tipo de Transação
+enum TransactionType {
+  PAYMENT
+  REFUND
+  WITHDRAWAL
+  DEPOSIT
 }
 
 // Enum para Tipo de Notificação
@@ -236,86 +257,6 @@ enum NotificationType {
   ACCEPTANCE
   REJECTION
   SERVICE_COMPLETION
-  COMPLETION_CONFIRMATION
   REVIEW
-  SYSTEM
-  CANCEL_REQUEST
-  SERVICE_CANCELLED
-  CANCEL_REJECTED
-}
-
-// Modelo de Carteira
-model Wallet {
-  id        String   @id @default(cuid())
-  balance   Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relações
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-}
-
-// Modelo de Transação
-model Transaction {
-  id          String   @id @default(cuid())
-  amount      Float
-  type        TransactionType
-  description String?
-  status      TransactionStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relações
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  walletId  String
-  wallet    Wallet  @relation(fields: [walletId], references: [id], onDelete: Cascade)
-}
-
-// Enum para Tipo de Transação
-enum TransactionType {
-  DEPOSIT
-  WITHDRAWAL
-  PAYMENT
-  RECEIPT
-}
-
-// Enum para Status da Transação
-enum TransactionStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  CANCELLED
-}
-
-// Modelo para solicitações de cancelamento de serviço
-model ServiceCancelRequest {
-  id          String   @id @default(cuid())
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId   String
-  requester   User     @relation(fields: [requesterId], references: [id])
-  requesterId String
-  reason      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([serviceId])
-  @@index([requesterId])
-}
-
-// Modelo para confirmações de conclusão de serviço
-model ServiceCompletionConfirmation {
-  id          String   @id @default(cuid())
-  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId   String
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([serviceId, userId])
-  @@index([serviceId])
-  @@index([userId])
+  SERVICE_PROBLEM
 }

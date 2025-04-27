@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
@@ -10,7 +10,11 @@ interface EditarServicoParams {
   id: string;
 }
 
-export default function EditarServicoPage({ params }: { params: EditarServicoParams }) {
+export default function EditarServicoPage() {
+  // Usar o hook useParams para acessar os parâmetros de rota
+  const params = useParams();
+  const serviceId = params.id;
+  
   const router = useRouter();
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
@@ -34,16 +38,16 @@ export default function EditarServicoPage({ params }: { params: EditarServicoPar
     if (status === 'unauthenticated') {
       router.push('/auth/login');
     }
-    if (status === 'authenticated' && params.id) {
+    if (status === 'authenticated' && serviceId) {
       fetchServiceDetails();
       fetchProfessions();
     }
-  }, [status, params.id, router]);
+  }, [status, serviceId, router]);
 
   const fetchServiceDetails = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/services/${params.id}`);
+      const response = await fetch(`/api/services/${serviceId}`);
       
       if (!response.ok) {
         throw new Error('Erro ao carregar detalhes do serviço');
@@ -127,7 +131,7 @@ export default function EditarServicoPage({ params }: { params: EditarServicoPar
         professionId: formData.professionId || null
       };
       
-      const response = await fetch(`/api/services/${params.id}`, {
+      const response = await fetch(`/api/services/${serviceId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

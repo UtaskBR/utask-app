@@ -29,7 +29,7 @@ export async function POST(
       );
     }
     
-    const { id: serviceId, bidId } = params;
+    const { id: serviceId, bidId } = await params;
     console.log(`API counter: Processando contraproposta para proposta ${bidId} do serviço ${serviceId}`);
     
     const body = await request.json();

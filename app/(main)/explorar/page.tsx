@@ -8,8 +8,8 @@ import { useRouter } from 'next/navigation';
 
 export default function ExplorarPage() {
   const { data: session, status } = useSession();
-  const [services, setServices] = useState([]);
-  const [professions, setProfessions] = useState([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [professions, setProfessions] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     profession: '',
@@ -57,7 +57,7 @@ export default function ExplorarPage() {
       // Ordenar os serviços
       let sortedServices = [...data];
       if (filters.sortBy === 'recent') {
-        sortedServices.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        sortedServices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       } else if (filters.sortBy === 'price-low') {
         sortedServices.sort((a, b) => (a.value || 0) - (b.value || 0));
       } else if (filters.sortBy === 'price-high') {
@@ -72,12 +72,23 @@ export default function ExplorarPage() {
     }
   };
   
-  const handleFilterChange = (e) => {
+  interface Filters {
+    profession: string;
+    minValue: string;
+    maxValue: string;
+    sortBy: string;
+  }
+
+  interface FilterChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLSelectElement> {}
+
+  const handleFilterChange = (e: FilterChangeEvent) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
+    setFilters((prev: Filters) => ({ ...prev, [name]: value }));
   };
   
-  const applyFilters = (e) => {
+  interface ApplyFiltersEvent extends React.FormEvent<HTMLFormElement> {}
+
+  const applyFilters = (e: ApplyFiltersEvent) => {
     e.preventDefault();
     fetchServices();
   };

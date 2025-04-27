@@ -5,13 +5,14 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { AuthGuard } from '@/components/AuthGuard';
 import toast from 'react-hot-toast';
+import MapComponent from '@/components/MapComponent'; // Adjust the path as needed
 
 export default function ServicosMapaPage() {
   const { data: session } = useSession();
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState<{ id: string; title: string; value?: number; latitude?: number; longitude?: number; description?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedService, setSelectedService] = useState(null);
-  const [userLocation, setUserLocation] = useState(null);
+  const [selectedService, setSelectedService] = useState<{ id: string; title: string; value?: number; latitude?: number; longitude?: number; description?: string } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
     // Obter localização do usuário
@@ -66,7 +67,17 @@ export default function ServicosMapaPage() {
   }));
 
   // Função para calcular distância entre dois pontos (fórmula de Haversine)
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  interface Coordinates {
+    lat: number;
+    lon: number;
+  }
+
+  const calculateDistance = (
+    lat1: number, 
+    lon1: number, 
+    lat2: number, 
+    lon2: number
+  ): number => {
     const R = 6371; // Raio da Terra em km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import toast from 'react-hot-toast';
 
 export default function NotificacoesPage() {
   const { data: session } = useSession();
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,7 +34,15 @@ export default function NotificacoesPage() {
     fetchNotifications();
   }, []);
 
-  const markAsRead = async (id) => {
+  interface Notification {
+    id: string;
+    type: string;
+    message: string;
+    createdAt: string;
+    read: boolean;
+  }
+
+  const markAsRead = async (id: string): Promise<void> => {
     try {
       const response = await fetch('/api/notifications', {
         method: 'PATCH',
@@ -50,8 +59,8 @@ export default function NotificacoesPage() {
       }
       
       // Atualizar o estado local
-      setNotifications(prev => 
-        prev.map(notif => 
+      setNotifications((prev: Notification[]) => 
+        prev.map((notif: Notification) => 
           notif.id === id ? { ...notif, read: true } : notif
         )
       );
@@ -92,14 +101,14 @@ export default function NotificacoesPage() {
   };
 
   // Função para formatar a data
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
+  const formatDate = (dateString: string): string => {
+    const date: Date = new Date(dateString);
+    const now: Date = new Date();
+    const diffMs: number = now.getTime() - date.getTime();
+    const diffSec: number = Math.floor(diffMs / 1000);
+    const diffMin: number = Math.floor(diffSec / 60);
+    const diffHour: number = Math.floor(diffMin / 60);
+    const diffDay: number = Math.floor(diffHour / 24);
     
     if (diffSec < 60) {
       return 'agora mesmo';
@@ -119,7 +128,11 @@ export default function NotificacoesPage() {
   };
 
   // Função para obter o ícone da notificação com base no tipo
-  const getNotificationIcon = (type) => {
+  interface NotificationIconProps {
+    type: string;
+  }
+
+  const getNotificationIcon = (type: NotificationIconProps['type']): React.ReactElement => {
     switch (type) {
       case 'BID':
         return (

@@ -4,15 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+// Define the Profession type
+interface Profession {
+  id: string;
+  name: string;
+}
+
 export default function EditarPerfilPage() {
   const { data: session, status } = useSession();
   const [formData, setFormData] = useState({ name: '', about: '', city: '', state: '' });
   const [avatarUrl, setAvatarUrl] = useState('');
-  const [gallery, setGallery] = useState([]);
+  const [gallery, setGallery] = useState<TempPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
-  const [professions, setProfessions] = useState([]);
-  const [selectedProfessions, setSelectedProfessions] = useState([]);
+  const [professions, setProfessions] = useState<Profession[]>([]);
+  const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
   const [isLoadingProfessions, setIsLoadingProfessions] = useState(true);
   
   const router = useRouter();
@@ -39,7 +45,12 @@ export default function EditarPerfilPage() {
             
             // Definir profissões selecionadas do usuário
             if (data.professions) {
-              setSelectedProfessions(data.professions.map(p => p.id));
+                setSelectedProfessions(data.professions.map((p: { id: string }) => p.id));
+            }
+            
+            // Definir profissões selecionadas do usuário
+            if (data.professions) {
+                setSelectedProfessions(data.professions.map((p: Profession) => p.id));
             }
           }
         })
@@ -64,15 +75,15 @@ export default function EditarPerfilPage() {
       });
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>): void => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: typeof formData) => ({ ...prev, [name]: value }));
   };
 
-  const handleProfessionToggle = (professionId) => {
-    setSelectedProfessions(prev => {
+  const handleProfessionToggle = (professionId: string): void => {
+    setSelectedProfessions((prev: string[]) => {
       if (prev.includes(professionId)) {
-        return prev.filter(id => id !== professionId);
+        return prev.filter((id: string) => id !== professionId);
       } else {
         return [...prev, professionId];
       }
@@ -109,11 +120,15 @@ export default function EditarPerfilPage() {
       router.push(`/perfil/${session.user.id}`);
     } catch (error) {
       console.error('Erro ao salvar perfil:', error);
-      alert(`Falha ao atualizar perfil: ${error.message}`);
+      if (error instanceof Error) {
+        alert(`Falha ao atualizar perfil: ${error.message}`);
+      } else {
+        alert('Falha ao atualizar perfil: Erro desconhecido.');
+      }
     }
   };
 
-  const handleAvatarUpload = async (e) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
     
@@ -121,15 +136,15 @@ export default function EditarPerfilPage() {
     
     try {
       // Criar um preview local imediato
-      const localPreview = URL.createObjectURL(file);
+      const localPreview: string = URL.createObjectURL(file);
       setAvatarUrl(localPreview);
       
       // Upload para o Cloudinary diretamente
-      const formData = new FormData();
+      const formData: FormData = new FormData();
       formData.append('upload_preset', 'utask-avatar');
       formData.append('file', file);
       
-      const cloudinaryRes = await fetch(
+      const cloudinaryRes: Response = await fetch(
         `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dhkkz3vlv'}/image/upload`,
         {
           method: 'POST',
@@ -141,11 +156,11 @@ export default function EditarPerfilPage() {
         throw new Error(`Erro ao fazer upload para Cloudinary: ${cloudinaryRes.status}`);
       }
       
-      const cloudinaryData = await cloudinaryRes.json();
+      const cloudinaryData: { secure_url: string; public_id: string } = await cloudinaryRes.json();
       console.log("Resposta do Cloudinary:", cloudinaryData);
       
       // Agora use a rota existente para atualizar o avatar
-      const res = await fetch('/api/upload/avatar', {
+      const res: Response = await fetch('/api/upload/avatar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -159,7 +174,7 @@ export default function EditarPerfilPage() {
         throw new Error(`Erro ao atualizar avatar: ${res.status}`);
       }
       
-      const data = await res.json();
+      const data: { success: boolean } = await res.json();
       console.log("Resposta da API de avatar:", data);
       
       // Atualizar URL com a URL real do Cloudinary
@@ -167,7 +182,7 @@ export default function EditarPerfilPage() {
       
       // Limpar o input de arquivo
       if (avatarInputRef.current) {
-        avatarInputRef.current.value = '';
+        (avatarInputRef.current as HTMLInputElement).value = '';
       }
       
       alert('Foto de perfil atualizada com sucesso!');
@@ -179,7 +194,25 @@ export default function EditarPerfilPage() {
     }
   };
 
-  const handleGalleryUpload = async (e) => {
+  interface TempPhoto {
+    id: string;
+    url: string;
+    isTemp: boolean;
+  }
+
+  interface CloudinaryResponse {
+    secure_url: string;
+    public_id: string;
+  }
+
+  interface GalleryApiResponse {
+    photo: {
+      id: string;
+      url: string;
+    };
+  }
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
     
@@ -187,22 +220,22 @@ export default function EditarPerfilPage() {
     
     try {
       // Criar um preview local imediato
-      const localPreview = URL.createObjectURL(file);
-      const tempPhoto = {
+      const localPreview: string = URL.createObjectURL(file);
+      const tempPhoto: TempPhoto = {
         id: `temp-${Date.now()}`,
         url: localPreview,
         isTemp: true
       };
       
       // Adicionar à galeria local imediatamente
-      setGallery(prev => [...prev, tempPhoto]);
+      setGallery((prev: TempPhoto[]) => [...prev, tempPhoto]);
       
       // Upload para o Cloudinary diretamente
-      const formData = new FormData();
+      const formData: FormData = new FormData();
       formData.append('upload_preset', 'utask-gallery');
       formData.append('file', file);
       
-      const cloudinaryRes = await fetch(
+      const cloudinaryRes: Response = await fetch(
         `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dhkkz3vlv'}/image/upload`,
         {
           method: 'POST',
@@ -214,11 +247,11 @@ export default function EditarPerfilPage() {
         throw new Error(`Erro ao fazer upload para Cloudinary: ${cloudinaryRes.status}`);
       }
       
-      const cloudinaryData = await cloudinaryRes.json();
+      const cloudinaryData: CloudinaryResponse = await cloudinaryRes.json();
       console.log("Resposta do Cloudinary:", cloudinaryData);
       
       // Agora use a rota existente para adicionar à galeria
-      const res = await fetch('/api/upload/gallery', {
+      const res: Response = await fetch('/api/upload/gallery', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -232,15 +265,15 @@ export default function EditarPerfilPage() {
         throw new Error(`Erro ao adicionar foto à galeria: ${res.status}`);
       }
       
-      const data = await res.json();
+      const data: GalleryApiResponse = await res.json();
       console.log("Resposta da API de galeria:", data);
       
       // Remover o preview temporário e adicionar a foto real
-      setGallery(prev => prev.filter(p => p.id !== tempPhoto.id).concat(data.photo));
+      setGallery((prev: TempPhoto[]) => prev.filter(p => p.id !== tempPhoto.id).concat({ ...data.photo, isTemp: false }));
       
       // Limpar o input de arquivo
       if (galleryInputRef.current) {
-        galleryInputRef.current.value = '';
+        (galleryInputRef.current as HTMLInputElement).value = '';
       }
       
       alert('Foto adicionada à galeria com sucesso!');
@@ -248,7 +281,7 @@ export default function EditarPerfilPage() {
       console.error("Erro ao processar upload para galeria:", error);
       alert("Falha ao adicionar foto à galeria. Tente novamente.");
       // Remover o preview em caso de erro
-      setGallery(prev => prev.filter(p => !p.isTemp));
+      setGallery((prev: TempPhoto[]) => prev.filter(p => !p.isTemp));
     } finally {
       setIsUploading(false);
     }

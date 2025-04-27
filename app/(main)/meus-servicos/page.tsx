@@ -8,11 +8,11 @@ import { toast } from 'react-hot-toast';
 
 export default function MeusServicosPage() {
   const { data: session } = useSession();
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('todos');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState(null);
+  const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function MeusServicosPage() {
   const fetchUserServices = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/users/${session.user.id}/services`);
+      const response = await fetch(`/api/users/${session?.user?.id}/services`);
       
       if (response.ok) {
         const data = await response.json();
@@ -69,7 +69,25 @@ export default function MeusServicosPage() {
   };
 
   // Função para confirmar exclusão
-  const confirmDelete = (serviceId) => {
+  interface Service {
+    id: string;
+    title: string;
+    description: string;
+    value: number | null;
+    date: string | null;
+    status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    creatorId: string;
+    creator?: {
+      id: string;
+      name?: string;
+      image?: string;
+    };
+    userBid?: {
+      status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'COUNTER_OFFERED';
+    };
+  }
+
+  const confirmDelete = (serviceId: Service['id']): void => {
     setServiceToDelete(serviceId);
     setShowDeleteModal(true);
   };
@@ -95,36 +113,36 @@ export default function MeusServicosPage() {
   };
 
   // Função para formatar o valor do serviço
-  const formatValue = (value) => {
+  const formatValue = (value: number | null | undefined): string => {
     if (value === null || value === undefined) return 'A combinar';
     return `R$ ${value.toFixed(2).replace('.', ',')}`;
   };
 
   // Função para formatar a data do serviço
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'A combinar';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
   };
 
   // Função para obter a cor de fundo com base no status
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'OPEN':
-        return 'bg-blue-100 text-blue-800';
-      case 'IN_PROGRESS':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800';
-      case 'CANCELLED':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  interface StatusColorMap {
+    [key: string]: string;
+  }
+
+  const getStatusColor = (status: Service['status']): string => {
+    const statusColorMap: StatusColorMap = {
+      OPEN: 'bg-blue-100 text-blue-800',
+      IN_PROGRESS: 'bg-yellow-100 text-yellow-800',
+      COMPLETED: 'bg-green-100 text-green-800',
+      CANCELLED: 'bg-red-100 text-red-800',
+    };
+
+    return statusColorMap[status] || 'bg-gray-100 text-gray-800';
   };
 
   // Função para obter o texto do status
-  const getStatusText = (status) => {
+  const getStatusText = (status: Service['status']): string => {
     switch (status) {
       case 'OPEN':
         return 'Aberto';
@@ -140,7 +158,7 @@ export default function MeusServicosPage() {
   };
 
   // Verificar se o serviço pode ser editado ou excluído
-  const canEditOrDelete = (service) => {
+  const canEditOrDelete = (service: Service) => {
     return service.creatorId === session?.user?.id && service.status === 'OPEN';
   };
 
@@ -277,7 +295,7 @@ export default function MeusServicosPage() {
         statusServices.length > 0 && (
           <div key={status} className="mb-8">
             <h2 className="text-xl font-semibold mb-4">
-              {getStatusText(status)}
+              {getStatusText(status as Service['status'])}
               <span className="ml-2 text-sm font-normal text-gray-500">
                 ({statusServices.length})
               </span>

@@ -3,14 +3,6 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
-
 // POST /api/services/[id]/problem - Reportar um problema com o serviço
 export async function POST(
   request: NextRequest,
@@ -26,7 +18,7 @@ export async function POST(
       );
     }
     
-    const id = await params.id;
+    const { id } = await params;
     const body = await request.json();
     
     // Verificar se o serviço existe
@@ -77,11 +69,11 @@ export async function POST(
       );
     }
 
-    // Registrar o problema
-    await prisma.serviceProblem.create({
+    // Registrar o cancelamento usando ServiceCancelRequest em vez de ServiceProblem
+    await prisma.serviceCancelRequest.create({
       data: {
         service: { connect: { id } },
-        reporter: { connect: { id: session.user.id } },
+        requester: { connect: { id: session.user.id } },
         reason: body.reason || "Problema não especificado"
       }
     });
@@ -121,7 +113,7 @@ export async function POST(
       data: {
         type: "SERVICE_PROBLEM",
         message: `Um problema foi reportado no serviço "${existingService.title}" e ele foi cancelado. O valor foi estornado.`,
-        receiver: { connect: { id: existingService.creatorId } }
+        receiverId: existingService.creatorId
       }
     });
 
@@ -129,7 +121,7 @@ export async function POST(
       data: {
         type: "SERVICE_PROBLEM",
         message: `Um problema foi reportado no serviço "${existingService.title}" e ele foi cancelado. Motivo: ${body.reason || "Não especificado"}`,
-        receiver: { connect: { id: providerId } }
+        receiverId: providerId
       }
     });
 

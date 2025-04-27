@@ -5,8 +5,22 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 export default function HomePage() {
-  const [featuredServices, setFeaturedServices] = useState([]);
-  const [topProfessionals, setTopProfessionals] = useState([]);
+  const [featuredServices, setFeaturedServices] = useState<{ 
+    id: string; 
+    title: string; 
+    description: string; 
+    value: number; 
+    creator: { name: string; rating: number; image: null }; 
+    profession: { name: string } 
+  }[]>([]);
+  const [topProfessionals, setTopProfessionals] = useState<{
+    id: string;
+    name: string;
+    about: string;
+    rating: number;
+    image: null;
+    professions: { name: string }[];
+  }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

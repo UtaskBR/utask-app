@@ -33,23 +33,6 @@ export async function GET(
             name: true,
             image: true
           }
-        },
-        service: {
-          select: {
-            id: true,
-            title: true,
-            value: true,
-            date: true,
-            status: true
-          }
-        },
-        bid: {
-          select: {
-            id: true,
-            value: true,
-            date: true,
-            status: true
-          }
         }
       },
       orderBy: {
@@ -57,48 +40,8 @@ export async function GET(
       }
     });
     
-    // Enriquecer as notificações com informações adicionais
-    const enrichedNotifications = notifications.map(notification => {
-      // Extrair informações relevantes do serviço e da proposta
-      const serviceInfo = notification.service ? {
-        title: notification.service.title,
-        value: notification.service.value,
-        date: notification.service.date,
-        status: notification.service.status
-      } : null;
-      
-      const bidInfo = notification.bid ? {
-        value: notification.bid.value,
-        date: notification.bid.date,
-        status: notification.bid.status
-      } : null;
-      
-      // Adicionar detalhes formatados para exibição
-      return {
-        ...notification,
-        serviceInfo,
-        bidInfo,
-        details: {
-          title: serviceInfo?.title || 'Serviço',
-          value: bidInfo?.value || serviceInfo?.value || null,
-          date: bidInfo?.date || serviceInfo?.date || null,
-          formattedValue: bidInfo?.value || serviceInfo?.value 
-            ? `R$ ${(bidInfo?.value || serviceInfo?.value).toFixed(2).replace('.', ',')}`
-            : 'Valor a combinar',
-          formattedDate: bidInfo?.date || serviceInfo?.date
-            ? new Date(bidInfo?.date || serviceInfo?.date).toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-            : 'Data a combinar'
-        }
-      };
-    });
-    
-    return NextResponse.json(enrichedNotifications);
+    // Retornar as notificações sem tentar acessar relações inexistentes
+    return NextResponse.json(notifications);
   } catch (error) {
     console.error("Erro ao buscar notificações:", error);
     return NextResponse.json(

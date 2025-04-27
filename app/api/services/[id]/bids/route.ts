@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const serviceId = params.id;
+    const { id: serviceId } = await params;
     
     const bids = await prisma.serviceBid.findMany({
       where: { serviceId },
@@ -61,7 +61,7 @@ export async function POST(
       );
     }
     
-    const serviceId = params.id;
+    const { id: serviceId } = await params;
     const body = await request.json();
     const { value, message, proposedDate } = body;
     

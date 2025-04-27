@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 export default function FavoritosPage() {
   const { data: session } = useSession();
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,7 +33,24 @@ export default function FavoritosPage() {
     fetchFavorites();
   }, []);
 
-  const removeFavorite = async (favoriteId) => {
+  interface Favorite {
+    id: string;
+    service: {
+      id: string;
+      title: string;
+      description: string;
+      value?: number;
+      creator: {
+        name: string;
+        rating: number;
+      };
+      profession?: {
+        name: string;
+      };
+    };
+  }
+
+  const removeFavorite = async (favoriteId: string): Promise<void> => {
     try {
       const response = await fetch(`/api/favorites/${favoriteId}`, {
         method: 'DELETE'
@@ -44,7 +61,7 @@ export default function FavoritosPage() {
       }
       
       // Atualizar o estado local
-      setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
+      setFavorites((prev: Favorite[]) => prev.filter((fav: Favorite) => fav.id !== favoriteId));
       
       toast.success('Removido dos favoritos');
     } catch (error) {

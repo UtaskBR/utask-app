@@ -29,7 +29,7 @@ export async function POST(
       );
     }
     
-    const { id: serviceId, bidId } = params;
+    const { id: serviceId, bidId } = await params;
     console.log(`API reject-provider: Prestador rejeitando contraproposta ${bidId} para serviço ${serviceId}`);
     
     // Verificar se a proposta existe

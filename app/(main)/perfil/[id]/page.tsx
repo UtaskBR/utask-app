@@ -11,7 +11,21 @@ export default function ProfilePage() {
   const params = useParams();
   const userId = params.id;
   
-  const [user, setUser] = useState(null);
+  interface User {
+    id: string;
+    name?: string;
+    image?: string;
+    rating?: string;
+    city?: string;
+    state?: string;
+    professions?: { id: string; name: string }[];
+    about?: string;
+    reviews?: { id: string; giver: { name: string }; rating: number; comment?: string; createdAt: string }[];
+    certificates?: { id: string; title: string; institution: string; issueDate: string; url?: string }[];
+    photos?: { id: string; url: string }[];
+  }
+
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('sobre');
@@ -29,7 +43,7 @@ export default function ProfilePage() {
         console.log("Dados do usuário carregados:", data); // Log para depuração
         setUser(data);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
       } finally {
         setIsLoading(false);
       }
@@ -285,8 +299,8 @@ export default function ProfilePage() {
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         console.error("Erro ao carregar imagem:", photo.url);
-                        e.target.onerror = null;
-                        e.target.src = "https://via.placeholder.com/300?text=Imagem+não+disponível";
+                        (e.target as HTMLImageElement).onerror = null;
+                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Imagem+não+disponível";
                       }}
                     />
                   </div>
