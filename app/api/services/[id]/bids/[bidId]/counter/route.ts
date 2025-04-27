@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-    bidId: string;
-  };
-};
+import { Prisma } from "@prisma/client";
 
 // POST /api/services/[id]/bids/[bidId]/counter - Fazer uma contraproposta
 export async function POST(
@@ -37,26 +29,22 @@ export async function POST(
     
     console.log('API counter: Dados recebidos:', { value, proposedDate, message });
     
-    // Verificar se a proposta existe
-    const bid = await prisma.serviceBid.findUnique({
-      where: { id: bidId },
-      include: {
-        service: {
-          select: {
-            id: true,
-            creatorId: true,
-            status: true
-          }
-        },
-        provider: {
-          select: {
-            id: true
-          }
-        }
-      }
-    });
+    // Verificar se a proposta existe usando SQL bruto
+    const bids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        sb.status,
+        s.id as service_id,
+        s."creatorId" as service_creator_id,
+        s.status as service_status
+      FROM "ServiceBid" sb
+      JOIN "Service" s ON sb."serviceId" = s.id
+      WHERE sb.id = ${bidId}
+    `;
     
-    if (!bid || bid.serviceId !== serviceId) {
+    if (!bids || (bids as any[]).length === 0 || (bids as any[])[0].serviceId !== serviceId) {
       console.log('API counter: Proposta não encontrada');
       return NextResponse.json(
         { error: "Proposta não encontrada" },
@@ -64,8 +52,10 @@ export async function POST(
       );
     }
     
+    const bid = (bids as any[])[0];
+    
     // Verificar se o usuário é o criador do serviço
-    const isServiceCreator = bid.service.creatorId === session.user.id;
+    const isServiceCreator = bid.service_creator_id === session.user.id;
     
     if (!isServiceCreator) {
       console.log('API counter: Usuário não é o criador do serviço');
@@ -77,39 +67,61 @@ export async function POST(
     
     console.log('API counter: Atualizando proposta com contraproposta');
     
-    // Atualizar a proposta com a contraproposta
-    const updatedBid = await prisma.serviceBid.update({
-      where: { id: bidId },
-      data: { 
-        status: "COUNTER_OFFERED",
-        value: value !== undefined ? parseFloat(value) : undefined,
-        proposedDate: proposedDate ? new Date(proposedDate) : undefined,
-        message: message || undefined
-      }
-    });
+    // Preparar os valores para a atualização
+    const now = new Date();
+    const newValue = value !== undefined ? parseFloat(value) : null;
+    const newProposedDate = proposedDate ? new Date(proposedDate) : null;
+    const newMessage = message || null;
+    
+    // Atualizar a proposta com a contraproposta usando SQL bruto
+    // Usando 'COUNTER_OFFER' em vez de 'COUNTER_OFFERED' conforme sugerido pelo erro
+    await prisma.$executeRaw`
+      UPDATE "ServiceBid"
+      SET 
+        status = 'COUNTER_OFFER', 
+        value = COALESCE(${newValue}, value),
+        "proposedDate" = COALESCE(${newProposedDate}, "proposedDate"),
+        message = COALESCE(${newMessage}, message),
+        "updatedAt" = ${now}
+      WHERE id = ${bidId}
+    `;
+    
+    // Buscar a proposta atualizada
+    const updatedBids = await prisma.$queryRaw`
+      SELECT * FROM "ServiceBid" WHERE id = ${bidId}
+    `;
     
     console.log('API counter: Criando notificação');
     
-    // Criar notificação
-    await prisma.notification.create({
-      data: {
-        type: "COUNTER_OFFER",
-        message: "Você recebeu uma contraproposta.",
-        receiver: {
-          connect: {
-            id: bid.providerId
-          }
-        },
-        sender: {
-          connect: {
-            id: session.user.id
-          }
-        }
-      }
-    });
+    // Gerar um ID único para a notificação
+    const notificationId = crypto.randomUUID();
+    
+    // Criar notificação usando SQL bruto
+    await prisma.$executeRaw`
+      INSERT INTO "Notification" (
+        id, 
+        type, 
+        message, 
+        "receiverId", 
+        "senderId", 
+        "createdAt", 
+        "updatedAt",
+        read
+      )
+      VALUES (
+        ${notificationId}, 
+        'COUNTER_OFFER', 
+        'Você recebeu uma contraproposta.', 
+        ${bid.providerId}, 
+        ${session.user.id}, 
+        ${now}, 
+        ${now},
+        false
+      )
+    `;
     
     console.log('API counter: Contraproposta enviada com sucesso');
-    return NextResponse.json(updatedBid);
+    return NextResponse.json((updatedBids as any[])[0]);
   } catch (error) {
     console.error("API counter: Erro ao processar contraproposta:", error);
     return NextResponse.json(

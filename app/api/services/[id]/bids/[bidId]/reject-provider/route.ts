@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-    bidId: string;
-  };
-};
+import { Prisma } from "@prisma/client";
 
 // POST /api/services/[id]/bids/[bidId]/reject-provider - Prestador rejeita contraproposta do contratante
 export async function POST(
@@ -32,32 +24,30 @@ export async function POST(
     const { id: serviceId, bidId } = await params;
     console.log(`API reject-provider: Prestador rejeitando contraproposta ${bidId} para serviço ${serviceId}`);
     
-    // Verificar se a proposta existe
-    const bid = await prisma.serviceBid.findUnique({
-      where: { id: bidId },
-      include: {
-        service: {
-          select: {
-            id: true,
-            creatorId: true,
-            status: true
-          }
-        },
-        provider: {
-          select: {
-            id: true
-          }
-        }
-      }
-    });
+    // Verificar se a proposta existe usando SQL bruto
+    const bids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        sb.status,
+        s.id as service_id,
+        s."creatorId" as service_creator_id,
+        s.status as service_status
+      FROM "ServiceBid" sb
+      JOIN "Service" s ON sb."serviceId" = s.id
+      WHERE sb.id = ${bidId}
+    `;
     
-    if (!bid || bid.serviceId !== serviceId) {
+    if (!bids || (bids as any[]).length === 0 || (bids as any[])[0].serviceId !== serviceId) {
       console.log('API reject-provider: Proposta não encontrada');
       return NextResponse.json(
         { error: "Proposta não encontrada" },
         { status: 404 }
       );
     }
+    
+    const bid = (bids as any[])[0];
     
     // Verificar se o usuário é o prestador de serviço que fez a proposta
     const isProvider = bid.providerId === session.user.id;
@@ -71,7 +61,8 @@ export async function POST(
     }
     
     // Verificar se a proposta está no status de contraproposta
-    if (bid.status !== "COUNTER_OFFERED") {
+    // Usando 'COUNTER_OFFER' em vez de 'COUNTER_OFFERED' conforme corrigido anteriormente
+    if (bid.status !== 'COUNTER_OFFER') {
       console.log('API reject-provider: Proposta não está no status de contraproposta');
       return NextResponse.json(
         { error: "Apenas contrapropostas podem ser rejeitadas pelo prestador" },
@@ -81,34 +72,50 @@ export async function POST(
     
     console.log('API reject-provider: Atualizando status da proposta para REJECTED');
     
-    // Atualizar o status da proposta
-    const updatedBid = await prisma.serviceBid.update({
-      where: { id: bidId },
-      data: { status: "REJECTED" }
-    });
+    // Atualizar o status da proposta usando SQL bruto
+    const now = new Date();
+    await prisma.$executeRaw`
+      UPDATE "ServiceBid"
+      SET status = 'REJECTED', "updatedAt" = ${now}
+      WHERE id = ${bidId}
+    `;
+    
+    // Buscar a proposta atualizada
+    const updatedBids = await prisma.$queryRaw`
+      SELECT * FROM "ServiceBid" WHERE id = ${bidId}
+    `;
     
     console.log('API reject-provider: Criando notificação');
     
-    // Criar notificação para o contratante
-    await prisma.notification.create({
-      data: {
-        type: "REJECTION",
-        message: "O prestador rejeitou sua contraproposta.",
-        receiver: {
-          connect: {
-            id: bid.service.creatorId
-          }
-        },
-        sender: {
-          connect: {
-            id: session.user.id
-          }
-        }
-      }
-    });
+    // Gerar um ID único para a notificação
+    const notificationId = crypto.randomUUID();
+    
+    // Criar notificação para o contratante usando SQL bruto
+    await prisma.$executeRaw`
+      INSERT INTO "Notification" (
+        id, 
+        type, 
+        message, 
+        "receiverId", 
+        "senderId", 
+        "createdAt", 
+        "updatedAt",
+        read
+      )
+      VALUES (
+        ${notificationId}, 
+        'REJECTION', 
+        'O prestador rejeitou sua contraproposta.', 
+        ${bid.service_creator_id}, 
+        ${session.user.id}, 
+        ${now}, 
+        ${now},
+        false
+      )
+    `;
     
     console.log('API reject-provider: Contraproposta rejeitada com sucesso');
-    return NextResponse.json(updatedBid);
+    return NextResponse.json((updatedBids as any[])[0]);
   } catch (error) {
     console.error("API reject-provider: Erro ao rejeitar contraproposta:", error);
     return NextResponse.json(

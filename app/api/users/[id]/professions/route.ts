@@ -17,7 +17,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await params
+const { id  } = resolvedParams;
     
     // Buscar profissões do usuário
     const user = await prisma.user.findUnique({
@@ -50,7 +51,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await params
+const { id  } = resolvedParams;
     const session = await getServerSession(authOptions);
     
     // Verificar autenticação
@@ -125,7 +127,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await params
+const { id  } = resolvedParams;
     const session = await getServerSession(authOptions);
     
     // Verificar autenticação
@@ -217,7 +220,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await params
+const { id  } = resolvedParams;
     const session = await getServerSession(authOptions);
     const url = new URL(request.url);
     const professionId = url.searchParams.get("professionId");

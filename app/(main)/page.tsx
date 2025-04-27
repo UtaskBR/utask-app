@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import '@/lib/prisma-types';
 
 export default function HomePage() {
   const [featuredServices, setFeaturedServices] = useState<{ 

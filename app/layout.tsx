@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { AuthProvider } from './providers/AuthProvider';
+import '@/lib/prisma-types';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
