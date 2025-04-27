@@ -151,19 +151,19 @@
       "static/chunks/main-app-4e93639d3b8e89de.js",
       "static/chunks/app/api/upload/gallery/route-086535300fb67d84.js"
     ],
-    "/api/users/[id]/appointments/route": [
-      "static/chunks/webpack-7c727b1b947bbbd3.js",
-      "static/chunks/4bd1b696-715d940290edccae.js",
-      "static/chunks/1684-fc929367e187077a.js",
-      "static/chunks/main-app-4e93639d3b8e89de.js",
-      "static/chunks/app/api/users/[id]/appointments/route-c581756b99179ec6.js"
-    ],
     "/api/upload/route": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
       "static/chunks/4bd1b696-715d940290edccae.js",
       "static/chunks/1684-fc929367e187077a.js",
       "static/chunks/main-app-4e93639d3b8e89de.js",
       "static/chunks/app/api/upload/route-664c3c2a6b7e4e7e.js"
+    ],
+    "/api/users/[id]/appointments/route": [
+      "static/chunks/webpack-7c727b1b947bbbd3.js",
+      "static/chunks/4bd1b696-715d940290edccae.js",
+      "static/chunks/1684-fc929367e187077a.js",
+      "static/chunks/main-app-4e93639d3b8e89de.js",
+      "static/chunks/app/api/users/[id]/appointments/route-c581756b99179ec6.js"
     ],
     "/api/users/[id]/professions/route": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
@@ -247,16 +247,6 @@
       "static/chunks/1551-24f2d189685a0ea0.js",
       "static/chunks/app/(main)/agenda/page-a1f8bfb6c8567e87.js"
     ],
-    "/(main)/editar-servico/[id]/page": [
-      "static/chunks/webpack-7c727b1b947bbbd3.js",
-      "static/chunks/4bd1b696-715d940290edccae.js",
-      "static/chunks/1684-fc929367e187077a.js",
-      "static/chunks/main-app-4e93639d3b8e89de.js",
-      "static/chunks/2108-0c164f52decc157b.js",
-      "static/chunks/6874-9f4abed0e57b7176.js",
-      "static/chunks/3568-f9d798b25c888309.js",
-      "static/chunks/app/(main)/editar-servico/[id]/page-d9662c9904b3eaf1.js"
-    ],
     "/(main)/carteira/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
       "static/chunks/4bd1b696-715d940290edccae.js",
@@ -276,6 +266,16 @@
       "static/chunks/6766-44cdd0fead0ea292.js",
       "static/chunks/app/(main)/criar-servico/page-75acf08fa1c6496f.js"
     ],
+    "/(main)/editar-servico/[id]/page": [
+      "static/chunks/webpack-7c727b1b947bbbd3.js",
+      "static/chunks/4bd1b696-715d940290edccae.js",
+      "static/chunks/1684-fc929367e187077a.js",
+      "static/chunks/main-app-4e93639d3b8e89de.js",
+      "static/chunks/2108-0c164f52decc157b.js",
+      "static/chunks/6874-9f4abed0e57b7176.js",
+      "static/chunks/3568-f9d798b25c888309.js",
+      "static/chunks/app/(main)/editar-servico/[id]/page-d9662c9904b3eaf1.js"
+    ],
     "/(main)/explorar/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
       "static/chunks/4bd1b696-715d940290edccae.js",
@@ -284,13 +284,6 @@
       "static/chunks/2108-0c164f52decc157b.js",
       "static/chunks/6874-9f4abed0e57b7176.js",
       "static/chunks/app/(main)/explorar/page-2a7939e129804f19.js"
-    ],
-    "/(main)/mapa/page": [
-      "static/chunks/webpack-7c727b1b947bbbd3.js",
-      "static/chunks/4bd1b696-715d940290edccae.js",
-      "static/chunks/1684-fc929367e187077a.js",
-      "static/chunks/main-app-4e93639d3b8e89de.js",
-      "static/chunks/app/(main)/mapa/page-7b67f7f68fd25113.js"
     ],
     "/(main)/favoritos/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
@@ -301,6 +294,13 @@
       "static/chunks/6874-9f4abed0e57b7176.js",
       "static/chunks/3568-f9d798b25c888309.js",
       "static/chunks/app/(main)/favoritos/page-a96f5019b011b0c2.js"
+    ],
+    "/(main)/mapa/page": [
+      "static/chunks/webpack-7c727b1b947bbbd3.js",
+      "static/chunks/4bd1b696-715d940290edccae.js",
+      "static/chunks/1684-fc929367e187077a.js",
+      "static/chunks/main-app-4e93639d3b8e89de.js",
+      "static/chunks/app/(main)/mapa/page-7b67f7f68fd25113.js"
     ],
     "/(main)/meus-servicos/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
@@ -313,15 +313,6 @@
       "static/chunks/6766-44cdd0fead0ea292.js",
       "static/chunks/app/(main)/meus-servicos/page-ec215baa65f15ad8.js"
     ],
-    "/(main)/notificacoes/page": [
-      "static/chunks/webpack-7c727b1b947bbbd3.js",
-      "static/chunks/4bd1b696-715d940290edccae.js",
-      "static/chunks/1684-fc929367e187077a.js",
-      "static/chunks/main-app-4e93639d3b8e89de.js",
-      "static/chunks/2108-0c164f52decc157b.js",
-      "static/chunks/3568-f9d798b25c888309.js",
-      "static/chunks/app/(main)/notificacoes/page-b8c0818b326f2c15.js"
-    ],
     "/(main)/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
       "static/chunks/4bd1b696-715d940290edccae.js",
@@ -330,13 +321,14 @@
       "static/chunks/6874-9f4abed0e57b7176.js",
       "static/chunks/app/(main)/page-87833f721f7acc7a.js"
     ],
-    "/(main)/perfil/editar/page": [
+    "/(main)/notificacoes/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
       "static/chunks/4bd1b696-715d940290edccae.js",
       "static/chunks/1684-fc929367e187077a.js",
       "static/chunks/main-app-4e93639d3b8e89de.js",
       "static/chunks/2108-0c164f52decc157b.js",
-      "static/chunks/app/(main)/perfil/editar/page-66bfb1e629ad185e.js"
+      "static/chunks/3568-f9d798b25c888309.js",
+      "static/chunks/app/(main)/notificacoes/page-b8c0818b326f2c15.js"
     ],
     "/(main)/perfil/[id]/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
@@ -347,16 +339,13 @@
       "static/chunks/6874-9f4abed0e57b7176.js",
       "static/chunks/app/(main)/perfil/[id]/page-4454c4c56f038be7.js"
     ],
-    "/(main)/servicos/[id]/page": [
+    "/(main)/perfil/editar/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
       "static/chunks/4bd1b696-715d940290edccae.js",
       "static/chunks/1684-fc929367e187077a.js",
       "static/chunks/main-app-4e93639d3b8e89de.js",
       "static/chunks/2108-0c164f52decc157b.js",
-      "static/chunks/6874-9f4abed0e57b7176.js",
-      "static/chunks/3568-f9d798b25c888309.js",
-      "static/chunks/6766-44cdd0fead0ea292.js",
-      "static/chunks/app/(main)/servicos/[id]/page-773015697df88fa7.js"
+      "static/chunks/app/(main)/perfil/editar/page-66bfb1e629ad185e.js"
     ],
     "/(main)/servicos-mapa/page": [
       "static/chunks/webpack-7c727b1b947bbbd3.js",
@@ -371,6 +360,17 @@
       "static/chunks/3568-f9d798b25c888309.js",
       "static/chunks/7596-bd2c8130a793266f.js",
       "static/chunks/app/(main)/servicos-mapa/page-05a9f0e8dc4ff35b.js"
+    ],
+    "/(main)/servicos/[id]/page": [
+      "static/chunks/webpack-7c727b1b947bbbd3.js",
+      "static/chunks/4bd1b696-715d940290edccae.js",
+      "static/chunks/1684-fc929367e187077a.js",
+      "static/chunks/main-app-4e93639d3b8e89de.js",
+      "static/chunks/2108-0c164f52decc157b.js",
+      "static/chunks/6874-9f4abed0e57b7176.js",
+      "static/chunks/3568-f9d798b25c888309.js",
+      "static/chunks/6766-44cdd0fead0ea292.js",
+      "static/chunks/app/(main)/servicos/[id]/page-773015697df88fa7.js"
     ]
   }
 }

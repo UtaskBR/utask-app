@@ -1,15 +1,10 @@
+// Este arquivo contém as correções necessárias para o Next.js 15.3.1
+// Ele corrige apenas os problemas de tipagem sem alterar a funcionalidade
+
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
 
 // POST /api/users/[id]/reviews - Criar uma avaliação para um usuário
 export async function POST(
@@ -26,7 +21,8 @@ export async function POST(
       );
     }
     
-    const receiverId = params.id;
+    const resolvedParams = await params;
+    const receiverId = resolvedParams.id;
     const giverId = session.user.id;
     
     // Verificar se o usuário não está avaliando a si mesmo
@@ -121,7 +117,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const receiverId = params.id;
+    const resolvedParams = await params;
+    const receiverId = resolvedParams.id;
     
     const reviews = await prisma.review.findMany({
       where: {

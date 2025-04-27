@@ -1,5 +1,5 @@
-// This is a fixed version of the Prisma schema with the missing relation field added
-// Save this to a file named schema.prisma in your prisma directory
+// Este é um esquema Prisma atualizado que inclui o modelo Review e o campo rating no modelo User
+// Salve como /prisma/schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -10,51 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relações
-  accounts      Account[]
-  sessions      Session[]
-  services      Service[]   @relation("ServiceCreator")
-  bids          ServiceBid[] @relation("BidProvider")
-  wallet        Wallet?
-  favorites     Favorite[]
-  
-  // Notificações
-  sentNotifications     Notification[] @relation("NotificationSender")
-  receivedNotifications Notification[] @relation("NotificationReceiver")
-  
-  // Cancelamento de serviços
-  cancelRequests ServiceCancelRequest[] @relation("CancelRequester")
-  
-  // Problemas de serviços - Adicionando a relação oposta que estava faltando
-  reportedProblems ServiceProblem[] @relation("ProblemReporter")
-  
-  // Profissões
-  professions UserProfession[]
-}
-
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -69,11 +37,45 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  rating        Float?    @default(0) // Campo rating adicionado
+  
+  // Relações
+  accounts      Account[]
+  sessions      Session[]
+  services      Service[]   @relation("ServiceCreator")
+  bids          ServiceBid[] @relation("BidProvider")
+  wallet        Wallet?
+  favorites     Favorite[]
+  
+  // Notificações
+  sentNotifications     Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  
+  // Cancelamentos e problemas
+  cancelRequests ServiceCancelRequest[] @relation("CancelRequester")
+  reportedProblems ServiceProblem[] @relation("ProblemReporter")
+  
+  // Reviews
+  receivedReviews Review[] @relation("ReviewReceiver")
+  givenReviews    Review[] @relation("ReviewGiver")
+  
+  // Profissões
+  professions     UserProfession[]
+}
+
 model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
-
   @@unique([identifier, token])
 }
 
@@ -226,6 +228,20 @@ model UserProfession {
   @@unique([userId, professionId])
 }
 
+// Modelo Review adicionado
+model Review {
+  id          String   @id @default(cuid())
+  rating      Float
+  comment     String?  @db.Text
+  createdAt   DateTime @default(now())
+  
+  // Relações
+  receiverId  String
+  receiver    User     @relation("ReviewReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  giverId     String
+  giver       User     @relation("ReviewGiver", fields: [giverId], references: [id], onDelete: Cascade)
+}
+
 // Enum para Status do Serviço
 enum ServiceStatus {
   OPEN
@@ -240,6 +256,7 @@ enum BidStatus {
   ACCEPTED
   REJECTED
   COUNTER_OFFER
+  COUNTER_OFFERED // Mantido para compatibilidade com dados existentes
 }
 
 // Enum para Tipo de Transação
@@ -248,6 +265,7 @@ enum TransactionType {
   REFUND
   WITHDRAWAL
   DEPOSIT
+  RECEIPT // Mantido para compatibilidade com dados existentes
 }
 
 // Enum para Tipo de Notificação
@@ -259,4 +277,9 @@ enum NotificationType {
   SERVICE_COMPLETION
   REVIEW
   SERVICE_PROBLEM
+  SERVICE_CANCELLED // Mantido para compatibilidade com dados existentes
+  CANCEL_REQUEST // Mantido para compatibilidade com dados existentes
+  CANCEL_REJECTED // Mantido para compatibilidade com dados existentes
+  COMPLETION_CONFIRMATION // Mantido para compatibilidade com dados existentes
+  SYSTEM // Mantido para compatibilidade com dados existentes
 }

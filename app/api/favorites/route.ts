@@ -3,10 +3,10 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// GET /api/favorites - Obter favoritos do usuário logado
+// GET /api/favorites - Obter todos os favoritos do usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{  }> }
+  { params }: { params: Promise<{}> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,12 +18,9 @@ export async function GET(
       );
     }
     
-    const userId = session.user.id;
-    
-    // Buscar os favoritos do usuário
     const favorites = await prisma.favorite.findMany({
       where: {
-        userId
+        userId: session.user.id
       },
       include: {
         service: {
@@ -32,19 +29,18 @@ export async function GET(
               select: {
                 id: true,
                 name: true,
-                image: true,
-                rating: true
+                image: true
               }
             },
             profession: true,
-            photos: {
+            images: {
+              select: {
+                url: true
+              },
               take: 1
             }
           }
         }
-      },
-      orderBy: {
-        createdAt: "desc"
       }
     });
     
@@ -52,7 +48,7 @@ export async function GET(
   } catch (error) {
     console.error("Erro ao buscar favoritos:", error);
     return NextResponse.json(
-      { error: "Erro ao processar a solicitação" },
+      { error: "Erro interno do servidor" },
       { status: 500 }
     );
   }
@@ -61,7 +57,7 @@ export async function GET(
 // POST /api/favorites - Adicionar um serviço aos favoritos
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{  }> }
+  { params }: { params: Promise<{}> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -73,14 +69,12 @@ export async function POST(
       );
     }
     
-    const userId = session.user.id;
     const body = await request.json();
     const { serviceId } = body;
     
-    // Validação básica
     if (!serviceId) {
       return NextResponse.json(
-        { error: "ID do serviço não fornecido" },
+        { error: "ID do serviço é obrigatório" },
         { status: 400 }
       );
     }
@@ -97,10 +91,10 @@ export async function POST(
       );
     }
     
-    // Verificar se o serviço já está nos favoritos
+    // Verificar se já está nos favoritos
     const existingFavorite = await prisma.favorite.findFirst({
       where: {
-        userId,
+        userId: session.user.id,
         serviceId
       }
     });
@@ -115,24 +109,16 @@ export async function POST(
     // Adicionar aos favoritos
     const favorite = await prisma.favorite.create({
       data: {
-        user: {
-          connect: {
-            id: userId
-          }
-        },
-        service: {
-          connect: {
-            id: serviceId
-          }
-        }
+        user: { connect: { id: session.user.id } },
+        service: { connect: { id: serviceId } }
       }
     });
     
-    return NextResponse.json(favorite, { status: 201 });
+    return NextResponse.json(favorite);
   } catch (error) {
     console.error("Erro ao adicionar favorito:", error);
     return NextResponse.json(
-      { error: "Erro ao processar a solicitação" },
+      { error: "Erro interno do servidor" },
       { status: 500 }
     );
   }
