@@ -14,7 +14,7 @@ type RouteParams = {
 // POST /api/users/[id]/reviews - Criar uma avaliação para um usuário
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -118,7 +118,7 @@ export async function POST(
 // GET /api/users/[id]/reviews - Listar avaliações de um usuário
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const receiverId = params.id;

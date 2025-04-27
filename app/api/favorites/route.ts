@@ -4,7 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 // GET /api/favorites - Obter favoritos do usuário logado
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -56,7 +59,10 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/favorites - Adicionar um serviço aos favoritos
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     

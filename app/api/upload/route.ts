@@ -10,7 +10,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(request) {
+export async function POST(
+  request,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     
@@ -51,7 +54,10 @@ export async function POST(request) {
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(
+  request,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     

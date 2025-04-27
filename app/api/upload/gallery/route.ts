@@ -5,7 +5,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from '@/lib/prisma';
 import cloudinary from '@/lib/cloudinary';
 
-export async function POST(req: NextRequest) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const { userId, url, publicId } = await req.json();
     console.log("🧩 Dados recebidos (galeria):", { userId, url, publicId });
@@ -45,7 +48,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const { searchParams } = new URL(req.url);
     const photoId = searchParams.get("id");

@@ -3,23 +3,15 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-    bidId: string;
-  };
-};
-
-
 // GET /api/services/[id]/bids/[bidId] - Obter detalhes de uma proposta específica
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string, bidId: string } }
+  { params }: { params: Promise<{ id: string, bidId: string }> }
 ) {
   try {
-    const { id: serviceId, bidId } = params;
+    const resolvedParams = await params;
+    const serviceId = resolvedParams.id;
+    const bidId = resolvedParams.bidId;
     
     const bid = await prisma.serviceBid.findUnique({
       where: { id: bidId },
@@ -28,19 +20,32 @@ export async function GET(
           select: {
             id: true,
             name: true,
+            email: true,
             image: true,
-            rating: true,
-            about: true
+            professions: true
           }
         },
-        service: true
+        service: {
+          select: {
+            id: true,
+            title: true,
+            creatorId: true
+          }
+        }
       }
     });
     
-    if (!bid || bid.serviceId !== serviceId) {
+    if (!bid) {
       return NextResponse.json(
         { error: "Proposta não encontrada" },
         { status: 404 }
+      );
+    }
+    
+    if (bid.serviceId !== serviceId) {
+      return NextResponse.json(
+        { error: "Proposta não pertence a este serviço" },
+        { status: 400 }
       );
     }
     
@@ -54,50 +59,46 @@ export async function GET(
   }
 }
 
-// PATCH /api/services/[id]/bids/[bidId] - Atualizar status de uma proposta (aceitar, rejeitar, contra-proposta)
+// PATCH /api/services/[id]/bids/[bidId] - Atualizar uma proposta
 export async function PATCH(
   request: NextRequest,
-  context: { params: { id: string, bidId: string } }
+  { params }: { params: Promise<{ id: string, bidId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session || !session.user) {
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Não autorizado" },
         { status: 401 }
       );
     }
     
-    const { id: serviceId, bidId } = params;
-    const body = await request.json();
-    const { status, value, proposedDate, message } = body;
+    const resolvedParams = await params;
+    const serviceId = resolvedParams.id;
+    const bidId = resolvedParams.bidId;
     
-    // Verificar se a proposta existe
+    const { status, value, proposedDate, message } = await request.json();
+    
+    // Buscar a proposta com informações do serviço e provedor
     const bid = await prisma.serviceBid.findUnique({
       where: { id: bidId },
       include: {
-        service: {
-          select: {
-            id: true,
-            creatorId: true,
-            status: true,
-            title: true
-          }
-        },
-        provider: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
+        provider: true,
+        service: true
       }
     });
     
-    if (!bid || bid.serviceId !== serviceId) {
+    if (!bid) {
       return NextResponse.json(
         { error: "Proposta não encontrada" },
         { status: 404 }
+      );
+    }
+    
+    if (bid.serviceId !== serviceId) {
+      return NextResponse.json(
+        { error: "Proposta não pertence a este serviço" },
+        { status: 400 }
       );
     }
     

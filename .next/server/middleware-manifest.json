@@ -10,15 +10,46 @@
       "page": "/",
       "matchers": [
         {
-          "regexp": "^/.*$",
-          "originalSource": "/:path*"
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/meus-servicos(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/meus-servicos/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/criar-servico(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/criar-servico/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/agenda(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/agenda/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/carteira(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/carteira/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/favoritos(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/favoritos/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/notificacoes(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/notificacoes/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?\\/perfil\\/editar(?:\\/((?:[^\\/#\\?]+?)(?:\\/(?:[^\\/#\\?]+?))*))?(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/perfil/editar/:path*"
+        },
+        {
+          "regexp": "^(?:\\/(_next\\/data\\/[^/]{1,}))?(?:\\/((?!auth\\/register|auth\\/login|auth\\/forgot-password|api\\/auth|api\\/register|api\\/services|api\\/professions|_next\\/static|_next\\/image|favicon.ico).*))(\\.json)?[\\/#\\?]?$",
+          "originalSource": "/((?!auth/register|auth/login|auth/forgot-password|api/auth|api/register|api/services|api/professions|_next/static|_next/image|favicon.ico).*)"
         }
       ],
       "wasm": [],
       "assets": [],
       "env": {
-        "__NEXT_BUILD_ID": "development",
-        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "h4xZ64LnwRkfVFzvLff68z+49GT81BqcKuOIHTrXC8g="
+        "__NEXT_BUILD_ID": "t4uxIcnpLT3m0Dc6ThFCZ",
+        "NEXT_SERVER_ACTIONS_ENCRYPTION_KEY": "bftaJM5TCBywzPgUJCYns2cjGP6wI9ftQeOy8lJNWEo=",
+        "__NEXT_PREVIEW_MODE_ID": "64b8307e699ccc2a8b7adadbd3f7d852",
+        "__NEXT_PREVIEW_MODE_ENCRYPTION_KEY": "463cd0fefb84adc58eb8de4af68327ee8ef61a52bac30a431f3a8f53afd6e1c5",
+        "__NEXT_PREVIEW_MODE_SIGNING_KEY": "3e4c36f8f5a05972964f62f026f6591b41dcd06f62aca749f2e2654738b8bab9"
       }
     }
   },

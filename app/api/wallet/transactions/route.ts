@@ -4,7 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 // POST /api/wallet/transactions - Criar uma nova transação
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     

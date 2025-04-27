@@ -4,7 +4,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from '@/lib/prisma';
 
 // GET - Buscar informações essenciais do usuário para edição
-export async function GET(req: NextRequest, context: { params?: { id?: string } }) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -51,7 +54,10 @@ export async function GET(req: NextRequest, context: { params?: { id?: string } 
 }
 
 // PATCH - Atualizar perfil do usuário
-export async function PATCH(req: NextRequest, context: { params?: { id?: string } }) {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     const userId = context.params?.id;

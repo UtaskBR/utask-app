@@ -4,7 +4,10 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import cloudinary from "@/lib/cloudinary";
 
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     console.log("Iniciando upload de fotos para o Cloudinary");
     

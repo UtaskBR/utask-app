@@ -15,7 +15,7 @@ type RouteParams = {
 // POST /api/services/[id]/bids/[bidId]/accept-provider - Prestador aceita contraproposta do contratante
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string, bidId: string } }
+  { params }: { params: Promise<{ id: string, bidId: string }> }
 ) {
   try {
     console.log('API accept-provider: Iniciando processamento de aceitação de contraproposta pelo prestador');

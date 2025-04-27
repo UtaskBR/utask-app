@@ -4,7 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 // GET /api/wallet - Obter carteira do usuário logado
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     

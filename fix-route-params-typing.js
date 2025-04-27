@@ -1,4 +1,3 @@
-// Script para corrigir a tipagem dos parâmetros de rota no Next.js 15
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
@@ -11,9 +10,6 @@ const writeFile = promisify(fs.writeFile);
 // Diretório raiz do projeto
 const rootDir = process.argv[2] || '.';
 const apiDir = path.join(rootDir, 'app/api');
-
-// Padrão para identificar funções de rota com tipo RouteParams
-const routeParamsPattern = /export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE)\s*\(\s*([^,)]+)\s*,\s*context\s*:\s*RouteParams\s*\)/g;
 
 // Função para verificar se um arquivo é um arquivo TypeScript
 const isTypeScriptFile = (file) => {
@@ -61,47 +57,108 @@ function extractParamNames(filePath) {
 // Função para corrigir a tipagem dos parâmetros de rota
 async function fixRouteParamsTyping(filePath) {
   try {
-    const content = await readFile(filePath, 'utf8');
+    let content = await readFile(filePath, 'utf8');
+    let updated = false;
     
-    // Verificar se o arquivo contém o tipo RouteParams
-    if (!content.includes('RouteParams') || !routeParamsPattern.test(content)) {
+    // Ignorar o arquivo de rota do NextAuth
+    if (filePath.includes('[...nextauth]')) {
+      console.log(`Ignorando arquivo NextAuth: ${filePath}`);
       return false;
     }
     
-    // Extrair nomes de parâmetros do caminho do arquivo
     const paramNames = extractParamNames(filePath);
-    if (paramNames.length === 0) {
-      return false;
-    }
     
-    // Construir o objeto de parâmetros
-    const paramsObject = paramNames.map(name => `${name}: string`).join(', ');
-    
-    // Criar a nova assinatura da função
-    let newContent = content;
-    
-    // Remover a definição do tipo RouteParams se existir
-    const routeParamsTypePattern = /type\s+RouteParams\s*=\s*\{\s*params\s*:\s*\{[^}]*\}\s*\}\s*;?/g;
-    newContent = newContent.replace(routeParamsTypePattern, '');
-    
-    // Substituir a assinatura da função
-    newContent = newContent.replace(routeParamsPattern, (match, method, requestParam) => {
-      return `export async function ${method}(
+    if (paramNames.length > 0) {
+      console.log(`Processando arquivo: ${filePath}`);
+      console.log(`Parâmetros detectados: ${paramNames.join(', ')}`);
+      
+      // 1. Remover definições de tipo RouteParams
+      const routeParamsTypePattern = /type\s+RouteParams\s*=\s*\{\s*params\s*:\s*\{[^}]*\}\s*\}\s*;?/g;
+      if (routeParamsTypePattern.test(content)) {
+        content = content.replace(routeParamsTypePattern, '');
+        updated = true;
+        console.log(`Removida definição de tipo RouteParams em: ${filePath}`);
+      }
+      
+      // 2. Corrigir a tipagem dos parâmetros nas funções de rota
+      const httpMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+      
+      for (const method of httpMethods) {
+        // Padrão para encontrar funções de rota com o método específico
+        const functionPattern = new RegExp(`export\\s+async\\s+function\\s+${method}\\s*\\(([^)]*),\\s*([^)]*)\\)\\s*\\{`, 'g');
+        
+        let match;
+        while ((match = functionPattern.exec(content)) !== null) {
+          const fullMatch = match[0];
+          const requestParam = match[1].trim();
+          const contextParam = match[2].trim();
+          
+          // Verificar se o parâmetro de contexto precisa ser corrigido
+          if (contextParam.includes('context:') || contextParam.includes('{ params }:')) {
+            // Construir o objeto de parâmetros
+            const paramsObject = paramNames.map(name => `${name}: string`).join(', ');
+            
+            // Criar a nova assinatura da função
+            const newSignature = `export async function ${method}(
   ${requestParam},
-  { params }: { params: { ${paramsObject} } }
-)`;
-    });
-    
-    // Substituir referências a context.params.X por params.X
-    for (const paramName of paramNames) {
-      const contextParamPattern = new RegExp(`context\\.params\\.${paramName}\\b`, 'g');
-      newContent = newContent.replace(contextParamPattern, `params.${paramName}`);
-    }
-    
-    if (newContent !== content) {
-      await writeFile(filePath, newContent, 'utf8');
-      console.log(`Corrigido: ${filePath}`);
-      return true;
+  { params }: { params: Promise<{ ${paramsObject} }> }
+) {`;
+            
+            content = content.replace(fullMatch, newSignature);
+            updated = true;
+            console.log(`Corrigida tipagem de parâmetros em função ${method} em: ${filePath}`);
+          }
+        }
+      }
+      
+      // 3. Atualizar o acesso aos parâmetros no corpo da função
+      if (updated) {
+        // Padrão para encontrar acesso direto a context.params
+        const contextParamsPattern = /const\s+\{([^}]*)\}\s*=\s*context\.params/g;
+        let contextMatch;
+        
+        while ((contextMatch = contextParamsPattern.exec(content)) !== null) {
+          const fullMatch = contextMatch[0];
+          const paramsList = contextMatch[1].trim();
+          
+          // Criar a nova forma de acessar os parâmetros
+          const newAccess = `const resolvedParams = await params;
+  const {${paramsList}} = resolvedParams`;
+          
+          content = content.replace(fullMatch, newAccess);
+          console.log(`Atualizado acesso a parâmetros em: ${filePath}`);
+        }
+        
+        // Padrão para encontrar acesso direto a params.X
+        for (const paramName of paramNames) {
+          const directAccessPattern = new RegExp(`(const|let|var)\\s+${paramName}\\s*=\\s*params\\.${paramName}`, 'g');
+          if (directAccessPattern.test(content)) {
+            const newAccess = `$1 resolvedParams = await params;
+  $1 ${paramName} = resolvedParams.${paramName}`;
+            content = content.replace(directAccessPattern, newAccess);
+            console.log(`Atualizado acesso direto a params.${paramName} em: ${filePath}`);
+          }
+          
+          // Substituir outras referências a context.params.X
+          const contextParamPattern = new RegExp(`context\\.params\\.${paramName}\\b`, 'g');
+          if (contextParamPattern.test(content)) {
+            // Verificar se já temos a variável resolvedParams
+            if (!content.includes('const resolvedParams = await params')) {
+              // Adicionar a linha para resolver os parâmetros após a declaração da função
+              const functionStartPattern = /\) {(\s*try {)?/;
+              content = content.replace(functionStartPattern, ') {$1\n  const resolvedParams = await params;');
+            }
+            content = content.replace(contextParamPattern, `resolvedParams.${paramName}`);
+            console.log(`Substituídas referências a context.params.${paramName} em: ${filePath}`);
+          }
+        }
+      }
+      
+      if (updated) {
+        await writeFile(filePath, content, 'utf8');
+        console.log(`Arquivo atualizado: ${filePath}`);
+        return true;
+      }
     }
     
     return false;
@@ -114,15 +171,15 @@ async function fixRouteParamsTyping(filePath) {
 // Função principal
 async function main() {
   try {
-    console.log('Iniciando correção da tipagem dos parâmetros de rota...');
+    console.log('Iniciando correção de tipagem de parâmetros de rota para Next.js 15.3.1...');
     console.log(`Diretório raiz: ${rootDir}`);
     console.log(`Diretório de API: ${apiDir}`);
 
-    // Obter todos os arquivos de rota no diretório de API
+    // Obter todos os arquivos TypeScript no diretório de API
     const files = await walkDir(apiDir);
     console.log(`Encontrados ${files.length} arquivos de rota para verificar.`);
 
-    // Corrigir tipagem em cada arquivo
+    // Corrigir a tipagem dos parâmetros em cada arquivo
     let fixedCount = 0;
     for (const file of files) {
       const fixed = await fixRouteParamsTyping(file);
@@ -132,6 +189,11 @@ async function main() {
     }
 
     console.log(`Concluído! ${fixedCount} arquivos foram corrigidos.`);
+    
+    console.log('\nRecomendações finais:');
+    console.log('1. Limpe o cache do Next.js removendo a pasta .next');
+    console.log('2. Tente o build novamente com "npm run build"');
+    console.log('3. Verifique se não há mais erros de tipagem');
   } catch (error) {
     console.error('Erro:', error);
   }

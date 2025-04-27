@@ -4,7 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 // GET /api/professions - Listar todas as profissões
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const professions = await prisma.profession.findMany({
       orderBy: {
@@ -23,7 +26,10 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/professions - Criar uma nova profissão
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     

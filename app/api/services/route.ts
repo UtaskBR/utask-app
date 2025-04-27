@@ -4,7 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 // GET /api/services - Listar todos os serviços
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     const session = await getServerSession(authOptions);
     const { searchParams } = new URL(request.url);
@@ -192,7 +195,10 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/services - Criar um novo serviço
-export async function POST(request: NextRequest) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     console.log("Iniciando criação de serviço");
     const session = await getServerSession(authOptions);
@@ -271,7 +277,10 @@ export async function POST(request: NextRequest) {
 }
 
 // PATCH /api/services - Editar um serviço existente
-export async function PATCH(request: NextRequest) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     console.log("Iniciando edição de serviço");
     const session = await getServerSession(authOptions);
@@ -379,7 +388,10 @@ export async function PATCH(request: NextRequest) {
 }
 
 // DELETE /api/services - Excluir um serviço
-export async function DELETE(request: NextRequest) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{  }> }
+) {
   try {
     console.log("Iniciando exclusão de serviço");
     const session = await getServerSession(authOptions);
