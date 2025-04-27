@@ -14,7 +14,7 @@ type RouteParams = {
 // GET /api/users/[id]/appointments - Obter serviços para a agenda do usuário
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -26,7 +26,7 @@ export async function GET(
       );
     }
     
-    const userId = context.params.id;
+    const userId = params.id;
     
     // Verificar se o usuário está tentando acessar sua própria agenda
     if (userId !== session.user.id) {

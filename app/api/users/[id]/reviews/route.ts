@@ -14,7 +14,7 @@ type RouteParams = {
 // POST /api/users/[id]/reviews - Criar uma avaliação para um usuário
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -26,7 +26,7 @@ export async function POST(
       );
     }
     
-    const receiverId = context.params.id;
+    const receiverId = params.id;
     const giverId = session.user.id;
     
     // Verificar se o usuário não está avaliando a si mesmo
@@ -118,10 +118,10 @@ export async function POST(
 // GET /api/users/[id]/reviews - Listar avaliações de um usuário
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
-    const receiverId = context.params.id;
+    const receiverId = params.id;
     
     const reviews = await prisma.review.findMany({
       where: {

@@ -14,7 +14,7 @@ type RouteParams = {
 // GET /api/users/[id]/services - Obter todos os serviços relacionados ao usuário
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -26,7 +26,7 @@ export async function GET(
       );
     }
     
-    const userId = context.params.id;
+    const userId = params.id;
     
     // Verificar se o usuário está tentando acessar seus próprios serviços
     if (userId !== session.user.id) {

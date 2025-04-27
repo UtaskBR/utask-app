@@ -1,20 +1,13 @@
+// Versão corrigida para Next.js 15
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
-
 // DELETE /api/favorites/[id] - Remover um serviço dos favoritos
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -27,7 +20,7 @@ export async function DELETE(
     }
     
     const userId = session.user.id;
-    const favoriteId = context.params.id;
+    const favoriteId = params.id;
     
     // Verificar se o favorito existe e pertence ao usuário
     const favorite = await prisma.favorite.findUnique({

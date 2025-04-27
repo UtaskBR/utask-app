@@ -14,10 +14,10 @@ type RouteParams = {
 // GET /api/services/[id]/bids - Listar todas as propostas para um serviço
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
-    const serviceId = context.params.id;
+    const serviceId = params.id;
     
     const bids = await prisma.serviceBid.findMany({
       where: { serviceId },
@@ -49,7 +49,7 @@ export async function GET(
 // POST /api/services/[id]/bids - Criar uma nova proposta para um serviço
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -61,7 +61,7 @@ export async function POST(
       );
     }
     
-    const serviceId = context.params.id;
+    const serviceId = params.id;
     const body = await request.json();
     const { value, message, proposedDate } = body;
     

@@ -14,10 +14,10 @@ type RouteParams = {
 // GET /api/services/[id] - Obter detalhes de um serviço específico
 export async function GET(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = await context.params.id;
+    const id = await params.id;
     
     const service = await prisma.service.findUnique({
       where: { id },
@@ -73,7 +73,7 @@ export async function GET(
 // PATCH /api/services/[id] - Atualizar um serviço
 export async function PATCH(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -85,7 +85,7 @@ export async function PATCH(
       );
     }
     
-    const id = await context.params.id;
+    const id = await params.id;
     const body = await request.json();
     
     // Verificar se o serviço existe
@@ -404,7 +404,7 @@ export async function PATCH(
 // DELETE /api/services/[id] - Excluir um serviço
 export async function DELETE(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -416,7 +416,7 @@ export async function DELETE(
       );
     }
     
-    const id = await context.params.id;
+    const id = await params.id;
     
     // Verificar se o serviço existe
     const existingService = await prisma.service.findUnique({

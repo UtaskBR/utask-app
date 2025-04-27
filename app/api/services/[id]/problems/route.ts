@@ -14,7 +14,7 @@ type RouteParams = {
 // POST /api/services/[id]/problem - Reportar um problema com o serviço
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -26,7 +26,7 @@ export async function POST(
       );
     }
     
-    const id = await context.params.id;
+    const id = await params.id;
     const body = await request.json();
     
     // Verificar se o serviço existe

@@ -15,7 +15,7 @@ type RouteParams = {
 // POST /api/services/[id]/bids/[bidId]/reject - Rejeitar uma proposta
 export async function POST(
   request: NextRequest,
-  context: RouteParams
+  { params }: { params: { id: string, bidId: string } }
 ) {
   try {
     console.log('API reject: Iniciando processamento de rejeição de proposta');
