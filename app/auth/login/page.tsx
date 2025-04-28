@@ -17,36 +17,34 @@ export default function LoginPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState('');
 
   // Efeito para redirecionar quando a sessão estiver pronta
   useEffect(() => {
     if (status === 'authenticated' && session) {
       console.log('Sessão autenticada, redirecionando...');
+      setDebugInfo('Redirecionando para a página inicial...');
       
       // Usar setTimeout para garantir que o redirecionamento ocorra após a renderização
       setTimeout(() => {
-        window.location.href = '/';
+        router.push('/');
       }, 100);
+    } else if (status === 'loading') {
+      setDebugInfo('Carregando sessão...');
+    } else {
+      setDebugInfo('Não autenticado');
     }
   }, [session, status, router]);
 
-  interface LoginFormData {
-    email: string;
-    password: string;
-  }
-
-  interface HandleChangeEvent extends React.ChangeEvent<HTMLInputElement> {}
-
-  const handleChange = (e: HandleChangeEvent) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev: LoginFormData) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
-
-  const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setDebugInfo('Iniciando login...');
     
     // Validação básica
     if (!formData.email || !formData.password) {
@@ -57,23 +55,24 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
+      setDebugInfo('Chamando signIn...');
       const result = await signIn('credentials', {
         redirect: false,
         email: formData.email,
         password: formData.password
       });
       
+      setDebugInfo(`Resultado do signIn: ${JSON.stringify(result)}`);
+      
       if (result?.error) {
-        // result.error can be string or null, so handle both
-        throw new Error(result.error || 'Erro desconhecido');
+        throw new Error(result.error);
       }
       
-      // Redirecionamento manual como fallback
-      if (result?.ok) {
-        window.location.href = '/';
-      }
-    } catch (err: any) {
+      // Não precisamos redirecionar aqui, o useEffect cuidará disso
+      setDebugInfo('Login bem-sucedido, aguardando redirecionamento pelo useEffect...');
+    } catch (err) {
       setError(err.message);
+      setDebugInfo(`Erro: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -105,6 +104,12 @@ export default function LoginPage() {
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
+        
+        {/* Informações de depuração */}
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+          <p className="text-sm text-blue-700">Status: {status}</p>
+          <p className="text-sm text-blue-700">Debug: {debugInfo}</p>
+        </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
@@ -172,6 +177,19 @@ export default function LoginPage() {
               {isLoading ? 'Processando...' : 'Entrar'}
             </button>
           </div>
+          
+          {/* Botão de redirecionamento manual */}
+          {status === 'authenticated' && (
+            <div>
+              <button
+                type="button"
+                onClick={() => router.push('/')}
+                className="w-full bg-green-500 text-white py-3 flex justify-center items-center rounded-md"
+              >
+                Ir para a página inicial manualmente
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
