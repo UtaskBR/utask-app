@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hash } from "bcryptjs";
-
-// Função simples para gerar um ID único
-function generateId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
+import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,13 +31,10 @@ export async function POST(request: NextRequest) {
     // Hash da senha
     const hashedPassword = await hash(password, 10);
     
-    // Gerar IDs sem dependências externas
-    const userId = generateId();
-    
     // Criar o usuário usando Prisma Client
     const user = await prisma.user.create({
       data: {
-        id: userId,
+        id: uuidv4(),
         name,
         email,
         password: hashedPassword,
