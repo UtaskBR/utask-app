@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-
-// Tipo correto para os parâmetros no Next.js 15
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
+import { Prisma } from "@prisma/client";
 
 // GET /api/users/[id]/services - Obter todos os serviços relacionados ao usuário
 export async function GET(
@@ -26,7 +19,7 @@ export async function GET(
       );
     }
     
-    const userId = params.id;
+    const { id: userId } = await params;
     
     // Verificar se o usuário está tentando acessar seus próprios serviços
     if (userId !== session.user.id) {
@@ -36,84 +29,200 @@ export async function GET(
       );
     }
     
-    // Buscar serviços criados pelo usuário
-    const createdServices = await prisma.service.findMany({
-      where: {
-        creatorId: userId
-      },
-      include: {
+    // Buscar serviços criados pelo usuário usando SQL bruto
+    const createdServices = await prisma.$queryRaw`
+      SELECT 
+        s.id, 
+        s.title, 
+        s.description, 
+        s.price, 
+        s.date, 
+        s.time, 
+        s.location, 
+        s.status, 
+        s."createdAt", 
+        s."updatedAt",
+        s."creatorId",
+        s."professionId",
+        u.id as creator_id,
+        u.name as creator_name,
+        u.image as creator_image,
+        p.id as profession_id,
+        p.name as profession_name
+      FROM "Service" s
+      JOIN "User" u ON s."creatorId" = u.id
+      LEFT JOIN "Profession" p ON s."professionId" = p.id
+      WHERE s."creatorId" = ${userId}
+      ORDER BY s."createdAt" DESC
+    `;
+    
+    // Buscar serviços onde o usuário fez propostas (candidaturas) usando SQL bruto
+    const servicesWithUserBids = await prisma.$queryRaw`
+      SELECT 
+        s.id, 
+        s.title, 
+        s.description, 
+        s.price, 
+        s.date, 
+        s.time, 
+        s.location, 
+        s.status, 
+        s."createdAt", 
+        s."updatedAt",
+        s."creatorId",
+        s."professionId",
+        u.id as creator_id,
+        u.name as creator_name,
+        u.image as creator_image,
+        p.id as profession_id,
+        p.name as profession_name
+      FROM "Service" s
+      JOIN "User" u ON s."creatorId" = u.id
+      LEFT JOIN "Profession" p ON s."professionId" = p.id
+      JOIN "ServiceBid" sb ON s.id = sb."serviceId"
+      WHERE sb."providerId" = ${userId}
+      ORDER BY s."createdAt" DESC
+    `;
+    
+    // Buscar todas as propostas para os serviços
+    const serviceIds = [
+      ...(createdServices as any[]).map(service => service.id),
+      ...(servicesWithUserBids as any[]).map(service => service.id)
+    ];
+    
+    const bids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        sb.status,
+        sb.value,
+        sb."proposedDate",
+        sb.message,
+        sb."createdAt",
+        sb."updatedAt",
+        p.id as provider_id,
+        p.name as provider_name,
+        p.image as provider_image
+      FROM "ServiceBid" sb
+      JOIN "User" p ON sb."providerId" = p.id
+      WHERE sb."serviceId" IN (${Prisma.join(serviceIds)})
+    `;
+    
+    // Buscar as propostas do usuário específico
+    const userBids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        sb.status,
+        sb.value,
+        sb."proposedDate",
+        sb.message,
+        sb."createdAt",
+        sb."updatedAt",
+        p.id as provider_id,
+        p.name as provider_name,
+        p.image as provider_image
+      FROM "ServiceBid" sb
+      JOIN "User" p ON sb."providerId" = p.id
+      WHERE sb."providerId" = ${userId} AND sb."serviceId" IN (${Prisma.join(serviceIds)})
+    `;
+    
+    // Formatar os serviços criados pelo usuário
+    const formattedCreatedServices = (createdServices as any[]).map(service => {
+      const serviceBids = (bids as any[])
+        .filter(bid => bid.serviceId === service.id)
+        .map(bid => ({
+          id: bid.id,
+          serviceId: bid.serviceId,
+          providerId: bid.providerId,
+          status: bid.status,
+          value: bid.value,
+          proposedDate: bid.proposedDate,
+          message: bid.message,
+          createdAt: bid.createdAt,
+          updatedAt: bid.updatedAt,
+          provider: {
+            id: bid.provider_id,
+            name: bid.provider_name,
+            image: bid.provider_image
+          }
+        }));
+      
+      return {
+        id: service.id,
+        title: service.title,
+        description: service.description,
+        price: service.price,
+        date: service.date,
+        time: service.time,
+        location: service.location,
+        status: service.status,
+        createdAt: service.createdAt,
+        updatedAt: service.updatedAt,
         creator: {
-          select: {
-            id: true,
-            name: true,
-            image: true
-          }
+          id: service.creator_id,
+          name: service.creator_name,
+          image: service.creator_image
         },
-        profession: true,
-        bids: {
-          include: {
-            provider: {
-              select: {
-                id: true,
-                name: true,
-                image: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+        profession: service.profession_id ? {
+          id: service.profession_id,
+          name: service.profession_name
+        } : null,
+        bids: serviceBids
+      };
     });
     
-    // Buscar serviços onde o usuário fez propostas (candidaturas)
-    const servicesWithUserBids = await prisma.service.findMany({
-      where: {
-        bids: {
-          some: {
-            providerId: userId
+    // Formatar os serviços onde o usuário fez propostas
+    const servicesWithUserBidsFormatted = (servicesWithUserBids as any[]).map(service => {
+      const serviceBids = (userBids as any[])
+        .filter(bid => bid.serviceId === service.id)
+        .map(bid => ({
+          id: bid.id,
+          serviceId: bid.serviceId,
+          providerId: bid.providerId,
+          status: bid.status,
+          value: bid.value,
+          proposedDate: bid.proposedDate,
+          message: bid.message,
+          createdAt: bid.createdAt,
+          updatedAt: bid.updatedAt,
+          provider: {
+            id: bid.provider_id,
+            name: bid.provider_name,
+            image: bid.provider_image
           }
-        }
-      },
-      include: {
+        }));
+      
+      return {
+        id: service.id,
+        title: service.title,
+        description: service.description,
+        price: service.price,
+        date: service.date,
+        time: service.time,
+        location: service.location,
+        status: service.status,
+        createdAt: service.createdAt,
+        updatedAt: service.updatedAt,
         creator: {
-          select: {
-            id: true,
-            name: true,
-            image: true
-          }
+          id: service.creator_id,
+          name: service.creator_name,
+          image: service.creator_image
         },
-        profession: true,
-        bids: {
-          where: {
-            providerId: userId
-          },
-          include: {
-            provider: {
-              select: {
-                id: true,
-                name: true,
-                image: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+        profession: service.profession_id ? {
+          id: service.profession_id,
+          name: service.profession_name
+        } : null,
+        bids: serviceBids,
+        userBid: serviceBids.length > 0 ? serviceBids[0] : null // A proposta do usuário como propriedade separada
+      };
     });
     
-    // Adicionar a proposta do usuário como uma propriedade separada para facilitar o acesso no frontend
-    const servicesWithUserBidsFormatted = servicesWithUserBids.map(service => ({
-      ...service,
-      userBid: service.bids[0] // A consulta já filtra apenas as propostas do usuário
-    }));
-    
-    // Combinar os dois conjuntos de serviços e remover duplicatas
+    // Combinar os dois conjuntos de serviços
     const allServices = [
-      ...createdServices,
+      ...formattedCreatedServices,
       ...servicesWithUserBidsFormatted
     ];
     

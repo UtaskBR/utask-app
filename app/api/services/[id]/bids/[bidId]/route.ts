@@ -2,54 +2,87 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { Prisma } from "@prisma/client";
 
-// GET /api/services/[id]/bids/[bidId] - Obter detalhes de uma proposta específica
+// GET, PUT, DELETE /api/services/[id]/bids/[bidId]
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string, bidId: string }> }
 ) {
   try {
-    const resolvedParams = await params;
-    const serviceId = resolvedParams.id;
-    const bidId = resolvedParams.bidId;
+    const { id: serviceId, bidId } = await params;
     
-    const bid = await prisma.serviceBid.findUnique({
-      where: { id: bidId },
-      include: {
-        provider: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            professions: true
-          }
-        },
-        service: {
-          select: {
-            id: true,
-            title: true,
-            creatorId: true
-          }
-        }
-      }
-    });
+    // Buscar a proposta usando SQL bruto
+    const bids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        sb.status,
+        sb.value,
+        sb."proposedDate",
+        sb.message,
+        sb."createdAt",
+        sb."updatedAt",
+        s.id as service_id,
+        s.title as service_title,
+        s."creatorId" as service_creator_id,
+        s.status as service_status,
+        p.id as provider_id,
+        p.name as provider_name,
+        p.image as provider_image
+      FROM "ServiceBid" sb
+      JOIN "Service" s ON sb."serviceId" = s.id
+      JOIN "User" p ON sb."providerId" = p.id
+      WHERE sb.id = ${bidId} AND sb."serviceId" = ${serviceId}
+    `;
     
-    if (!bid) {
+    if (!bids || (bids as any[]).length === 0) {
       return NextResponse.json(
         { error: "Proposta não encontrada" },
         { status: 404 }
       );
     }
     
-    if (bid.serviceId !== serviceId) {
-      return NextResponse.json(
-        { error: "Proposta não pertence a este serviço" },
-        { status: 400 }
-      );
+    const bid = (bids as any[])[0];
+    
+    // Buscar o rating do provedor
+    const reviews = await prisma.$queryRaw`
+      SELECT rating FROM "Review" WHERE "receiverId" = ${bid.provider_id}
+    `;
+    
+    let providerRating = null;
+    if (reviews && (reviews as any[]).length > 0) {
+      const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
+      providerRating = totalRating / (reviews as any[]).length;
     }
     
-    return NextResponse.json(bid);
+    // Formatar a resposta
+    const formattedBid = {
+      id: bid.id,
+      serviceId: bid.serviceId,
+      providerId: bid.providerId,
+      status: bid.status,
+      value: bid.value,
+      proposedDate: bid.proposedDate,
+      message: bid.message,
+      createdAt: bid.createdAt,
+      updatedAt: bid.updatedAt,
+      service: {
+        id: bid.service_id,
+        title: bid.service_title,
+        creatorId: bid.service_creator_id,
+        status: bid.service_status
+      },
+      provider: {
+        id: bid.provider_id,
+        name: bid.provider_name,
+        image: bid.provider_image,
+        rating: providerRating
+      }
+    };
+    
+    return NextResponse.json(formattedBid);
   } catch (error) {
     console.error("Erro ao buscar proposta:", error);
     return NextResponse.json(
@@ -59,51 +92,54 @@ export async function GET(
   }
 }
 
-// PATCH /api/services/[id]/bids/[bidId] - Atualizar uma proposta
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string, bidId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    
+    if (!session || !session.user) {
       return NextResponse.json(
         { error: "Não autorizado" },
         { status: 401 }
       );
     }
     
-    const resolvedParams = await params;
-    const serviceId = resolvedParams.id;
-    const bidId = resolvedParams.bidId;
+    const { id: serviceId, bidId } = await params;
+    const body = await request.json();
+    const { status, value, proposedDate, message } = body;
     
-    const { status, value, proposedDate, message } = await request.json();
+    // Buscar a proposta usando SQL bruto
+    const bids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        sb.status,
+        s.id as service_id,
+        s.title as service_title,
+        s."creatorId" as service_creator_id,
+        s.status as service_status,
+        p.id as provider_id,
+        p.name as provider_name
+      FROM "ServiceBid" sb
+      JOIN "Service" s ON sb."serviceId" = s.id
+      JOIN "User" p ON sb."providerId" = p.id
+      WHERE sb.id = ${bidId} AND sb."serviceId" = ${serviceId}
+    `;
     
-    // Buscar a proposta com informações do serviço e provedor
-    const bid = await prisma.serviceBid.findUnique({
-      where: { id: bidId },
-      include: {
-        provider: true,
-        service: true
-      }
-    });
-    
-    if (!bid) {
+    if (!bids || (bids as any[]).length === 0) {
       return NextResponse.json(
         { error: "Proposta não encontrada" },
         { status: 404 }
       );
     }
     
-    if (bid.serviceId !== serviceId) {
-      return NextResponse.json(
-        { error: "Proposta não pertence a este serviço" },
-        { status: 400 }
-      );
-    }
+    const bid = (bids as any[])[0];
     
     // Verificar se o usuário é o criador do serviço ou o provedor da proposta
-    const isServiceCreator = bid.service.creatorId === session.user.id;
+    const isServiceCreator = bid.service_creator_id === session.user.id;
     const isProvider = bid.providerId === session.user.id;
     
     if (!isServiceCreator && !isProvider) {
@@ -117,107 +153,120 @@ export async function PATCH(
     let updatedBid;
     let notificationType;
     let notificationMessage;
+    const now = new Date();
     
     // Se o criador do serviço está aceitando a proposta
     if (isServiceCreator && status === "ACCEPTED") {
       // Atualizar o status da proposta
-      updatedBid = await prisma.serviceBid.update({
-        where: { id: bidId },
-        data: { status: "ACCEPTED" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET status = 'ACCEPTED', "updatedAt" = ${now}
+        WHERE id = ${bidId}
+      `;
       
       // Atualizar o status do serviço
-      await prisma.service.update({
-        where: { id: serviceId },
-        data: { status: "IN_PROGRESS" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "Service"
+        SET status = 'IN_PROGRESS', "updatedAt" = ${now}
+        WHERE id = ${serviceId}
+      `;
       
       // Rejeitar todas as outras propostas
-      await prisma.serviceBid.updateMany({
-        where: {
-          serviceId,
-          id: { not: bidId }
-        },
-        data: { status: "REJECTED" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET status = 'REJECTED', "updatedAt" = ${now}
+        WHERE "serviceId" = ${serviceId} AND id != ${bidId}
+      `;
       
       notificationType = "ACCEPTANCE";
-      notificationMessage = `Sua proposta para o serviço "${bid.service.title}" foi aceita!`;
+      notificationMessage = `Sua proposta para o serviço "${bid.service_title}" foi aceita!`;
     } 
     // Se o criador do serviço está rejeitando a proposta
     else if (isServiceCreator && status === "REJECTED") {
-      updatedBid = await prisma.serviceBid.update({
-        where: { id: bidId },
-        data: { status: "REJECTED" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET status = 'REJECTED', "updatedAt" = ${now}
+        WHERE id = ${bidId}
+      `;
       
       notificationType = "REJECTION";
-      notificationMessage = `Sua proposta para o serviço "${bid.service.title}" foi rejeitada.`;
+      notificationMessage = `Sua proposta para o serviço "${bid.service_title}" foi rejeitada.`;
     } 
     // Se o criador do serviço está fazendo uma contra-proposta
-    else if (isServiceCreator && status === "COUNTER_OFFERED") {
-      updatedBid = await prisma.serviceBid.update({
-        where: { id: bidId },
-        data: { 
-          status: "COUNTER_OFFERED",
-          value: value !== undefined ? value : undefined,
-          proposedDate: proposedDate ? new Date(proposedDate) : undefined,
-          message: message || undefined
-        }
-      });
+    else if (isServiceCreator && status === "COUNTER_OFFER") {
+      const newValue = value !== undefined ? value : null;
+      const newProposedDate = proposedDate ? new Date(proposedDate) : null;
+      const newMessage = message || null;
+      
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET 
+          status = 'COUNTER_OFFER', 
+          value = COALESCE(${newValue}, value),
+          "proposedDate" = COALESCE(${newProposedDate}, "proposedDate"),
+          message = COALESCE(${newMessage}, message),
+          "updatedAt" = ${now}
+        WHERE id = ${bidId}
+      `;
       
       notificationType = "COUNTER_OFFER";
-      notificationMessage = `Você recebeu uma contra-proposta para o serviço "${bid.service.title}".`;
+      notificationMessage = `Você recebeu uma contra-proposta para o serviço "${bid.service_title}".`;
     }
     // Se o provedor está aceitando uma contra-proposta
-    else if (isProvider && status === "ACCEPTED" && bid.status === "COUNTER_OFFERED") {
+    else if (isProvider && status === "ACCEPTED" && bid.status === "COUNTER_OFFER") {
       // Atualizar o status da proposta
-      updatedBid = await prisma.serviceBid.update({
-        where: { id: bidId },
-        data: { status: "ACCEPTED" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET status = 'ACCEPTED', "updatedAt" = ${now}
+        WHERE id = ${bidId}
+      `;
       
       // Atualizar o status do serviço
-      await prisma.service.update({
-        where: { id: serviceId },
-        data: { status: "IN_PROGRESS" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "Service"
+        SET status = 'IN_PROGRESS', "updatedAt" = ${now}
+        WHERE id = ${serviceId}
+      `;
       
       // Rejeitar todas as outras propostas
-      await prisma.serviceBid.updateMany({
-        where: {
-          serviceId,
-          id: { not: bidId }
-        },
-        data: { status: "REJECTED" }
-      });
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET status = 'REJECTED', "updatedAt" = ${now}
+        WHERE "serviceId" = ${serviceId} AND id != ${bidId}
+      `;
       
       notificationType = "ACCEPTANCE";
-      notificationMessage = `A contraproposta para o serviço "${bid.service.title}" foi aceita!`;
+      notificationMessage = `A contraproposta para o serviço "${bid.service_title}" foi aceita!`;
     }
     // Se o provedor está rejeitando uma contra-proposta
-    else if (isProvider && status === "REJECTED" && bid.status === "COUNTER_OFFERED") {
-      updatedBid = await prisma.serviceBid.update({
-        where: { id: bidId },
-        data: { status: "REJECTED" }
-      });
+    else if (isProvider && status === "REJECTED" && bid.status === "COUNTER_OFFER") {
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET status = 'REJECTED', "updatedAt" = ${now}
+        WHERE id = ${bidId}
+      `;
       
       notificationType = "REJECTION";
-      notificationMessage = `A contraproposta para o serviço "${bid.service.title}" foi rejeitada.`;
+      notificationMessage = `A contraproposta para o serviço "${bid.service_title}" foi rejeitada.`;
     }
     // Se o provedor está atualizando sua proposta
     else if (isProvider && !status) {
-      updatedBid = await prisma.serviceBid.update({
-        where: { id: bidId },
-        data: { 
-          value: value !== undefined ? value : undefined,
-          proposedDate: proposedDate ? new Date(proposedDate) : undefined,
-          message: message || undefined
-        }
-      });
+      const newValue = value !== undefined ? value : null;
+      const newProposedDate = proposedDate ? new Date(proposedDate) : null;
+      const newMessage = message || null;
+      
+      await prisma.$executeRaw`
+        UPDATE "ServiceBid"
+        SET 
+          value = COALESCE(${newValue}, value),
+          "proposedDate" = COALESCE(${newProposedDate}, "proposedDate"),
+          message = COALESCE(${newMessage}, message),
+          "updatedAt" = ${now}
+        WHERE id = ${bidId}
+      `;
       
       notificationType = "BID";
-      notificationMessage = `A proposta para seu serviço "${bid.service.title}" foi atualizada por ${bid.provider.name}.`;
+      notificationMessage = `A proposta para seu serviço "${bid.service_title}" foi atualizada por ${bid.provider_name}.`;
     } else {
       return NextResponse.json(
         { error: "Operação não permitida" },
@@ -227,27 +276,102 @@ export async function PATCH(
     
     // Criar notificação
     if (notificationType && notificationMessage) {
-      await prisma.notification.create({
-        data: {
-          type: notificationType as any,
-          message: notificationMessage,
-          receiver: {
-            connect: {
-              id: isServiceCreator ? bid.providerId : bid.service.creatorId
-            }
-          },
-          sender: {
-            connect: {
-              id: session.user.id
-            }
-          }
-        }
-      });
+      const notificationId = crypto.randomUUID();
+      
+      await prisma.$executeRaw`
+        INSERT INTO "Notification" (
+          id, 
+          type, 
+          message, 
+          "receiverId", 
+          "senderId", 
+          "createdAt", 
+          "updatedAt",
+          read
+        )
+        VALUES (
+          ${notificationId}, 
+          ${notificationType}, 
+          ${notificationMessage}, 
+          ${isServiceCreator ? bid.providerId : bid.service_creator_id}, 
+          ${session.user.id}, 
+          ${now}, 
+          ${now},
+          false
+        )
+      `;
     }
     
-    return NextResponse.json(updatedBid);
+    // Buscar a proposta atualizada
+    const updatedBids = await prisma.$queryRaw`
+      SELECT * FROM "ServiceBid" WHERE id = ${bidId}
+    `;
+    
+    return NextResponse.json((updatedBids as any[])[0]);
   } catch (error) {
     console.error("Erro ao atualizar proposta:", error);
+    return NextResponse.json(
+      { error: "Erro ao processar a solicitação" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string, bidId: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
+    
+    const { id: serviceId, bidId } = await params;
+    
+    // Buscar a proposta usando SQL bruto
+    const bids = await prisma.$queryRaw`
+      SELECT 
+        sb.id, 
+        sb."serviceId", 
+        sb."providerId", 
+        s."creatorId" as service_creator_id
+      FROM "ServiceBid" sb
+      JOIN "Service" s ON sb."serviceId" = s.id
+      WHERE sb.id = ${bidId} AND sb."serviceId" = ${serviceId}
+    `;
+    
+    if (!bids || (bids as any[]).length === 0) {
+      return NextResponse.json(
+        { error: "Proposta não encontrada" },
+        { status: 404 }
+      );
+    }
+    
+    const bid = (bids as any[])[0];
+    
+    // Verificar se o usuário é o provedor da proposta
+    const isProvider = bid.providerId === session.user.id;
+    
+    if (!isProvider) {
+      return NextResponse.json(
+        { error: "Apenas o prestador que fez a proposta pode excluí-la" },
+        { status: 403 }
+      );
+    }
+    
+    // Excluir a proposta
+    await prisma.$executeRaw`
+      DELETE FROM "ServiceBid" WHERE id = ${bidId}
+    `;
+    
+    return NextResponse.json({ message: "Proposta excluída com sucesso" });
+  } catch (error) {
+    console.error("Erro ao excluir proposta:", error);
     return NextResponse.json(
       { error: "Erro ao processar a solicitação" },
       { status: 500 }

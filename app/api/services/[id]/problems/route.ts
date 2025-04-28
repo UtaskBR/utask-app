@@ -81,7 +81,14 @@ export async function POST(
     // Estornar o valor para o contratante
     // Primeiro, verificar se o serviço tem um valor definido
     const acceptedBid = existingService.bids[0];
-    const serviceValue = acceptedBid.value || existingService.value;
+    const serviceValue = acceptedBid.value ?? existingService.value;
+
+    if (serviceValue == null) {
+      return NextResponse.json(
+        { error: "Valor do serviço não definido para estorno" },
+        { status: 400 }
+      );
+    }
 
     // Estornar o valor para a carteira do contratante
     await prisma.wallet.update({

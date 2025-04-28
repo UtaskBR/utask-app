@@ -2,16 +2,29 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { AuthGuard } from '@/app/components/AuthGuard';
-import MapComponent from '@/app/components/MapComponent';
+import { AuthGuard } from '@/components/AuthGuard';
+import MapComponent from '@/components/MapComponent';
 import toast from 'react-hot-toast';
+
+type Location = {
+  lat: number;
+  lng: number;
+  address?: string;
+};
+
+interface LocationSelectorProps {
+  onLocationSelect?: (location: Location) => void;
+  initialLocation?: Location | null;
+  label?: string;
+  description?: string;
+}
 
 export default function LocationSelectorComponent({
   onLocationSelect,
   initialLocation = null,
   label = "Selecione a localização do serviço",
   description = "Clique no mapa ou busque um endereço para definir a localização do serviço"
-}) {
+}: LocationSelectorProps) {
   const { data: session } = useSession();
   const [location, setLocation] = useState(initialLocation);
   const [address, setAddress] = useState('');
@@ -23,10 +36,12 @@ export default function LocationSelectorComponent({
     }
   }, [initialLocation]);
 
-  const handleLocationSelect = (newLocation) => {
+  interface HandleLocationSelectParams extends Location {}
+
+  const handleLocationSelect = (newLocation: HandleLocationSelectParams): void => {
     setLocation(newLocation);
     setAddress(newLocation.address || '');
-    
+
     if (onLocationSelect) {
       onLocationSelect(newLocation);
     }

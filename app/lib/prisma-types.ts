@@ -15,13 +15,7 @@ declare global {
 }
 
 // Extensão para permitir a seleção do campo rating no modelo User
-declare module '@prisma/client' {
-  namespace Prisma {
-    interface UserSelect {
-      rating?: boolean;
-    }
-  }
-}
+// Não é necessário redeclarar UserSelect; utilize tipos auxiliares ou interseção de tipos ao selecionar campos extras.
 
 // Função auxiliar para calcular a média de avaliações de um usuário
 export async function calculateUserRating(userId: string, prisma: any): Promise<number | null> {
@@ -38,7 +32,7 @@ export async function calculateUserRating(userId: string, prisma: any): Promise<
     return null;
   }
   
-  const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+  const totalRating = reviews.reduce((sum: number, review: { rating: number }) => sum + review.rating, 0);
   return totalRating / reviews.length;
 }
 

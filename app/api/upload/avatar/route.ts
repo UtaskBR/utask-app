@@ -49,6 +49,7 @@ export async function POST(
     return NextResponse.json({ image: updated.image, success: true });
   } catch (error) {
     console.error("Erro no processamento do avatar:", error);
-    return NextResponse.json({ error: 'Erro interno do servidor', details: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Erro interno do servidor', details: errorMessage }, { status: 500 });
   }
 }

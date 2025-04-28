@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from "@/lib/auth";
@@ -11,7 +11,7 @@ cloudinary.config({
 });
 
 export async function POST(
-  request,
+  request: NextRequest,
   { params }: { params: Promise<{  }> }
 ) {
   try {
@@ -26,6 +26,10 @@ export async function POST(
     
     if (!file) {
       return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
+    }
+
+    if (!(file instanceof Blob)) {
+      return NextResponse.json({ error: 'Arquivo inválido' }, { status: 400 });
     }
     
     // Converter o arquivo para um buffer
@@ -55,7 +59,7 @@ export async function POST(
 }
 
 export async function DELETE(
-  request,
+  request: NextRequest,
   { params }: { params: Promise<{  }> }
 ) {
   try {

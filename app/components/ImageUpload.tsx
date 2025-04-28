@@ -1,8 +1,18 @@
 'use client';
-
 import { useState, useCallback } from 'react';
 import { CldUploadWidget } from 'next-cloudinary';
 import Image from 'next/image';
+import { useEffect } from 'react';
+
+interface ImageUploadProps {
+  onChange: (value: string) => void;
+  value: string;
+  label?: string;
+  disabled?: boolean;
+  maxFiles?: number;
+  maxFileSize?: number;
+  acceptedFileTypes?: string[];
+}
 
 export default function ImageUpload({ 
   onChange, 
@@ -12,22 +22,23 @@ export default function ImageUpload({
   maxFiles = 1,
   maxFileSize = 10485760, // 10MB
   acceptedFileTypes = ["image/*"]
-}) {
+}: ImageUploadProps) {
   const [isMounted, setIsMounted] = useState(false);
-
+  
   // Garantir que o componente só seja renderizado no cliente
-  useState(() => {
+  
+  useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  const handleUpload = useCallback((result) => {
+  
+  const handleUpload = useCallback((result: any) => {
     onChange(result.info.secure_url);
   }, [onChange]);
-
+  
   if (!isMounted) {
     return null;
   }
-
+  
   return (
     <div className="space-y-2">
       <div className="flex flex-col items-center justify-center gap-4">
@@ -59,11 +70,10 @@ export default function ImageUpload({
               maxFiles,
               maxFileSize,
               resourceType: "image",
-              sources: ["local", "camera"],
-              acceptedFileTypes
+              sources: ["local", "camera"]
             }}
           >
-            {({ open }) => (
+            {({ open }: { open?: () => void }) => (
               <button
                 onClick={() => open?.()}
                 disabled={disabled}

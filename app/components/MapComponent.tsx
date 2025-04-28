@@ -1,10 +1,9 @@
 'use client';
-
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Definir token do Mapbox
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || process.env.MAPBOX_TOKEN;
@@ -64,9 +63,10 @@ export default function MapComponent({
 
     // Adicionar geocoder para busca de endereços
     if (interactive) {
+      // Corrigir o erro de tipagem usando type assertion
       const geocoder = new MapboxGeocoder({
         accessToken: mapboxgl.accessToken || '',
-        mapboxgl: mapboxgl,
+        mapboxgl: mapboxgl as any, // Usar type assertion para evitar erro de tipagem
         placeholder: 'Buscar endereço',
         language: 'pt-BR',
         countries: 'br'
@@ -75,15 +75,15 @@ export default function MapComponent({
       map.current.addControl(geocoder, 'top-left');
 
       // Evento quando um resultado é selecionado no geocoder
-    geocoder.on('result', (e: { result: { center: [number, number]; place_name: string } }) => {
-      const { center, place_name } = e.result;
-      const newLocation: Location = { lng: center[0], lat: center[1], address: place_name };
-      setSelectedLocation(newLocation);
-      
-      if (onLocationSelect) {
-        onLocationSelect(newLocation);
-      }
-    });
+      geocoder.on('result', (e: { result: { center: [number, number]; place_name: string } }) => {
+        const { center, place_name } = e.result;
+        const newLocation: Location = { lng: center[0], lat: center[1], address: place_name };
+        setSelectedLocation(newLocation);
+        
+        if (onLocationSelect) {
+          onLocationSelect(newLocation);
+        }
+      });
     }
 
     // Evento de clique no mapa para selecionar localização
@@ -128,7 +128,7 @@ export default function MapComponent({
     if (selectedLocation) {
       new mapboxgl.Marker({ color: '#0ea5e9' })
         .setLngLat([selectedLocation.lng, selectedLocation.lat])
-        .addTo(map.current);
+        .addTo(map.current!);
     }
 
     // Adicionar marcadores adicionais
@@ -151,7 +151,7 @@ export default function MapComponent({
 
       const markerElement = new mapboxgl.Marker(el)
         .setLngLat([marker.lng, marker.lat])
-        .addTo(map.current);
+        .addTo(map.current!);
 
       // Adicionar popup se houver conteúdo
       if (marker.popupContent) {

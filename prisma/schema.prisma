@@ -283,3 +283,20 @@ enum NotificationType {
   COMPLETION_CONFIRMATION // Mantido para compatibilidade com dados existentes
   SYSTEM // Mantido para compatibilidade com dados existentes
 }
+
+model User {
+  // existing User model fields
+  reviewsReceived Review[] @relation("ReceivedReviews")
+  reviewsGiven    Review[] @relation("GivenReviews")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  receiver   User     @relation("ReceivedReviews", fields: [receiverId], references: [id])
+  receiverId String
+  giver      User     @relation("GivenReviews", fields: [giverId], references: [id])
+  giverId    String
+}

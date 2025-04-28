@@ -12,8 +12,8 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsCount, setNotificationsCount] = useState(0);
-  const userMenuRef = useRef(null);
-  const userButtonRef = useRef(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const userButtonRef = useRef<HTMLButtonElement>(null);
 
   const navigation = [
     { name: 'Início', href: '/' },
@@ -55,12 +55,13 @@ export default function Navbar() {
 
   // Fechar menu quando clicar fora dele
   useEffect(() => {
-    function handleClickOutside(event) {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node | null;
       if (
         userMenuRef.current && 
-        !userMenuRef.current.contains(event.target) &&
+        (!target || !userMenuRef.current.contains(target)) &&
         userButtonRef.current &&
-        !userButtonRef.current.contains(event.target)
+        (!target || !userButtonRef.current.contains(target))
       ) {
         setUserMenuOpen(false);
       }

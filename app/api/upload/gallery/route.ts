@@ -12,7 +12,6 @@ export async function POST(
   try {
     const { userId, url, publicId } = await req.json();
     console.log("🧩 Dados recebidos (galeria):", { userId, url, publicId });
-
     console.log("Recebido request de galeria com userId:", userId);
     
     const session = await getServerSession(authOptions);
@@ -21,30 +20,38 @@ export async function POST(
     if (!session || session.user.id !== userId) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
-
-    // Verificar se o usuário existe
-    const user = await prisma.user.findUnique({ 
-      where: { id: userId } 
-    });
     
-    if (!user) {
+    // Verificar se o usuário existe
+    const users = await prisma.$queryRaw`
+      SELECT id FROM "User" WHERE id = ${userId}
+    `;
+    
+    if (!users || (users as any[]).length === 0) {
       return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 404 });
     }
-
-    const newPhoto = await prisma.photo.create({
-      data: {
-        url,
-        publicId,
-        user: { connect: { id: userId } },
-      },
-    });
-
+    
+    // Criar a foto usando SQL bruto
+    const photoId = crypto.randomUUID();
+    const now = new Date();
+    
+    await prisma.$executeRaw`
+      INSERT INTO "Photo" (id, url, "publicId", "userId", "createdAt", "updatedAt")
+      VALUES (${photoId}, ${url}, ${publicId}, ${userId}, ${now}, ${now})
+    `;
+    
+    // Buscar a foto recém-criada
+    const newPhotos = await prisma.$queryRaw`
+      SELECT * FROM "Photo" WHERE id = ${photoId}
+    `;
+    
+    const newPhoto = (newPhotos as any[])[0];
     console.log("Foto adicionada à galeria:", newPhoto);
-
+    
     return NextResponse.json({ photo: newPhoto, success: true });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Erro no processamento da foto de galeria:", error);
-    return NextResponse.json({ error: 'Erro interno do servidor', details: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    return NextResponse.json({ error: 'Erro interno do servidor', details: errorMessage }, { status: 500 });
   }
 }
 
@@ -55,19 +62,21 @@ export async function DELETE(
   try {
     const { searchParams } = new URL(req.url);
     const photoId = searchParams.get("id");
-
+    
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-
-    const photo = await prisma.photo.findUnique({
-      where: { id: photoId || undefined },
-      select: { id: true, publicId: true, userId: true },
-    });
-
-    if (!photo || session.user.id !== photo.userId) {
+    
+    // Buscar a foto usando SQL bruto
+    const photos = await prisma.$queryRaw`
+      SELECT id, "publicId", "userId" FROM "Photo" WHERE id = ${photoId}
+    `;
+    
+    if (!photos || (photos as any[]).length === 0 || session.user.id !== (photos as any[])[0].userId) {
       return NextResponse.json({ error: "Acesso negado ou foto inexistente" }, { status: 403 });
     }
-
+    
+    const photo = (photos as any[])[0];
+    
     if (photo.publicId) {
       try {
         await cloudinary.uploader.destroy(photo.publicId);
@@ -77,11 +86,15 @@ export async function DELETE(
       }
     }
     
-    await prisma.photo.delete({ where: { id: photo.id } });
-
+    // Excluir a foto usando SQL bruto
+    await prisma.$executeRaw`
+      DELETE FROM "Photo" WHERE id = ${photo.id}
+    `;
+    
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao excluir foto:", error);
-    return NextResponse.json({ error: 'Erro interno do servidor', details: error.message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    return NextResponse.json({ error: 'Erro interno do servidor', details: errorMessage }, { status: 500 });
   }
 }
