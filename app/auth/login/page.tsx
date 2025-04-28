@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import LoginContent from './login-content';
+import LoginContent from '@/auth/login/login-content';
 
 // Componente de fallback para o Suspense
 function LoginFallback() {
