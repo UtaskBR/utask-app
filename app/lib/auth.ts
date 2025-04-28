@@ -81,13 +81,14 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Forçar redirecionamento para a página inicial após login
+      // Garante que o redirecionamento funcione para URLs relativas e absolutas
       if (url.startsWith(baseUrl)) {
         return url;
       } else if (url.startsWith("/")) {
         return new URL(url, baseUrl).toString();
       }
+      // Redireciona para a página inicial por padrão se a URL for inválida
       return baseUrl;
     },
   },
-}
+};
