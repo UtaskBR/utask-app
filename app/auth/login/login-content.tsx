@@ -9,6 +9,7 @@ export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
+  const callbackUrl = searchParams.get('callbackUrl') || '/';
   
   const [formData, setFormData] = useState({
     email: '',
@@ -17,53 +18,52 @@ export default function LoginContent() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-interface LoginFormData {
-    email: string;
-    password: string;
-}
-
-interface ChangeEventType extends React.ChangeEvent<HTMLInputElement> {}
-
-const handleChange = (e: ChangeEventType) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: LoginFormData) => ({ ...prev, [name]: value }));
-};
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
-
-const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     
     // Validação básica
     if (!formData.email || !formData.password) {
-        setError('Email e senha são obrigatórios');
-        return;
+      setError('Email e senha são obrigatórios');
+      return;
     }
     
     setIsLoading(true);
     
     try {
-        const result = await signIn('credentials', {
-            redirect: false,
-            email: formData.email,
-            password: formData.password
-        });
+      // Usar o parâmetro callbackUrl para garantir o redirecionamento correto
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+        callbackUrl: callbackUrl
+      });
+      
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      
+      if (result?.ok) {
+        // Usar o router para navegação do lado do cliente
+        router.push(callbackUrl);
         
-        if (result?.error) {
-            throw new Error(result.error ?? 'Erro desconhecido');
-        }
-        
-        // Redirecionamento manual como fallback
-        if (result?.ok) {
-            window.location.href = '/';
-        }
+        // Fallback para redirecionamento direto após um curto delay
+        setTimeout(() => {
+          window.location.href = callbackUrl;
+        }, 500);
+      }
     } catch (err: any) {
-        setError(err.message);
+      setError(err.message || 'Ocorreu um erro durante o login');
+      console.error("Erro no login:", err);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -140,12 +140,6 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
               <label htmlFor="remember-me" className="ml-2 block text-sm text-secondary-900">
                 Lembrar de mim
               </label>
-            </div>
-
-            <div className="text-sm">
-              <Link href="/auth/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                Esqueceu sua senha?
-              </Link>
             </div>
           </div>
 
