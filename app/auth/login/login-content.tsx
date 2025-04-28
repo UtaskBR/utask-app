@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +9,6 @@ export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
-
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   
   const [formData, setFormData] = useState({
@@ -25,39 +23,45 @@ export default function LoginContent() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
-
-const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
+    
     // Validação básica
     if (!formData.email || !formData.password) {
-        setError('Email e senha são obrigatórios');
-        return;
+      setError('Email e senha são obrigatórios');
+      return;
     }
-
+    
     setIsLoading(true);
-
+    
     try {
-        const result = await signIn('credentials', {
-            redirect: false,
-            email: formData.email,
-            password: formData.password
-        });
+      // Usar o parâmetro callbackUrl para garantir o redirecionamento correto
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password,
+        callbackUrl: callbackUrl
+      });
+      
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+      
+      if (result?.ok) {
+        // Usar o router para navegação do lado do cliente
+        router.push(callbackUrl);
         
-        if (result?.error) {
-            throw new Error(result.error ?? 'Erro desconhecido');
-        }
-        
-        // Redirecionamento manual como fallback
-        if (result?.ok) {
-            window.location.href = '/';
-        }
+        // Fallback para redirecionamento direto após um curto delay
+        setTimeout(() => {
+          window.location.href = callbackUrl;
+        }, 500);
+      }
     } catch (err: any) {
-        setError(err.message);
+      setError(err.message || 'Ocorreu um erro durante o login');
+      console.error("Erro no login:", err);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -75,19 +79,19 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
             </Link>
           </p>
         </div>
-
+        
         {registered && (
           <div className="bg-green-50 border-l-4 border-green-500 p-4">
             <p className="text-sm text-green-700">Conta criada com sucesso! Faça login para continuar.</p>
           </div>
         )}
-
+        
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4">
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
-
+        
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
@@ -106,7 +110,7 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
                 onChange={handleChange}
               />
             </div>
-
+            
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-secondary-700">
                 Senha
@@ -137,12 +141,6 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
                 Lembrar de mim
               </label>
             </div>
-
-            <div className="text-sm">
-              <Link href="/auth/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                Esqueceu sua senha?
-              </Link>
-            </div>
           </div>
 
           <div>
@@ -154,20 +152,8 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
               {isLoading ? 'Processando...' : 'Entrar'}
             </button>
           </div>
-
-          {/* Botão de redirecionamento manual como fallback */}
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => { document.location.href = '/'; }}
-              className="w-full bg-green-500 text-white py-3 flex justify-center items-center rounded-md"
-            >
-              Ir para a página inicial manualmente
-            </button>
-          </div>
         </form>
       </div>
     </div>
   );
 }
-
