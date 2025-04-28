@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { Prisma } from "@prisma/client";
+// Importação correta do randomUUID do módulo crypto
+import { randomUUID } from "crypto";
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,78 +33,114 @@ export async function POST(request: NextRequest) {
     // Hash da senha
     const hashedPassword = await hash(password, 10);
     
-    // Gerar um ID único para o usuário
-    const userId = crypto.randomUUID();
-    const walletId = crypto.randomUUID();
-    const now = new Date();
-    
-    // Criar o usuário usando SQL bruto
-    await prisma.$executeRaw`
-      INSERT INTO "User" (
-        id, 
-        name, 
-        email, 
-        password, 
-        about, 
-        city, 
-        state, 
-        "createdAt", 
-        "updatedAt"
-      )
-      VALUES (
-        ${userId}, 
-        ${name}, 
-        ${email}, 
-        ${hashedPassword}, 
-        ${about || null}, 
-        ${city || null}, 
-        ${state || null}, 
-        ${now}, 
-        ${now}
-      )
-    `;
-    
-    // Criar a carteira para o usuário
-    await prisma.$executeRaw`
-      INSERT INTO "Wallet" (
-        id,
-        balance,
-        "userId",
-        "createdAt",
-        "updatedAt"
-      )
-      VALUES (
-        ${walletId},
-        0,
-        ${userId},
-        ${now},
-        ${now}
-      )
-    `;
-    
-    // Buscar o usuário recém-criado
-    const users = await prisma.$queryRaw`
-      SELECT 
-        id, 
-        name, 
-        email, 
-        about, 
-        city, 
-        state, 
-        image, 
-        "createdAt", 
-        "updatedAt"
-      FROM "User" 
-      WHERE id = ${userId}
-    `;
-    
-    if (!users || (users as any[]).length === 0) {
-      throw new Error("Erro ao criar usuário");
+    try {
+      // Abordagem alternativa usando Prisma Client em vez de SQL bruto
+      // Isso evita problemas potenciais com SQL bruto em produção
+      const user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          about: about || undefined,
+          city: city || undefined,
+          state: state || undefined,
+          wallet: {
+            create: {
+              balance: 0
+            }
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          about: true,
+          city: true,
+          state: true,
+          image: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+      
+      return NextResponse.json(user, { status: 201 });
+    } catch (prismaError) {
+      console.error("Erro ao criar usuário com Prisma Client:", prismaError);
+      
+      // Fallback para SQL bruto se o Prisma Client falhar
+      // Gerar um ID único para o usuário usando randomUUID importado
+      const userId = randomUUID();
+      const walletId = randomUUID();
+      const now = new Date();
+      
+      // Criar o usuário usando SQL bruto
+      await prisma.$executeRaw`
+        INSERT INTO "User" (
+          id, 
+          name, 
+          email, 
+          password, 
+          about, 
+          city, 
+          state, 
+          "createdAt", 
+          "updatedAt"
+        )
+        VALUES (
+          ${userId}, 
+          ${name}, 
+          ${email}, 
+          ${hashedPassword}, 
+          ${about || null}, 
+          ${city || null}, 
+          ${state || null}, 
+          ${now}, 
+          ${now}
+        )
+      `;
+      
+      // Criar a carteira para o usuário
+      await prisma.$executeRaw`
+        INSERT INTO "Wallet" (
+          id,
+          balance,
+          "userId",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (
+          ${walletId},
+          0,
+          ${userId},
+          ${now},
+          ${now}
+        )
+      `;
+      
+      // Buscar o usuário recém-criado
+      const users = await prisma.$queryRaw`
+        SELECT 
+          id, 
+          name, 
+          email, 
+          about, 
+          city, 
+          state, 
+          image, 
+          "createdAt", 
+          "updatedAt"
+        FROM "User" 
+        WHERE id = ${userId}
+      `;
+      
+      if (!users || (users as any[]).length === 0) {
+        throw new Error("Erro ao criar usuário");
+      }
+      
+      const user = (users as any[])[0];
+      
+      return NextResponse.json(user, { status: 201 });
     }
-    
-    const user = (users as any[])[0];
-    
-    return NextResponse.json(user, { status: 201 });
   } catch (error) {
     console.error("Erro ao registrar usuário:", error);
     return NextResponse.json(
