@@ -30,12 +30,21 @@ export default function LoginPage() {
     }
   }, [session, status, router]);
 
-  const handleChange = (e) => {
+  interface LoginFormData {
+    email: string;
+    password: string;
+  }
+
+  interface HandleChangeEvent extends React.ChangeEvent<HTMLInputElement> {}
+
+  const handleChange = (e: HandleChangeEvent) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: LoginFormData) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
+
+  const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
     e.preventDefault();
     setError('');
     
@@ -55,14 +64,15 @@ export default function LoginPage() {
       });
       
       if (result?.error) {
-        throw new Error(result.error);
+        // result.error can be string or null, so handle both
+        throw new Error(result.error || 'Erro desconhecido');
       }
       
       // Redirecionamento manual como fallback
       if (result?.ok) {
         window.location.href = '/';
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setIsLoading(false);
