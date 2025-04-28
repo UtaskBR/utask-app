@@ -55,10 +55,8 @@ export default function LoginContent() {
       // Redirecionamento forçado - abordagem mais direta
       if (result?.ok) {
         console.log("Login bem-sucedido, redirecionando...");
-        // Usar setTimeout para garantir que o redirecionamento ocorra após a renderização
-        setTimeout(() => {
-          window.location.replace('/'); // Use replace to avoid adding login page to history
-        }, 100);
+        // Redirecionamento direto e forçado
+        document.location.href = '/'; // Use document.location.href for a more direct redirect
       } else {
         // Handle cases where result is ok: false but no error is provided
         setError('Falha no login. Verifique suas credenciais.');
@@ -151,11 +149,14 @@ export default function LoginContent() {
               </label>
             </div>
 
+            {/* Removido o link "Esqueceu sua senha?" temporariamente */}
+            {/*
             <div className="text-sm">
               <Link href="/auth/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
                 Esqueceu sua senha?
               </Link>
             </div>
+            */}
           </div>
 
           <div>
@@ -165,6 +166,17 @@ export default function LoginContent() {
               className="w-full btn-primary py-3 flex justify-center items-center"
             >
               {isLoading ? 'Processando...' : 'Entrar'}
+            </button>
+          </div>
+
+          {/* Botão de redirecionamento manual como fallback */}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => { document.location.href = '/'; }}
+              className="w-full bg-green-500 text-white py-3 flex justify-center items-center rounded-md"
+            >
+              Ir para a página inicial manualmente
             </button>
           </div>
         </form>
