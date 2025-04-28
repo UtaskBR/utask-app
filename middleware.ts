@@ -25,7 +25,8 @@ export default withAuth(
   }
 );
 
-// Configurar quais rotas devem ser protegidas pelo middleware
+// Configurar apenas rotas específicas que devem ser protegidas
+// Todas as outras rotas serão públicas por padrão
 export const config = {
   matcher: [
     "/meus-servicos/:path*",
@@ -35,8 +36,7 @@ export const config = {
     "/favoritos/:path*",
     "/notificacoes/:path*",
     "/perfil/editar/:path*",
-    // Excluir rotas públicas (agora incluindo /auth/register)
-    "/((?!auth/register|auth/login|auth/forgot-password|api/auth|api/register|api/services|api/professions|_next/static|_next/image|favicon.ico).*)",
+    "/perfil/:path*",
+    "/dashboard/:path*"
   ],
-  
 };
