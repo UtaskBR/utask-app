@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { hash } from "bcryptjs";
-import { Prisma } from "@prisma/client";
-// Importação correta do randomUUID do módulo crypto
-import { randomUUID } from "crypto";
+
+// Função simples para gerar um ID único
+function generateId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,12 +24,12 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Verificar se o usuário já existe usando SQL bruto
-    const existingUsers = await prisma.$queryRaw`
-      SELECT id FROM "User" WHERE email = ${email}
-    `;
+    // Verificar se o usuário já existe
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
     
-    if (existingUsers && (existingUsers as any[]).length > 0) {
+    if (existingUser) {
       return NextResponse.json(
         { error: "Email já cadastrado" },
         { status: 400 }
@@ -33,114 +39,39 @@ export async function POST(request: NextRequest) {
     // Hash da senha
     const hashedPassword = await hash(password, 10);
     
-    try {
-      // Abordagem alternativa usando Prisma Client em vez de SQL bruto
-      // Isso evita problemas potenciais com SQL bruto em produção
-      const user = await prisma.user.create({
-        data: {
-          name,
-          email,
-          password: hashedPassword,
-          about: about || undefined,
-          city: city || undefined,
-          state: state || undefined,
-          wallet: {
-            create: {
-              balance: 0
-            }
+    // Gerar IDs sem dependências externas
+    const userId = generateId();
+    
+    // Criar o usuário usando Prisma Client
+    const user = await prisma.user.create({
+      data: {
+        id: userId,
+        name,
+        email,
+        password: hashedPassword,
+        about: about || null,
+        city: city || null,
+        state: state || null,
+        wallet: {
+          create: {
+            balance: 0
           }
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          about: true,
-          city: true,
-          state: true,
-          image: true,
-          createdAt: true,
-          updatedAt: true
         }
-      });
-      
-      return NextResponse.json(user, { status: 201 });
-    } catch (prismaError) {
-      console.error("Erro ao criar usuário com Prisma Client:", prismaError);
-      
-      // Fallback para SQL bruto se o Prisma Client falhar
-      // Gerar um ID único para o usuário usando randomUUID importado
-      const userId = randomUUID();
-      const walletId = randomUUID();
-      const now = new Date();
-      
-      // Criar o usuário usando SQL bruto
-      await prisma.$executeRaw`
-        INSERT INTO "User" (
-          id, 
-          name, 
-          email, 
-          password, 
-          about, 
-          city, 
-          state, 
-          "createdAt", 
-          "updatedAt"
-        )
-        VALUES (
-          ${userId}, 
-          ${name}, 
-          ${email}, 
-          ${hashedPassword}, 
-          ${about || null}, 
-          ${city || null}, 
-          ${state || null}, 
-          ${now}, 
-          ${now}
-        )
-      `;
-      
-      // Criar a carteira para o usuário
-      await prisma.$executeRaw`
-        INSERT INTO "Wallet" (
-          id,
-          balance,
-          "userId",
-          "createdAt",
-          "updatedAt"
-        )
-        VALUES (
-          ${walletId},
-          0,
-          ${userId},
-          ${now},
-          ${now}
-        )
-      `;
-      
-      // Buscar o usuário recém-criado
-      const users = await prisma.$queryRaw`
-        SELECT 
-          id, 
-          name, 
-          email, 
-          about, 
-          city, 
-          state, 
-          image, 
-          "createdAt", 
-          "updatedAt"
-        FROM "User" 
-        WHERE id = ${userId}
-      `;
-      
-      if (!users || (users as any[]).length === 0) {
-        throw new Error("Erro ao criar usuário");
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        about: true,
+        city: true,
+        state: true,
+        image: true,
+        createdAt: true,
+        updatedAt: true
       }
-      
-      const user = (users as any[])[0];
-      
-      return NextResponse.json(user, { status: 201 });
-    }
+    });
+    
+    return NextResponse.json(user, { status: 201 });
   } catch (error) {
     console.error("Erro ao registrar usuário:", error);
     return NextResponse.json(
