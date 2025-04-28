@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -9,7 +10,7 @@ export default function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -17,53 +18,61 @@ export default function LoginContent() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-interface LoginFormData {
-    email: string;
-    password: string;
-}
-
-interface ChangeEventType extends React.ChangeEvent<HTMLInputElement> {}
-
-const handleChange = (e: ChangeEventType) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: LoginFormData) => ({ ...prev, [name]: value }));
-};
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
-
-const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     // Validação básica
     if (!formData.email || !formData.password) {
-        setError('Email e senha são obrigatórios');
-        return;
+      setError('Email e senha são obrigatórios');
+      return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
-        const result = await signIn('credentials', {
-            redirect: false,
-            email: formData.email,
-            password: formData.password
-        });
-        
-        if (result?.error) {
-            throw new Error(result.error ?? 'Erro desconhecido');
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: formData.email,
+        password: formData.password
+      });
+
+      if (result?.error) {
+        // Handle specific errors if needed, e.g., "CredentialsSignin"
+        if (result.error === 'CredentialsSignin') {
+          setError('Email ou senha inválidos.');
+        } else {
+          setError(`Erro ao fazer login: ${result.error}`);
         }
-        
-        // Redirecionamento manual como fallback
-        if (result?.ok) {
-            window.location.href = '/';
-        }
+        throw new Error(result.error);
+      }
+
+      // Redirecionamento forçado - abordagem mais direta
+      if (result?.ok) {
+        console.log("Login bem-sucedido, redirecionando...");
+        // Usar setTimeout para garantir que o redirecionamento ocorra após a renderização
+        setTimeout(() => {
+          window.location.replace('/'); // Use replace to avoid adding login page to history
+        }, 100);
+      } else {
+        // Handle cases where result is ok: false but no error is provided
+        setError('Falha no login. Verifique suas credenciais.');
+      }
     } catch (err: any) {
-        setError(err.message);
+      // Error already set if it came from result.error
+      if (!error) { // Avoid overwriting specific error messages
+         setError(err.message || 'Ocorreu um erro inesperado.');
+      }
+      console.error("Erro no handleSubmit:", err);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
-};
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -79,19 +88,19 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
             </Link>
           </p>
         </div>
-        
+
         {registered && (
           <div className="bg-green-50 border-l-4 border-green-500 p-4">
             <p className="text-sm text-green-700">Conta criada com sucesso! Faça login para continuar.</p>
           </div>
         )}
-        
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4">
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <div>
@@ -110,7 +119,7 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
                 onChange={handleChange}
               />
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-secondary-700">
                 Senha
@@ -163,3 +172,4 @@ const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
     </div>
   );
 }
+
