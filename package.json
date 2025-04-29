@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && prisma migrate deploy && prisma db seed && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma migrate deploy",
-    "studio": "dotenv -e .env.local -- prisma studio",
-    "seed-professions": "ts-node prisma/seed-professions.ts"
+    "seed-professions": "ts-node prisma/seed-professions.ts",
+    "prisma:seed": "prisma db seed"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +20,6 @@
     "@mapbox/mapbox-gl-supported": "^3.0.0",
     "@prisma/client": "^6.6.0",
     "@types/mapbox-gl": "^3.4.1",
-    "@types/node": "^22.14.1",
     "@types/react-dom": "^19.1.2",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
@@ -41,11 +40,13 @@
   "devDependencies": {
     "@types/mapbox__mapbox-gl-geocoder": "^5.0.0",
     "@types/next": "^8.0.7",
+    "@types/node": "^22.15.3",
     "@types/react": "^19.1.2",
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.18",
     "dotenv-cli": "^7.0.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1"
-  }
+  },
+  "prisma": {}
 }

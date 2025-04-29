@@ -1,6 +1,6 @@
 // prisma/seed-professions.ts
 import { PrismaClient } from '@prisma/client';
-const { professions } = require('./seed/professions');
+const { professions } = require('@/prisma/seed/professions');
 
 const prisma = new PrismaClient();
 
