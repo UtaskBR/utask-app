@@ -102,7 +102,7 @@ export default function EditarPerfilPage() {
         professionIds: selectedProfessions, // Send the array of selected profession IDs
       };
 
-      console.log("Enviando para PUT /api/users/...": updatePayload);
+      console.log("Enviando para PUT /api/users/...", updatePayload);
 
       const res = await fetch(`/api/users/${session.user.id}`, {
         method: 'PUT',
