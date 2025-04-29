@@ -1,5 +1,6 @@
 // This is a fixed version of the Prisma schema
 // It removes duplicate model definitions and fixes relation references
+// Added many-to-many relation between User and Profession
 
 generator client {
   provider = "prisma-client-js"
@@ -52,6 +53,7 @@ model Profession {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   services  Service[]
+  users     User[]    // Added relation field for many-to-many with User
 }
 
 model Service {
@@ -212,4 +214,6 @@ model User {
   favorites             Favorite[]
   receivedReviews       Review[]        @relation("ReviewReceiver")
   givenReviews          Review[]        @relation("ReviewGiver")
+  professions           Profession[]    // Added relation field for many-to-many with Profession
 }
+
