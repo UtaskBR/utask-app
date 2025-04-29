@@ -1,152 +1,295 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
+
+// Tipo correto para os parâmetros no Next.js 15
+type RouteParams = {
+  params: {
+    id: string;
+  };
+};
+
+// GET /api/users/[id]/professions - Listar profissões de um usuário
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log(`🔍 Buscando usuário com ID: ${params.id}`);
+    const resolvedParams = await params
+const { id  } = resolvedParams;
     
-    // Usar findUnique e incluir as profissões relacionadas
+    // Buscar profissões do usuário
     const user = await prisma.user.findUnique({
-      where: {
-        id: params.id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        about: true,
-        city: true,
-        state: true,
-        image: true,
-        emailVerified: true,
-        createdAt: true,
-        // Incluir profissões relacionadas
-        professions: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        // Incluir outras relações que podem ser necessárias para o perfil
-        photos: {
-          select: {
-            id: true,
-            url: true,
-          }
-        },
-        receivedReviews: {
-          select: {
-            id: true,
-            rating: true,
-            comment: true,
-            createdAt: true,
-            giver: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-              }
-            }
-          }
-        }
-        // Adicione outras relações conforme necessário (ex: certificates, etc.)
+      where: { id },
+      include: {
+        professions: true,
       },
     });
-
+    
     if (!user) {
       return NextResponse.json(
         { error: "Usuário não encontrado" },
         { status: 404 }
       );
     }
-
-    return NextResponse.json(user);
-  } catch (error: any) {
-    console.error("[USER_GET_ERROR]", error);
+    
+    return NextResponse.json(user.professions);
+  } catch (error) {
+    console.error("Erro ao buscar profissões do usuário:", error);
     return NextResponse.json(
-      { error: `Erro ao buscar usuário: ${error.message}` },
+      { error: "Erro ao processar a solicitação" },
       { status: 500 }
     );
   }
 }
 
-// Adicionar a função PUT para atualizar o perfil, incluindo profissões
+// PUT /api/users/[id]/professions - Atualizar profissões do usuário
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const body = await request.json();
-    const { name, about, city, state, image, professionIds } = body;
-
-    console.log(`🔄 Atualizando usuário com ID: ${params.id}`);
-    console.log(`Dados recebidos para atualização:`, body);
-
-    // Validar se professionIds é um array (mesmo que vazio)
-    if (professionIds && !Array.isArray(professionIds)) {
+    const resolvedParams = await params
+const { id  } = resolvedParams;
+    const session = await getServerSession(authOptions);
+    
+    // Verificar autenticação
+    if (!session || !session.user) {
       return NextResponse.json(
-        { error: "'professionIds' deve ser um array." },
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
+    
+    // Verificar se o usuário está tentando modificar seu próprio perfil
+    if (session.user.id !== id) {
+      return NextResponse.json(
+        { error: "Não autorizado a modificar este perfil" },
+        { status: 403 }
+      );
+    }
+    
+    const body = await request.json();
+    const { professionIds } = body;
+    
+    // Validação básica
+    if (!professionIds || !Array.isArray(professionIds)) {
+      return NextResponse.json(
+        { error: "Lista de IDs de profissões não fornecida ou inválida" },
         { status: 400 }
       );
     }
-
-    const updateData: any = {
-      name: name,
-      about: about,
-      city: city,
-      state: state,
-      image: image,
-    };
-
-    // Se professionIds for fornecido, atualizar a relação muitos-para-muitos
-    if (professionIds) {
-      updateData.professions = {
-        // Desconectar todas as profissões existentes primeiro
-        set: [], 
-        // Conectar as novas profissões selecionadas
-        connect: professionIds.map((id: string) => ({ id: id }))
-      };
+    
+    // Verificar se todas as profissões existem
+    const professions = await prisma.profession.findMany({
+      where: {
+        id: {
+          in: professionIds,
+        },
+      },
+    });
+    
+    if (professions.length !== professionIds.length) {
+      return NextResponse.json(
+        { error: "Uma ou mais profissões não foram encontradas" },
+        { status: 404 }
+      );
     }
-
+    
+    // Atualizar profissões do usuário (substituir todas)
     const updatedUser = await prisma.user.update({
-      where: { id: params.id },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        about: true,
-        city: true,
-        state: true,
-        image: true,
+      where: { id },
+      data: {
         professions: {
-          select: {
-            id: true,
-            name: true,
+          set: professionIds.map(profId => ({ id: profId })),
+        },
+      },
+      include: {
+        professions: true,
+      },
+    });
+    
+    return NextResponse.json(updatedUser.professions);
+  } catch (error) {
+    console.error("Erro ao atualizar profissões do usuário:", error);
+    return NextResponse.json(
+      { error: "Erro ao processar a solicitação" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/users/[id]/professions - Adicionar profissão ao usuário
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await params
+const { id  } = resolvedParams;
+    const session = await getServerSession(authOptions);
+    
+    // Verificar autenticação
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
+    
+    // Verificar se o usuário está tentando modificar seu próprio perfil
+    if (session.user.id !== id) {
+      return NextResponse.json(
+        { error: "Não autorizado a modificar este perfil" },
+        { status: 403 }
+      );
+    }
+    
+    const body = await request.json();
+    const { professionId } = body;
+    
+    // Validação básica
+    if (!professionId) {
+      return NextResponse.json(
+        { error: "ID da profissão não fornecido" },
+        { status: 400 }
+      );
+    }
+    
+    // Verificar se a profissão existe
+    const profession = await prisma.profession.findUnique({
+      where: { id: professionId },
+    });
+    
+    if (!profession) {
+      return NextResponse.json(
+        { error: "Profissão não encontrada" },
+        { status: 404 }
+      );
+    }
+    
+    // Verificar se o usuário já tem esta profissão
+    const userWithProfession = await prisma.user.findFirst({
+      where: {
+        id,
+        professions: {
+          some: {
+            id: professionId,
           },
         },
       },
     });
-
-    console.log(`✅ Usuário atualizado com sucesso:`, updatedUser);
-    return NextResponse.json(updatedUser);
-
-  } catch (error: any) {
-    console.error("[USER_PUT_ERROR]", error);
-    // Verificar erros específicos do Prisma (ex: profissão não encontrada)
-    if (error.code === 'P2025') { // Prisma error code for record not found during connect
-       return NextResponse.json(
-        { error: `Erro ao atualizar profissões: Uma ou mais profissões selecionadas não foram encontradas.` },
+    
+    if (userWithProfession) {
+      return NextResponse.json(
+        { error: "Usuário já possui esta profissão" },
         { status: 400 }
       );
     }
+    
+    // Adicionar profissão ao usuário
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        professions: {
+          connect: {
+            id: professionId,
+          },
+        },
+      },
+      include: {
+        professions: true,
+      },
+    });
+    
+    return NextResponse.json(updatedUser.professions);
+  } catch (error) {
+    console.error("Erro ao adicionar profissão ao usuário:", error);
     return NextResponse.json(
-      { error: `Erro ao atualizar usuário: ${error.message}` },
+      { error: "Erro ao processar a solicitação" },
       { status: 500 }
     );
   }
 }
 
+// DELETE /api/users/[id]/professions - Remover profissão do usuário
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await params
+const { id  } = resolvedParams;
+    const session = await getServerSession(authOptions);
+    const url = new URL(request.url);
+    const professionId = url.searchParams.get("professionId");
+    
+    // Verificar autenticação
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
+    
+    // Verificar se o usuário está tentando modificar seu próprio perfil
+    if (session.user.id !== id) {
+      return NextResponse.json(
+        { error: "Não autorizado a modificar este perfil" },
+        { status: 403 }
+      );
+    }
+    
+    // Validação básica
+    if (!professionId) {
+      return NextResponse.json(
+        { error: "ID da profissão não fornecido" },
+        { status: 400 }
+      );
+    }
+    
+    // Verificar se o usuário tem esta profissão
+    const userWithProfession = await prisma.user.findFirst({
+      where: {
+        id,
+        professions: {
+          some: {
+            id: professionId,
+          },
+        },
+      },
+    });
+    
+    if (!userWithProfession) {
+      return NextResponse.json(
+        { error: "Usuário não possui esta profissão" },
+        { status: 400 }
+      );
+    }
+    
+    // Remover profissão do usuário
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        professions: {
+          disconnect: {
+            id: professionId,
+          },
+        },
+      },
+      include: {
+        professions: true,
+      },
+    });
+    
+    return NextResponse.json(updatedUser.professions);
+  } catch (error) {
+    console.error("Erro ao remover profissão do usuário:", error);
+    return NextResponse.json(
+      { error: "Erro ao processar a solicitação" },
+      { status: 500 }
+    );
+  }
+}
