@@ -62,7 +62,7 @@ model Service {
   description  String
   date         DateTime?
   timeWindow   Int?
-  value        Float?
+  price        Float?
   status       String    @default("OPEN")
   latitude     Float?
   longitude    Float?
