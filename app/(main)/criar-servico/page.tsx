@@ -56,6 +56,43 @@ export default function CreateServicePage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const totalPhotos = photos.length + files.length;
+    if (totalPhotos > 5) {
+      toast.error('Você pode adicionar no máximo 5 fotos');
+      return;
+    }
+
+    setPhotos((prev) => [...prev, ...files]);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setPhotoPreview((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removePhoto = (index: number): void => {
+    const newPhotos = [...photos];
+    const newPreviews = [...photoPreview];
+    URL.revokeObjectURL(newPreviews[index]);
+    newPhotos.splice(index, 1);
+    newPreviews.splice(index, 1);
+    setPhotos(newPhotos);
+    setPhotoPreview(newPreviews);
+  };
+
+  const uploadPhotos = async (serviceId: string) => {
+    const photoFormData = new FormData();
+    photos.forEach((photo) => photoFormData.append('photos', photo));
+    photoFormData.append('serviceId', serviceId);
+    const res = await fetch('/api/photos', {
+      method: 'POST',
+      body: photoFormData
+    });
+    if (!res.ok) throw new Error('Erro ao fazer upload das fotos');
+    return res.json();
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
@@ -110,6 +147,14 @@ export default function CreateServicePage() {
     }
   };
 
+  if (status === 'loading') {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-8">
@@ -159,6 +204,54 @@ export default function CreateServicePage() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-secondary-700">Fotos do Serviço</label>
+            <div className="mt-1 flex items-center">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handlePhotoChange}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-outline py-2 px-4"
+              >
+                Adicionar Fotos
+              </button>
+              <span className="ml-3 text-xs text-secondary-500">Máximo de 5 fotos</span>
+            </div>
+
+            {photoPreview.length > 0 && (
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {photoPreview.map((src, index) => (
+                  <div key={index} className="relative">
+                    <div className="h-24 w-full rounded-md overflow-hidden relative">
+                      <Image
+                        src={src}
+                        alt={`Foto ${index + 1}`}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">
@@ -199,6 +292,62 @@ export default function CreateServicePage() {
                 Deixe em branco para receber propostas de valor dos prestadores
               </p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="date" className="block text-sm font-medium text-secondary-700">
+                Data e Hora
+              </label>
+              <input
+                id="date"
+                name="date"
+                type="datetime-local"
+                className="input-field mt-1"
+                value={formData.date}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="timeWindow" className="block text-sm font-medium text-secondary-700">
+                Janela de Tempo (minutos)
+              </label>
+              <select
+                id="timeWindow"
+                name="timeWindow"
+                className="input-field mt-1"
+                value={formData.timeWindow}
+                onChange={handleChange}
+              >
+                <option value="30">30 minutos</option>
+                <option value="60">1 hora</option>
+                <option value="120">2 horas</option>
+                <option value="180">3 horas</option>
+                <option value="240">4 horas</option>
+              </select>
+              <p className="mt-1 text-xs text-secondary-500">
+                Flexibilidade de horário para a realização do serviço
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="address" className="block text-sm font-medium text-secondary-700">
+              Endereço
+            </label>
+            <input
+              id="address"
+              name="address"
+              type="text"
+              className="input-field mt-1"
+              placeholder="Endereço completo onde o serviço será realizado"
+              value={formData.address}
+              onChange={handleChange}
+            />
+            <p className="mt-1 text-xs text-secondary-500">
+              Deixe em branco para serviços remotos
+            </p>
           </div>
 
           <div className="pt-4">
