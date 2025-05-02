@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     const { title, description, price, date, time, location, professionId } = body;
     
     // Verificar se todos os campos obrigatórios estão presentes
-    if (!title || !description || !price) {
+    if (!title || !description) {
       return NextResponse.json(
         { error: "Título, descrição e preço são obrigatórios" },
         { status: 400 }
