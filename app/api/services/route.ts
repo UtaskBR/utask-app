@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+  
     
     // Gerar um ID único para o serviço
     const serviceId = crypto.randomUUID();
