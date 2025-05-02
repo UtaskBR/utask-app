@@ -1,4 +1,4 @@
-// Este é o componente completo de edição de perfil, reintegrando o MultiSelectProfessions ao perfil completo
+// Este é o componente completo e restaurado corretamente de edição de perfil
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -14,8 +14,8 @@ interface Profession {
 export default function EditarPerfilPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   const [formData, setFormData] = useState({ name: '', about: '', city: '', state: '' });
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -81,7 +81,6 @@ export default function EditarPerfilPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-
       if (!profileRes.ok) throw new Error(`Erro ao atualizar perfil: ${profileRes.status}`);
 
       const professionsRes = await fetch(`/api/users/${session.user.id}/professions`, {
@@ -89,7 +88,6 @@ export default function EditarPerfilPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ professionIds: selectedProfessions }),
       });
-
       if (!professionsRes.ok) throw new Error(`Erro ao atualizar profissões: ${professionsRes.status}`);
 
       alert('Perfil atualizado com sucesso!');
@@ -103,15 +101,13 @@ export default function EditarPerfilPage() {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
     setIsUploading(true);
-    const localPreview = URL.createObjectURL(file);
-    setAvatarUrl(localPreview);
-
-    const formDataUpload = new FormData();
-    formDataUpload.append('upload_preset', 'utask-avatar');
-    formDataUpload.append('file', file);
 
     try {
-      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dhkkz3vlv'}/image/upload`, {
+      const formDataUpload = new FormData();
+      formDataUpload.append('upload_preset', 'utask-avatar');
+      formDataUpload.append('file', file);
+
+      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/dhkkz3vlv/image/upload`, {
         method: 'POST',
         body: formDataUpload,
       });
@@ -129,9 +125,9 @@ export default function EditarPerfilPage() {
 
       setAvatarUrl(cloudinaryData.secure_url);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
-      alert('Foto de perfil atualizada!');
+      alert('Foto de perfil atualizada com sucesso!');
     } catch (error) {
-      alert('Falha ao atualizar avatar.');
+      alert('Erro ao atualizar foto de perfil.');
     } finally {
       setIsUploading(false);
     }
@@ -141,6 +137,7 @@ export default function EditarPerfilPage() {
     const file = e.target.files?.[0];
     if (!file || !session?.user?.id) return;
     setIsUploading(true);
+
     const localPreview = URL.createObjectURL(file);
     const tempPhoto = { id: `temp-${Date.now()}`, url: localPreview, isTemp: true };
     setGallery(prev => [...prev, tempPhoto]);
@@ -150,7 +147,7 @@ export default function EditarPerfilPage() {
     formDataUpload.append('file', file);
 
     try {
-      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dhkkz3vlv'}/image/upload`, {
+      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/dhkkz3vlv/image/upload`, {
         method: 'POST',
         body: formDataUpload,
       });
@@ -168,9 +165,9 @@ export default function EditarPerfilPage() {
       const data = await res.json();
       setGallery(prev => prev.filter(p => p.id !== tempPhoto.id).concat(data.photo));
       if (galleryInputRef.current) galleryInputRef.current.value = '';
-      alert('Foto adicionada à galeria!');
+      alert('Foto adicionada à galeria com sucesso!');
     } catch (error) {
-      alert('Falha ao adicionar imagem à galeria.');
+      alert('Erro ao adicionar à galeria.');
       setGallery(prev => prev.filter(p => !p.isTemp));
     } finally {
       setIsUploading(false);
@@ -184,16 +181,29 @@ export default function EditarPerfilPage() {
     <div className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-xl font-bold">Editar Perfil</h1>
 
-      <input name="name" value={formData.name} onChange={handleChange} className="input-field" placeholder="Nome" />
-      <textarea name="about" value={formData.about} onChange={handleChange} className="input-field" placeholder="Sobre" />
-
-      <div className="grid grid-cols-2 gap-4">
-        <input name="city" value={formData.city} onChange={handleChange} className="input-field" placeholder="Cidade" />
-        <input name="state" value={formData.state} onChange={handleChange} className="input-field" placeholder="Estado" />
+      <div>
+        <label className="block text-sm font-medium">Nome</label>
+        <input name="name" value={formData.name} onChange={handleChange} className="input-field" />
       </div>
 
       <div>
-        <label className="text-sm font-medium mb-1 block">Profissões</label>
+        <label className="block text-sm font-medium">Sobre</label>
+        <textarea name="about" value={formData.about} onChange={handleChange} className="input-field" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium">Cidade</label>
+          <input name="city" value={formData.city} onChange={handleChange} className="input-field" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Estado</label>
+          <input name="state" value={formData.state} onChange={handleChange} className="input-field" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Profissões</label>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {professions.map((profession) => (
             <label key={profession.id} className="flex items-center">
@@ -211,8 +221,9 @@ export default function EditarPerfilPage() {
 
       <button onClick={handleSave} className="btn-primary" disabled={isUploading}>Salvar</button>
 
-      <hr />
-      <h2 className="text-lg font-semibold">Foto de Perfil</h2>
+      <hr className="my-6" />
+
+      <h2 className="text-lg font-semibold mb-2">Foto de Perfil</h2>
       {avatarUrl && <img src={avatarUrl} alt="avatar" className="w-24 h-24 rounded-full object-cover mb-2" />}
       <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} />
 
