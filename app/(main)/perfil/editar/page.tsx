@@ -1,4 +1,3 @@
-// Este é o componente completo e restaurado corretamente de edição de perfil
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -77,7 +76,7 @@ export default function EditarPerfilPage() {
     if (!session?.user?.id) return;
     try {
       const profileRes = await fetch(`/api/users/${session.user.id}`, {
-        method: 'PATCH',
+        method: 'PUT', // <-- alterado de PATCH para PUT
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
