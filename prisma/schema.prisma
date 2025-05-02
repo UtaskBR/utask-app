@@ -216,4 +216,3 @@ model User {
   givenReviews          Review[]        @relation("ReviewGiver")
   professions           Profession[]    // Added relation field for many-to-many with Profession
 }
-

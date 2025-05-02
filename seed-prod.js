@@ -5,6 +5,7 @@ const path = require('path');
 const { professions } = require(path.join(__dirname, 'prisma', 'seed', 'professions.js'));
 
 const prisma = new PrismaClient();
+console.log("Profissões carregadas:", professions);
 
 async function main() {
   await prisma.profession.createMany({
