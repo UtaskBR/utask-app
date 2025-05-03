@@ -11,7 +11,33 @@ export default function ServiceDetailPage() {
   const params = useParams();
   const serviceId = params.id;
   
-  const [service, setService] = useState(null);
+  type Photo = { id: string; url: string };
+  type Bid = {
+    id: string;
+    providerId: string;
+    provider: { name: string; rating: number };
+    price?: number;
+    message?: string;
+    proposedDate?: string;
+    status: string;
+  };
+  type Service = {
+    id: string;
+    title: string;
+    description: string;
+    price?: number;
+    date?: string;
+    timeWindow?: number;
+    address?: string;
+    profession?: { name: string };
+    status: string;
+    creatorId: string;
+    creator: { id: string; name: string; rating: number; about?: string };
+    photos?: Photo[];
+    bids?: Bid[];
+  };
+
+  const [service, setService] = useState<Service | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [bidForm, setBidForm] = useState({
@@ -33,7 +59,7 @@ export default function ServiceDetailPage() {
         const data = await response.json();
         setService(data);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
       } finally {
         setIsLoading(false);
       }
@@ -44,12 +70,33 @@ export default function ServiceDetailPage() {
     }
   }, [serviceId]);
 
-  const handleBidChange = (e) => {
+  interface BidForm {
+    price: string;
+    message: string;
+    proposedDate: string;
+  }
+
+  interface BidChangeEvent extends React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> {}
+
+  const handleBidChange = (e: BidChangeEvent) => {
     const { name, value } = e.target;
-    setBidForm(prev => ({ ...prev, [name]: value }));
+    setBidForm((prev: BidForm) => ({ ...prev, [name]: value }));
   };
 
-  const handleBidSubmit = async (e) => {
+  interface BidSubmitEvent extends React.FormEvent<HTMLFormElement> {}
+
+  interface BidRequestBody {
+    price: number | null;
+    message: string;
+    proposedDate: string | null;
+  }
+
+  interface BidResponse {
+    error?: string;
+    [key: string]: any;
+  }
+
+  const handleBidSubmit = async (e: BidSubmitEvent) => {
     e.preventDefault();
     
     if (!session) {
@@ -58,19 +105,21 @@ export default function ServiceDetailPage() {
     }
     
     try {
+      const body: BidRequestBody = {
+        price: bidForm.price ? parseFloat(bidForm.price) : null,
+        message: bidForm.message,
+        proposedDate: bidForm.proposedDate || null
+      };
+
       const response = await fetch(`/api/services/${serviceId}/bids`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          price: bidForm.price ? parseFloat(bidForm.price) : null,
-          message: bidForm.message,
-          proposedDate: bidForm.proposedDate || null
-        })
+        body: JSON.stringify(body)
       });
       
-      const data = await response.json();
+      const data: BidResponse = await response.json();
       
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao enviar proposta');
@@ -78,7 +127,7 @@ export default function ServiceDetailPage() {
       
       // Atualizar a página para mostrar a nova proposta
       window.location.reload();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     }
   };
@@ -124,116 +173,118 @@ export default function ServiceDetailPage() {
 
   const isCreator = session?.user?.id === service.creatorId;
   const canBid = !isCreator && service.status === 'OPEN';
-  const hasUserBid = service.bids?.some(bid => bid.providerId === session?.user?.id);
+  const hasUserBid = service?.bids?.some(bid => bid.providerId === session?.user?.id) ?? false;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-6">
-        <Link href="/explorar" className="text-primary-600 hover:text-primary-700 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-          </svg>
-          Voltar para Explorar
-        </Link>
-      </div>
-      
-      {service.photos && service.photos.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {service.photos.slice(0, 5).map((photo) => (
-            <div key={photo.id} className="aspect-square overflow-hidden rounded-md">
-              <img
-                src={photo.url}
-                alt="Foto do serviço"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.onerror = null;
-                  target.src = "/fallback-image.png";
-                }}
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Content */}
+        <div className="lg:col-span-2">
+          <div className="mb-6">
+            <Link href="/explorar" className="text-primary-600 hover:text-primary-700 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Voltar para Explorar
+            </Link>
+          </div>
+          
+          {service.photos && service.photos.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {service.photos.slice(0, 5).map((photo) => (
+                <div key={photo.id} className="aspect-square overflow-hidden rounded-md">
+                  <img
+                    src={photo.url}
+                    alt="Foto do serviço"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = "/fallback-image.png";
+                    }}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="h-64 bg-secondary-200 flex items-center justify-center">
-          <span className="text-secondary-400">Imagem do Serviço</span>
-        </div>
-      )}   
-            <div className="p-6">
-              <div className="flex justify-between items-start">
-                <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
-                <div>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    service.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                    service.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                    service.status === 'COMPLETED' ? 'bg-purple-100 text-purple-800' :
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {service.status === 'OPEN' ? 'Aberto' :
-                     service.status === 'IN_PROGRESS' ? 'Em Andamento' :
-                     service.status === 'COMPLETED' ? 'Concluído' :
-                     'Cancelado'}
-                  </span>
-                </div>
+          ) : (
+            <div className="h-64 bg-secondary-200 flex items-center justify-center">
+              <span className="text-secondary-400">Imagem do Serviço</span>
+            </div>
+          )}   
+          <div className="p-6">
+            <div className="flex justify-between items-start">
+              <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
+              <div>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  service.status === 'OPEN' ? 'bg-green-100 text-green-800' :
+                  service.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                  service.status === 'COMPLETED' ? 'bg-purple-100 text-purple-800' :
+                  'bg-red-100 text-red-800'
+                }`}>
+                  {service.status === 'OPEN' ? 'Aberto' :
+                   service.status === 'IN_PROGRESS' ? 'Em Andamento' :
+                   service.status === 'COMPLETED' ? 'Concluído' :
+                   'Cancelado'}
+                </span>
               </div>
-              
-              {service.price ? (
-                <div className="mt-2 text-xl font-bold text-primary-600">
-                  R$ {service.price.toFixed(2)}
-                </div>
-              ) : (
-                <div className="mt-2 text-secondary-600">
-                  Aberto a propostas
-                </div>
-              )}
-              
+            </div>
+            
+            {service.price ? (
+              <div className="mt-2 text-xl font-bold text-primary-600">
+                R$ {service.price.toFixed(2)}
+              </div>
+            ) : (
+              <div className="mt-2 text-secondary-600">
+                Aberto a propostas
+              </div>
+            )}
+            
+            <div className="mt-6">
+              <h2 className="text-lg font-medium text-secondary-900">Descrição</h2>
+              <p className="mt-2 text-secondary-600 whitespace-pre-line">{service.description}</p>
+            </div>
+            
+            {service.date && (
               <div className="mt-6">
-                <h2 className="text-lg font-medium text-secondary-900">Descrição</h2>
-                <p className="mt-2 text-secondary-600 whitespace-pre-line">{service.description}</p>
+                <h2 className="text-lg font-medium text-secondary-900">Data e Hora</h2>
+                <p className="mt-2 text-secondary-600">
+                  {new Date(service.date).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                  {service.timeWindow && ` (Janela de ${service.timeWindow} minutos)`}
+                </p>
               </div>
-              
-              {service.date && (
-                <div className="mt-6">
-                  <h2 className="text-lg font-medium text-secondary-900">Data e Hora</h2>
-                  <p className="mt-2 text-secondary-600">
-                    {new Date(service.date).toLocaleString('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                    {service.timeWindow && ` (Janela de ${service.timeWindow} minutos)`}
-                  </p>
-                </div>
-              )}
-              
-              {service.address && (
-                <div className="mt-6">
-                  <h2 className="text-lg font-medium text-secondary-900">Localização</h2>
-                  <p className="mt-2 text-secondary-600">{service.address}</p>
-                </div>
-              )}
-              
-              {service.profession && (
-                <div className="mt-6">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-                    {service.profession.name}
-                  </span>
-                </div>
-              )}
-            </div>
+            )}
+            
+            {service.address && (
+              <div className="mt-6">
+                <h2 className="text-lg font-medium text-secondary-900">Localização</h2>
+                <p className="mt-2 text-secondary-600">{service.address}</p>
+              </div>
+            )}
+            
+            {service.profession && (
+              <div className="mt-6">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                  {service.profession.name}
+                </span>
+              </div>
+            )}
           </div>
           
           {/* Propostas */}
-          {(isCreator || hasUserBid) && service.bids && service.bids.length > 0 && (
+          {service?.bids?.length && service.bids.length > 0 && (isCreator || hasUserBid) && (
             <div className="mt-8">
               <h2 className="text-xl font-bold text-secondary-900 mb-4">
                 {isCreator ? 'Propostas Recebidas' : 'Sua Proposta'}
               </h2>
               
               <div className="space-y-4">
-                {service.bids
+                {service?.bids
                   .filter(bid => isCreator || bid.providerId === session?.user?.id)
                   .map((bid) => (
                     <div key={bid.id} className="bg-white shadow-md rounded-lg p-6">
