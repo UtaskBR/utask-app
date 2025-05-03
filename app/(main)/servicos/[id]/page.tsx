@@ -49,7 +49,7 @@ export default function ServiceDetailPage() {
 
   const handleProposal = () => {
     if (isOwner) return;
-    router.push(`/propostas/${service.id}`);
+    router.push(`/servicos/${service.id}/bids`);
   };
 
   return (
@@ -59,9 +59,16 @@ export default function ServiceDetailPage() {
       <h1 className="text-2xl font-bold mb-4">{service.title}</h1>
 
       {service.photos?.length ? (
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          {service.photos.map((photo: any, i: number) => (
-            <Image key={i} src={photo.url} alt={`Foto ${i + 1}`} width={400} height={300} className="rounded-lg object-cover" />
+        <div className={`grid gap-2 mb-6 ${service.photos.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          {service.photos.slice(0, 5).map((photo: any, i: number) => (
+            <Image
+              key={i}
+              src={photo.url}
+              alt={`Foto ${i + 1}`}
+              width={400}
+              height={300}
+              className="rounded-lg object-cover w-full h-auto"
+            />
           ))}
         </div>
       ) : (

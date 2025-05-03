@@ -25,9 +25,9 @@ export async function POST(
     console.log(`API counter: Processando contraproposta para proposta ${bidId} do serviço ${serviceId}`);
     
     const body = await request.json();
-    const { value, proposedDate, message } = body;
+    const { price, proposedDate, message } = body;
     
-    console.log('API counter: Dados recebidos:', { value, proposedDate, message });
+    console.log('API counter: Dados recebidos:', { price, proposedDate, message });
     
     // Verificar se a proposta existe usando SQL bruto
     const bids = await prisma.$queryRaw`
@@ -69,7 +69,7 @@ export async function POST(
     
     // Preparar os valores para a atualização
     const now = new Date();
-    const newValue = value !== undefined ? parseFloat(value) : null;
+    const newPrice = price !== undefined ? parseFloat(price) : null;
     const newProposedDate = proposedDate ? new Date(proposedDate) : null;
     const newMessage = message || null;
     
@@ -79,7 +79,7 @@ export async function POST(
       UPDATE "ServiceBid"
       SET 
         status = 'COUNTER_OFFER', 
-        value = COALESCE(${newValue}, value),
+        price = COALESCE(${newPrice}, price),
         "proposedDate" = COALESCE(${newProposedDate}, "proposedDate"),
         message = COALESCE(${newMessage}, message),
         "updatedAt" = ${now}
