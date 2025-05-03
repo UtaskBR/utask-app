@@ -48,18 +48,17 @@ export default function ServiceDetailPage() {
   const isOwner = session?.user?.id === service.creator?.id;
 
   const handleProposal = () => {
-    if (isOwner) return;
-    router.push(`/servicos/${service.id}/bids`);
+    if (!isOwner) router.push(`/servicos/${service.id}/bids`);
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 bg-white shadow rounded-lg">
+    <div className="max-w-4xl mx-auto p-6 bg-white shadow-lg rounded-xl">
       <Link href="/explorar" className="text-blue-600 text-sm mb-4 inline-block">&larr; Voltar para Explorar</Link>
 
-      <h1 className="text-2xl font-bold mb-4">{service.title}</h1>
+      <h1 className="text-3xl font-bold mb-6 text-gray-900">{service.title}</h1>
 
       {service.photos?.length ? (
-        <div className={`grid gap-2 mb-6 ${service.photos.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+        <div className={`grid gap-3 mb-6 ${service.photos.length === 1 ? 'grid-cols-1' : service.photos.length <= 4 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {service.photos.slice(0, 5).map((photo: any, i: number) => (
             <Image
               key={i}
@@ -67,7 +66,7 @@ export default function ServiceDetailPage() {
               alt={`Foto ${i + 1}`}
               width={400}
               height={300}
-              className="rounded-lg object-cover w-full h-auto"
+              className="rounded-lg object-cover w-full h-[200px]"
             />
           ))}
         </div>
@@ -75,7 +74,7 @@ export default function ServiceDetailPage() {
         <p className="text-sm text-gray-500 mb-4">Sem imagens disponíveis.</p>
       )}
 
-      <div className="space-y-3 mb-6">
+      <div className="space-y-4 mb-6">
         <div><span className="font-semibold">Descrição:</span><p className="text-gray-700">{service.description}</p></div>
         <div><span className="font-semibold">Data e Hora:</span><p className="text-gray-700">{service.date ? new Date(service.date).toLocaleString('pt-BR') : 'Não informado'}</p></div>
         <div><span className="font-semibold">Localização:</span><p className="text-gray-700">{service.address || 'Não informada'}</p></div>
@@ -96,21 +95,33 @@ export default function ServiceDetailPage() {
       </div>
 
       {isOwner ? (
-        <div className="flex gap-3">
-          <Link href={`/editar-servico/${service.id}`} className="btn-primary">Editar</Link>
-          <button className="btn-danger" onClick={async () => {
-            if (!confirm('Tem certeza que deseja apagar este serviço?')) return;
-            try {
-              const res = await fetch(`/api/services/${service.id}`, { method: 'DELETE' });
-              if (res.ok) {
-                toast.success('Serviço apagado com sucesso.');
-                router.push('/explorar');
-              } else toast.error('Erro ao apagar serviço.');
-            } catch { toast.error('Erro inesperado.'); }
-          }}>Apagar</button>
+        <div className="flex gap-4">
+          <Link href={`/editar-servico/${service.id}`} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Editar</Link>
+          <button
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded"
+            onClick={async () => {
+              if (!confirm('Tem certeza que deseja apagar este serviço?')) return;
+              try {
+                const res = await fetch(`/api/services/${service.id}`, { method: 'DELETE' });
+                if (res.ok) {
+                  toast.success('Serviço apagado com sucesso.');
+                  router.push('/explorar');
+                } else toast.error('Erro ao apagar serviço.');
+              } catch {
+                toast.error('Erro inesperado.');
+              }
+            }}
+          >
+            Apagar
+          </button>
         </div>
       ) : (
-        <button onClick={handleProposal} className="btn-primary block w-full">Fazer Proposta</button>
+        <button
+          onClick={handleProposal}
+          className="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-3 rounded w-full text-center mt-4"
+        >
+          Fazer Proposta
+        </button>
       )}
     </div>
   );
