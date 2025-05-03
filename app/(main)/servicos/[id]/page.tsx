@@ -146,7 +146,9 @@ export default function ServiceDetailPage() {
                 alt="Foto do serviço"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/fallback-image.png";
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.src = "/fallback-image.png";
                 }}
               />
             </div>
@@ -156,8 +158,7 @@ export default function ServiceDetailPage() {
         <div className="h-64 bg-secondary-200 flex items-center justify-center">
           <span className="text-secondary-400">Imagem do Serviço</span>
         </div>
-      )}
-      
+      )}   
             <div className="p-6">
               <div className="flex justify-between items-start">
                 <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
