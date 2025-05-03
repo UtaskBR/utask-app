@@ -51,13 +51,16 @@ export default function ServiceDetailPage() {
     );
   }
 
+  const isOwner = session?.user?.id === service.creator?.id;
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">{service.title}</h1>
+
       {service.photos?.length ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+        <div className="flex overflow-x-auto gap-2 mb-4">
           {service.photos.map((photo: any, i: number) => (
-            <div key={i} className="relative w-full aspect-square">
+            <div key={i} className="relative w-64 h-64 shrink-0">
               <Image src={photo.url} alt={`Foto ${i + 1}`} fill className="object-cover rounded" />
             </div>
           ))}
@@ -75,7 +78,38 @@ export default function ServiceDetailPage() {
       <p className="mb-2 font-semibold">Status:</p>
       <p className="mb-4">{service.status}</p>
 
-      <Link href="/explorar" className="btn-primary">Voltar para Explorar</Link>
+      {isOwner ? (
+        <div className="flex gap-2 mb-6">
+          <Link href={`/servicos/editar/${service.id}`} className="btn-primary">Editar</Link>
+          <button
+            className="btn-danger"
+            onClick={async () => {
+              if (!confirm('Tem certeza que deseja apagar este serviço?')) return;
+              try {
+                const res = await fetch(`/api/services/${service.id}`, {
+                  method: 'DELETE'
+                });
+                if (res.ok) {
+                  toast.success('Serviço apagado com sucesso.');
+                  router.push('/explorar');
+                } else {
+                  toast.error('Erro ao apagar serviço.');
+                }
+              } catch (err) {
+                toast.error('Erro inesperado.');
+              }
+            }}
+          >
+            Apagar
+          </button>
+        </div>
+      ) : (
+        <Link href={`/propostas/${service.id}`} className="btn-primary mb-6 block text-center">
+          Fazer Proposta
+        </Link>
+      )}
+
+      <Link href="/explorar" className="btn-secondary">Voltar para Explorar</Link>
     </div>
   );
 }
