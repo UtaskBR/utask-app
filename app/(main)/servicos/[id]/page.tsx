@@ -157,40 +157,40 @@ export default function ServiceDetailPage() {
 
   if (!service) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-white shadow-md rounded-lg p-8 text-center">
-          <h3 className="text-xl font-medium text-secondary-900 mb-2">Serviço não encontrado</h3>
-          <p className="text-secondary-600 mb-6">
-            O serviço que você está procurando não existe ou foi removido.
-          </p>
-          <Link href="/explorar" className="btn-primary py-2 px-4">
-            Explorar Serviços
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const isCreator = session?.user?.id === service.creatorId;
-  const canBid = !isCreator && service.status === 'OPEN';
-  const hasUserBid = service?.bids?.some(bid => bid.providerId === session?.user?.id) ?? false;
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2">
-          <div className="mb-6">
-            <Link href="/explorar" className="text-primary-600 hover:text-primary-700 flex items-center">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="p-6 border-b border-gray-200">
+            <Link href="/explorar" className="text-primary-600 hover:text-primary-700 flex items-center mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
               </svg>
               Voltar para Explorar
             </Link>
+            <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
+            <div className="mt-1">
+              <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium ${
+                service.status === 'OPEN' ? 'bg-green-100 text-green-800' :
+                service.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                service.status === 'COMPLETED' ? 'bg-purple-100 text-purple-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {service.status === 'OPEN' ? 'Aberto' :
+                service.status === 'IN_PROGRESS' ? 'Em Andamento' :
+                service.status === 'COMPLETED' ? 'Concluído' :
+                'Cancelado'}
+              </span>
+            </div>
+            {service.price ? (
+              <div className="mt-2 text-xl font-bold text-primary-600">
+                R$ {service.price.toFixed(2)}
+              </div>
+            ) : (
+              <div className="mt-2 text-secondary-600">Aberto a propostas</div>
+            )}
           </div>
-          
-          {service.photos && service.photos.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    
+          {service.photos && service.photos.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-6 border-b border-gray-200">
               {service.photos.slice(0, 5).map((photo) => (
                 <div key={photo.id} className="aspect-square overflow-hidden rounded-md">
                   <img
@@ -206,46 +206,15 @@ export default function ServiceDetailPage() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="h-64 bg-secondary-200 flex items-center justify-center">
-              <span className="text-secondary-400">Imagem do Serviço</span>
-            </div>
-          )}   
-          <div className="p-6">
-            <div className="flex justify-between items-start">
-              <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
-              <div>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  service.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-                  service.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-                  service.status === 'COMPLETED' ? 'bg-purple-100 text-purple-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {service.status === 'OPEN' ? 'Aberto' :
-                   service.status === 'IN_PROGRESS' ? 'Em Andamento' :
-                   service.status === 'COMPLETED' ? 'Concluído' :
-                   'Cancelado'}
-                </span>
-              </div>
-            </div>
-            
-            {service.price ? (
-              <div className="mt-2 text-xl font-bold text-primary-600">
-                R$ {service.price.toFixed(2)}
-              </div>
-            ) : (
-              <div className="mt-2 text-secondary-600">
-                Aberto a propostas
-              </div>
-            )}
-            
-            <div className="mt-6">
+          )}
+    
+          <div className="p-6 space-y-4">
+            <div>
               <h2 className="text-lg font-medium text-secondary-900">Descrição</h2>
               <p className="mt-2 text-secondary-600 whitespace-pre-line">{service.description}</p>
             </div>
-            
             {service.date && (
-              <div className="mt-6">
+              <div>
                 <h2 className="text-lg font-medium text-secondary-900">Data e Hora</h2>
                 <p className="mt-2 text-secondary-600">
                   {new Date(service.date).toLocaleString('pt-BR', {
@@ -259,22 +228,23 @@ export default function ServiceDetailPage() {
                 </p>
               </div>
             )}
-            
             {service.address && (
-              <div className="mt-6">
+              <div>
                 <h2 className="text-lg font-medium text-secondary-900">Localização</h2>
                 <p className="mt-2 text-secondary-600">{service.address}</p>
               </div>
             )}
-            
             {service.profession && (
-              <div className="mt-6">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+              <div>
+                <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
                   {service.profession.name}
                 </span>
               </div>
             )}
           </div>
+        </div>
+      </div>
+    );
           
           {/* Propostas */}
           {service?.bids?.length && service.bids.length > 0 && (isCreator || hasUserBid) && (
