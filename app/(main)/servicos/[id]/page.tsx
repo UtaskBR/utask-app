@@ -12,83 +12,70 @@ export default function ServiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const serviceId = params.id;
-  
-  interface Service {
-    creatorId: string;
-    status: string;
-    bids?: { id: string; providerId: string; status: string; value?: number; proposedDate?: string; message?: string; provider?: { rating: number } }[];
-    completionConfirmations?: { userId: string }[];
-    creator: { id: string; name: string; rating: number; about?: string };
-    title: string;
-    price?: number;
-    description: string;
-    date?: string;
-    timeWindow?: number;
-    address?: string;
-    profession?: { name: string };
-    photos?: { url: string }[];
-  }
 
-  const [service, setService] = useState<Service | null>(null);
+  const [service, setService] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [bidForm, setBidForm] = useState({
-    value: '',
-    message: '',
-    proposedDate: ''
-  });
-  const [showBidForm, setShowBidForm] = useState(false);
-  const [showCounterOfferForm, setShowCounterOfferForm] = useState(false);
-  const [counterOfferForm, setCounterOfferForm] = useState({
-    value: '',
-    message: '',
-    proposedDate: '',
-    bidId: ''
-  });
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [showProblemModal, setShowProblemModal] = useState(false);
-  const [confirmationAction, setConfirmationAction] = useState('');
-  const [selectedBidId, setSelectedBidId] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [problemReason, setProblemReason] = useState('');
 
   useEffect(() => {
     const fetchService = async () => {
       try {
-        console.log('Buscando serviço:', serviceId);
         const response = await fetch(`/api/services/${serviceId}`);
-        
         if (!response.ok) {
           throw new Error('Serviço não encontrado');
         }
-        
         const data = await response.json();
-        console.log('Serviço encontrado:', data);
         setService(data);
       } catch (err) {
-        console.error('Erro ao buscar serviço:', err);
         setError((err as Error).message);
       } finally {
         setIsLoading(false);
       }
     };
-    
+
     if (serviceId) {
       fetchService();
     }
   }, [serviceId]);
 
-  // ... restante do código permanece igual até:
+  if (isLoading) {
+    return <p className="text-center py-12">Carregando...</p>;
+  }
 
-              {service.price ? (
-                <div className="mt-2 text-xl font-bold text-primary-600">
-                  R$ {service.price.toFixed(2)}
-                </div>
-              ) : (
-                <div className="mt-2 text-secondary-600">
-                  Aberto a propostas
-                </div>
-              )}
+  if (error || !service) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 font-semibold">{error || 'Serviço não encontrado'}</p>
+        <Link href="/explorar" className="text-blue-600 underline">Voltar</Link>
+      </div>
+    );
+  }
 
-  // ... restante do código permanece inalterado
+  return (
+    <div className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">{service.title}</h1>
+      {service.photos?.length ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+          {service.photos.map((photo: any, i: number) => (
+            <div key={i} className="relative w-full aspect-square">
+              <Image src={photo.url} alt={`Foto ${i + 1}`} fill className="object-cover rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500 mb-4">Sem imagens disponíveis.</p>
+      )}
+
+      <p className="mb-2 font-semibold">Descrição:</p>
+      <p className="mb-4 whitespace-pre-wrap">{service.description}</p>
+
+      <p className="mb-2 font-semibold">Valor:</p>
+      <p className="mb-4">{service.price ? `R$ ${service.price.toFixed(2)}` : 'Aberto a propostas'}</p>
+
+      <p className="mb-2 font-semibold">Status:</p>
+      <p className="mb-4">{service.status}</p>
+
+      <Link href="/explorar" className="btn-primary">Voltar para Explorar</Link>
+    </div>
+  );
 }
