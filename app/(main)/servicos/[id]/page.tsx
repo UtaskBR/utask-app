@@ -137,14 +137,27 @@ export default function ServiceDetailPage() {
         </Link>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Detalhes do Serviço */}
-        <div className="lg:col-span-2">
-          <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <div className="h-64 bg-secondary-200 flex items-center justify-center">
-              <span className="text-secondary-400">Imagem do Serviço</span>
+      {service.photos && service.photos.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {service.photos.slice(0, 5).map((photo) => (
+            <div key={photo.id} className="aspect-square overflow-hidden rounded-md">
+              <img
+                src={photo.url}
+                alt="Foto do serviço"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/fallback-image.png";
+                }}
+              />
             </div>
-            
+          ))}
+        </div>
+      ) : (
+        <div className="h-64 bg-secondary-200 flex items-center justify-center">
+          <span className="text-secondary-400">Imagem do Serviço</span>
+        </div>
+      )}
+      
             <div className="p-6">
               <div className="flex justify-between items-start">
                 <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
