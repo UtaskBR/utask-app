@@ -45,8 +45,8 @@ export default function ServiceDetailPage() {
   }, [serviceId]);
 
   const handleBidChange = (e) => {
-    const { name, price } = e.target;
-    setBidForm(prev => ({ ...prev, [name]: price }));
+    const { name, value } = e.target;
+    setBidForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleBidSubmit = async (e) => {
