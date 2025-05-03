@@ -8,10 +8,10 @@ import { Prisma } from "@prisma/client";
 export async function GET(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const professionId = url.searchParams.get('professionId');
-    const status = url.searchParams.get('status');
-    const creatorId = url.searchParams.get('creatorId');
-    const search = url.searchParams.get('search');
+    const professionId = url.searchParams.get("professionId");
+    const status = url.searchParams.get("status");
+    const creatorId = url.searchParams.get("creatorId");
+    const search = url.searchParams.get("search");
 
     let query = `
       SELECT 
@@ -64,34 +64,26 @@ export async function GET(request: NextRequest) {
     query += ` ORDER BY s."createdAt" DESC`;
 
     const services = await prisma.$queryRawUnsafe(query, ...queryParams);
+    const servicesIds = (services as any[]).map((s) => s.id);
 
-    const servicesIds = (services as any[]).map(service => service.id);
+    const [photos, ratings] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT id, url, "serviceId"
+        FROM "Photo"
+        WHERE "serviceId" IN (${Prisma.join(servicesIds)})
+      `,
+      prisma.$queryRaw`
+        SELECT "receiverId", AVG(rating)::float AS rating
+        FROM "Review"
+        WHERE "receiverId" IN (${Prisma.join(services.map((s) => s.creator_id))})
+        GROUP BY "receiverId"
+      `,
+    ]);
 
-    const photos = await prisma.$queryRaw`
-      SELECT id, url, "serviceId"
-      FROM "Photo"
-      WHERE "serviceId" IN (${Prisma.join(servicesIds)})
-    `;
+    const ratingMap = Object.fromEntries((ratings as any[]).map(r => [r.receiverId, r.rating]));
 
-    const creatorIds = Array.from(new Set((services as any[]).map(service => service.creator_id)));
-
-    const creatorRatings: { [key: string]: number | null } = {};
-
-    for (const creatorId of creatorIds) {
-      const reviews = await prisma.$queryRaw`
-        SELECT rating FROM "Review" WHERE "receiverId" = ${creatorId}
-      `;
-
-      if (reviews && (reviews as any[]).length > 0) {
-        const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
-        creatorRatings[creatorId] = totalRating / (reviews as any[]).length;
-      } else {
-        creatorRatings[creatorId] = null;
-      }
-    }
-
-    const formattedServices = (services as any[]).map(service => {
-      const servicePhotos = (photos as any[]).filter(photo => photo.serviceId === service.id).map(photo => ({ url: photo.url }));
+    const formattedServices = (services as any[]).map((service) => {
+      const servicePhotos = (photos as any[]).filter(p => p.serviceId === service.id).map(p => ({ url: p.url }));
       return {
         id: service.id,
         title: service.title,
@@ -108,7 +100,7 @@ export async function GET(request: NextRequest) {
           id: service.creator_id,
           name: service.creator_name,
           image: service.creator_image,
-          rating: creatorRatings[service.creator_id]
+          rating: ratingMap[service.creator_id] ?? null
         },
         profession: service.profession_id ? {
           id: service.profession_id,
@@ -129,14 +121,14 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     const body = await request.json();
     const { title, description, price, date, latitude, longitude, address, professionId } = body;
 
-    if (!title || !description) {
+    if (!title || !description || price === undefined) {
       return NextResponse.json({ error: "Título, descrição e preço são obrigatórios" }, { status: 400 });
     }
 
@@ -145,70 +137,29 @@ export async function POST(request: NextRequest) {
 
     await prisma.$executeRaw`
       INSERT INTO "Service" (
-        id, 
-        title, 
-        description, 
-        price, 
-        date, 
-        latitude,
-        longitude,
-        address,
-        status, 
-        "creatorId", 
-        "professionId", 
-        "createdAt", 
-        "updatedAt"
-      )
-      VALUES (
-        ${serviceId}, 
-        ${title}, 
-        ${description}, 
-        ${price}, 
-        ${date ? new Date(date) : null}, 
-        ${latitude || null},
-        ${longitude || null},
-        ${address || null},
-        'OPEN', 
-        ${session.user.id}, 
-        ${professionId || null}, 
-        ${now}, 
-        ${now}
+        id, title, description, price, date, latitude, longitude, address,
+        status, "creatorId", "professionId", "createdAt", "updatedAt"
+      ) VALUES (
+        ${serviceId}, ${title}, ${description}, ${price},
+        ${date ? new Date(date) : null},
+        ${latitude || null}, ${longitude || null}, ${address || null},
+        'OPEN', ${session.user.id}, ${professionId || null}, ${now}, ${now}
       )
     `;
 
-    const createdServices = await prisma.$queryRaw`
+    const [service] = await prisma.$queryRaw`
       SELECT 
-        s.id, 
-        s.title, 
-        s.description, 
-        s.price, 
-        s.date, 
-        s.latitude,
-        s.longitude,
-        s.address,
-        s.status, 
-        s."createdAt", 
-        s."updatedAt",
-        s."creatorId",
-        s."professionId",
-        u.id as creator_id,
-        u.name as creator_name,
-        u.image as creator_image,
-        p.id as profession_id,
-        p.name as profession_name
+        s.id, s.title, s.description, s.price, s.date, s.latitude,
+        s.longitude, s.address, s.status, s."createdAt", s."updatedAt",
+        u.id as creator_id, u.name as creator_name, u.image as creator_image,
+        p.id as profession_id, p.name as profession_name
       FROM "Service" s
       JOIN "User" u ON s."creatorId" = u.id
       LEFT JOIN "Profession" p ON s."professionId" = p.id
       WHERE s.id = ${serviceId}
     `;
 
-    if (!createdServices || (createdServices as any[]).length === 0) {
-      return NextResponse.json({ error: "Erro ao criar serviço" }, { status: 500 });
-    }
-
-    const service = (createdServices as any[])[0];
-
-    const formattedService = {
+    return NextResponse.json({
       id: service.id,
       title: service.title,
       description: service.description,
@@ -230,9 +181,7 @@ export async function POST(request: NextRequest) {
         name: service.profession_name
       } : null,
       photos: []
-    };
-
-    return NextResponse.json(formattedService, { status: 201 });
+    }, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar serviço:", error);
     return NextResponse.json({ error: "Erro ao processar a solicitação" }, { status: 500 });

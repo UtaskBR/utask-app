@@ -19,7 +19,7 @@ export async function GET(
         sb."serviceId", 
         sb."providerId", 
         sb.status,
-        sb.value,
+        sb.price,
         sb."proposedDate",
         sb.message,
         sb."createdAt",
@@ -57,7 +57,7 @@ export async function GET(
       serviceId: bid.serviceId,
       providerId: bid.providerId,
       status: bid.status,
-      value: bid.value,
+      price: bid.price,
       proposedDate: bid.proposedDate,
       message: bid.message,
       createdAt: bid.createdAt,
@@ -96,7 +96,7 @@ export async function POST(
     
     const { id: serviceId } = await params;
     const body = await request.json();
-    const { value, proposedDate, message } = body;
+    const { price, proposedDate, message } = body;
     
     // Verificar se o serviço existe
     const services = await prisma.$queryRaw`
@@ -158,7 +158,7 @@ export async function POST(
         "serviceId", 
         "providerId", 
         status, 
-        value, 
+        price, 
         "proposedDate", 
         message, 
         "createdAt", 
@@ -169,7 +169,7 @@ export async function POST(
         ${serviceId}, 
         ${session.user.id}, 
         'PENDING', 
-        ${value}, 
+        ${price}, 
         ${proposedDateValue}, 
         ${message || null}, 
         ${now}, 
