@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
         s.description, 
         s.price, 
         s.date, 
-        s.time, 
         s.location, 
         s.status, 
         s."createdAt", 
@@ -107,7 +106,6 @@ export async function GET(request: NextRequest) {
         description: service.description,
         price: service.price,
         date: service.date,
-        time: service.time,
         location: service.location,
         status: service.status,
         createdAt: service.createdAt,
@@ -148,7 +146,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { title, description, price, date, time, location, professionId } = body;
+    const { title, description, price, date, location, professionId } = body;
     
     // Verificar se todos os campos obrigatórios estão presentes
     if (!title || !description) {
@@ -171,7 +169,6 @@ export async function POST(request: NextRequest) {
         description, 
         price, 
         date, 
-        time, 
         location, 
         status, 
         "creatorId", 
@@ -185,7 +182,6 @@ export async function POST(request: NextRequest) {
         ${description}, 
         ${price}, 
         ${date ? new Date(date) : null}, 
-        ${time || null}, 
         ${location || null}, 
         'OPEN', 
         ${session.user.id}, 
@@ -203,7 +199,6 @@ export async function POST(request: NextRequest) {
         s.description, 
         s.price, 
         s.date, 
-        s.time, 
         s.location, 
         s.status, 
         s."createdAt", 
@@ -237,7 +232,6 @@ export async function POST(request: NextRequest) {
       description: service.description,
       price: service.price,
       date: service.date,
-      time: service.time,
       location: service.location,
       status: service.status,
       createdAt: service.createdAt,
