@@ -39,7 +39,7 @@ export default function ExplorarPage() {
     try {
       let url = '/api/services?';
       if (filters.profession) {
-        url += `profession=${filters.profession}&`;
+        url += `professionId=${filters.profession}&`;
       }
       if (filters.minValue) {
         url += `minValue=${filters.minValue}&`;
@@ -143,8 +143,8 @@ export default function ExplorarPage() {
                 <Link href={`/servicos/${service.id}`} key={service.id}>
                   <div className="card h-full flex flex-col hover:shadow-lg transition-shadow">
                     <div className="h-40 bg-secondary-200 rounded-t-lg flex items-center justify-center overflow-hidden">
-                      {service.image ? (
-                        <Image src={service.image} alt="Imagem do serviço" width={400} height={160} className="object-cover w-full h-full" />
+                      {service.photos?.[0]?.url ? (
+                        <Image src={service.photos[0].url} alt="Imagem do serviço" width={400} height={160} className="object-cover w-full h-full" />
                       ) : (
                         <span className="text-secondary-400">Imagem do Serviço</span>
                       )}
