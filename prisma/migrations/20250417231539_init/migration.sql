@@ -83,7 +83,7 @@ CREATE TABLE "Service" (
     "description" TEXT NOT NULL,
     "date" TIMESTAMP(3),
     "timeWindow" INTEGER,
-    "value" DOUBLE PRECISION,
+    "price" DOUBLE PRECISION,
     "status" "ServiceStatus" NOT NULL DEFAULT 'OPEN',
     "latitude" DOUBLE PRECISION,
     "longitude" DOUBLE PRECISION,
