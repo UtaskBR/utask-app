@@ -38,7 +38,7 @@ export async function POST(
     }
 
     // Impedir propostas duplicadas
-    const alreadyBid = await prisma.serviceBid.findFirst({
+    const alreadyBid = await prisma.bid.findFirst({
       where: {
         serviceId,
         providerId: session.user.id
@@ -50,12 +50,12 @@ export async function POST(
     }
 
     // Criar a proposta
-    const bid = await prisma.serviceBid.create({
+    const bid = await prisma.bid.create({
       data: {
         id: crypto.randomUUID(),
         serviceId,
         providerId: session.user.id,
-        price,
+        value: price,
         proposedDate: proposedDate ? new Date(proposedDate) : null,
         message,
         status: "PENDING"
@@ -67,6 +67,7 @@ export async function POST(
       data: {
         id: crypto.randomUUID(),
         type: "BID",
+        title: "Nova proposta recebida",
         message: `Você recebeu uma nova proposta para o serviço "${service.title}"`,
         receiverId: service.creatorId,
         senderId: session.user.id,
