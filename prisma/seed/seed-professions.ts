@@ -1,23 +1,21 @@
-// prisma/seed-professions.ts
+// prisma/seed/seed-professions.ts
 import { PrismaClient } from '@prisma/client';
-const { professions } = require('@/prisma/seed/professions');
+import { professions } from './professions';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Iniciando seed de profissões...');
 
-  // Adicionar cada profissão, ignorando se já existir
   for (const profession of professions) {
     try {
-      // Verificar se a profissão já existe
       const existing = await prisma.profession.findFirst({
         where: {
           name: {
             equals: profession.name,
-            mode: 'insensitive'
-          }
-        }
+            mode: 'insensitive',
+          },
+        },
       });
 
       if (!existing) {
