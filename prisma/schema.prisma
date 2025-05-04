@@ -77,7 +77,7 @@ model Service {
 
 model Bid {
   id           String    @id @default(cuid())
-  value        Float?
+  price       Float?
   message      String?
   status       String    @default("PENDING")
   proposedDate DateTime?
