@@ -87,8 +87,6 @@ model Bid {
   providerId   String
   provider     User      @relation("BidProvider", fields: [providerId], references: [id])
   service      Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  
-  @@map("ServiceBid")
 }
 
 model Cancellation {
