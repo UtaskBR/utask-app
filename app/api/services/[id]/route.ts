@@ -58,6 +58,26 @@ export async function GET(
     const reviews = await prisma.$queryRaw`
       SELECT rating FROM "Review" WHERE "receiverId" = ${service.creator_id}
     `;
+
+    // Buscar propostas com dados do prestador
+    const bids = await prisma.$queryRaw`
+      SELECT 
+      b.id, b."providerId", b.status, b."proposedDate", b.message, b.price,
+      u.name as provider_name,
+      u."image" as provider_image
+      FROM "Bid" b
+      "User" u ON b."providerId" = u.id
+      WHERE b."serviceId" = ${serviceId}
+    `;
+
+    // Buscar notas dos prestadores
+    const providerRatings = await prisma.$queryRaw`
+    SELECT "receiverId", AVG(rating) as avg_rating
+    FROM "Review"
+    WHERE "receiverId" IN (SELECT "providerId" FROM "Bid" WHERE "serviceId" = ${serviceId})
+    GROUP BY "receiverId"
+    `;
+
     
     let creatorRating = null;
     if (reviews && (reviews as any[]).length > 0) {
@@ -89,6 +109,23 @@ export async function GET(
       } : null,
       photos: (photos as any[]).map(photo => ({ url: photo.url }))
     };
+
+    bids: (bids as any[]).map(bid => ({
+      id: bid.id,
+      providerId: bid.providerId,
+      status: bid.status,
+      value: bid.price,
+      message: bid.message,
+      proposedDate: bid.proposedDate,
+      provider: {
+        name: bid.provider_name,
+        image: bid.provider_image,
+        rating: (() => {
+          const found = (providerRatings as any[]).find(r => r.receiverId === bid.providerId);
+          return found ? Number(found.avg_rating) : null;
+        })()
+      }
+    }))    
     
     return NextResponse.json(formattedService);
   } catch (error) {
@@ -201,6 +238,25 @@ export async function PUT(
       WHERE "serviceId" = ${serviceId}
     `;
     
+    // Buscar propostas com dados do prestador
+    const bids = await prisma.$queryRaw`
+      SELECT 
+      b.id, b."providerId", b.status, b."proposedDate", b.message, b.price,
+      u.name as provider_name,
+      u."image" as provider_image
+      FROM "Bid" b
+      JOIN "User" u ON b."providerId" = u.id
+      WHERE b."serviceId" = ${serviceId}
+    `;
+
+    // Buscar notas dos prestadores
+    const providerRatings = await prisma.$queryRaw`
+      SELECT "receiverId", AVG(rating) as avg_rating
+      FROM "Review"
+      WHERE "receiverId" IN (SELECT "providerId" FROM "Bid" WHERE "serviceId" = ${serviceId})
+      GROUP BY "receiverId"
+    `;
+
     // Formatar a resposta
     const formattedService = {
       id: updatedService.id,
@@ -222,7 +278,24 @@ export async function PUT(
         id: updatedService.profession_id,
         name: updatedService.profession_name
       } : null,
-      photos: (photos as any[]).map(photo => ({ url: photo.url }))
+      photos: (photos as any[]).map(photo => ({ url: photo.url })),
+      bids: (bids as any[]).map(bid => ({
+        id: bid.id,
+        providerId: bid.providerId,
+        status: bid.status,
+        price: bid.price,
+        message: bid.message,
+        proposedDate: bid.proposedDate,
+        provider: {
+          name: bid.provider_name,
+          image: bid.provider_image,
+          rating: (() => {
+            const found = (providerRatings as any[]).find(r => r.receiverId === bid.providerId);
+            return found ? Number(found.avg_rating) : null;
+          })()
+        }
+      }))
+      
     };
     
     return NextResponse.json(formattedService);
