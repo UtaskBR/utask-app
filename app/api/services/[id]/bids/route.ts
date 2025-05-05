@@ -55,7 +55,7 @@ export async function POST(
         id: crypto.randomUUID(),
         serviceId,
         providerId: session.user.id,
-        value: price,
+        price: price,
         proposedDate: proposedDate ? new Date(proposedDate) : null,
         message,
         status: "PENDING"
