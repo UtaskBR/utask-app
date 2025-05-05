@@ -110,25 +110,24 @@ if (reviews && (reviews as any[]).length > 0) {
         id: service.profession_id,
         name: service.profession_name
       } : null,
-      photos: (photos as any[]).map(photo => ({ url: photo.url }))
-    };
-
-    bids: (bids as any[]).map(bid => ({
-      id: bid.id,
-      providerId: bid.providerId,
-      status: bid.status,
-      value: bid.price,
-      message: bid.message,
-      proposedDate: bid.proposedDate,
-      provider: {
-        name: bid.provider_name,
-        image: bid.provider_image,
-        rating: (() => {
-          const found = (providerRatings as any[]).find(r => r.receiverId === bid.providerId);
-          return found ? Number(found.avg_rating) : null;
-        })()
-      }
-    }))    
+      photos: (photos as any[]).map(photo => ({ url: photo.url })),
+      bids: (bids as any[]).map(bid => ({
+        id: bid.id,
+        providerId: bid.providerId,
+        status: bid.status,
+        price: bid.price,
+        message: bid.message,
+        proposedDate: bid.proposedDate,
+        provider: {
+          name: bid.provider_name,
+          image: bid.provider_image,
+          rating: (() => {
+            const found = (providerRatings as any[]).find(r => r.receiverId === bid.providerId);
+            return found ? Number(found.avg_rating) : null;
+          })()
+        }
+      }))
+    };    
     
     return NextResponse.json(formattedService);
   } catch (error) {
@@ -262,6 +261,17 @@ export async function PUT(
       GROUP BY "receiverId"
     `;
 
+    // Buscar avaliações do criador
+    const reviews = await prisma.$queryRaw`
+      SELECT rating FROM "Review" WHERE "receiverId" = ${service.creator_id}
+    `;
+
+    let creatorRating = null;
+    if (reviews && (reviews as any[]).length > 0) {
+      const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
+      creatorRating = totalRating / (reviews as any[]).length;
+    }
+
     // Formatar a resposta
     const formattedService = {
       id: updatedService.id,
@@ -275,10 +285,12 @@ export async function PUT(
       status: updatedService.status,
       createdAt: updatedService.createdAt,
       updatedAt: updatedService.updatedAt,
+      creatorId: service.creator_id, 
       creator: {
-        id: updatedService.creator_id,
-        name: updatedService.creator_name,
-        image: updatedService.creator_image
+        id: service.creator_id,
+        name: service.creator_name,
+        image: service.creator_image,
+        rating: creatorRating
       },
       profession: updatedService.profession_id ? {
         id: updatedService.profession_id,

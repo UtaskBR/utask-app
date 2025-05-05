@@ -153,6 +153,64 @@ export default function ServiceDetailPage() {
   const hasUserBid = service.bids?.some(bid => bid.providerId === session?.user?.id);
   const isProvider = service.bids?.some(b => b.providerId === session?.user?.id);
 
+  async function handleAccept(id: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/services/${serviceId}/bids/${id}/accept`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao aceitar proposta');
+      }
+      window.location.reload();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao aceitar proposta');
+    }
+  }
+
+  async function handleCounterProposal(id: string): Promise<void> {
+    const newPrice = prompt('Digite o valor da contra-proposta (R$):');
+    if (newPrice === null) return; // Cancelled
+
+    const priceValue = parseFloat(newPrice);
+    if (isNaN(priceValue) || priceValue <= 0) {
+      setError('Por favor, insira um valor válido para a contra-proposta.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/services/${serviceId}/bids/${id}/counter`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ price: priceValue })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao enviar contra-proposta');
+      }
+      window.location.reload();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar contra-proposta');
+    }
+  }
+
+  async function handleReject(id: string): Promise<void> {
+    try {
+      const response = await fetch(`/api/services/${serviceId}/bids/${id}/reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao rejeitar proposta');
+      }
+      window.location.reload();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao rejeitar proposta');
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 bg-white shadow-md rounded-lg overflow-hidden">
@@ -287,7 +345,24 @@ export default function ServiceDetailPage() {
             </Link>
           </div>
         </div>
-
+        {isCreator && service.bids && service.bids.length > 0 && (
+          <div className="space-y-4 mt-6">
+            <h3 className="text-lg font-bold">Propostas Recebidas</h3>
+            {service.bids.map((bid) => (
+              <div key={bid.id} className="border p-4 rounded-md shadow-sm">
+                <p><strong>Prestador:</strong> {bid.provider.name}</p>
+                <p><strong>Mensagem:</strong> {bid.message}</p>
+                <p><strong>Valor:</strong> R$ {bid.price}</p>
+                <p><strong>Status:</strong> {bid.status}</p>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => handleAccept(bid.id)} className="bg-green-500 text-white px-3 py-1 rounded">Aceitar</button>
+                  <button onClick={() => handleCounterProposal(bid.id)} className="bg-yellow-500 text-white px-3 py-1 rounded">Contra-proposta</button>
+                  <button onClick={() => handleReject(bid.id)} className="bg-red-500 text-white px-3 py-1 rounded">Rejeitar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="mt-6 bg-white shadow-md rounded-lg p-6">
           <h2 className="text-lg font-medium text-secondary-900 mb-4">Ações</h2>
           {canBid && !hasUserBid && (
