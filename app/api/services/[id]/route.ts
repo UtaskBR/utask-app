@@ -60,31 +60,32 @@ export async function GET(
       SELECT rating FROM "Review" WHERE "receiverId" = ${service.creator_id}
     `;
 
-    // Buscar propostas com dados do prestador
-    const bids = await prisma.$queryRaw`
-      SELECT 
-      b.id, b."providerId", b.status, b."proposedDate", b.message, b.price,
-      u.name as provider_name,
-      u."image" as provider_image
-      FROM "Bid" b
-      "User" u ON b."providerId" = u.id
-      WHERE b."serviceId" = ${serviceId}
-    `;
+// Buscar propostas com dados do prestador
+const bids = await prisma.$queryRaw`
+  SELECT 
+  b.id, b."providerId", b.status, b."proposedDate", b.message, b.price,
+  u.name as provider_name,
+  u."image" as provider_image
+  FROM "Bid" b
+  JOIN "User" u ON b."providerId" = u.id
+  WHERE b."serviceId" = ${serviceId}
+`;
 
-    // Buscar notas dos prestadores
-    const providerRatings = await prisma.$queryRaw`
-    SELECT "receiverId", AVG(rating) as avg_rating
-    FROM "Review"
-    WHERE "receiverId" IN (SELECT "providerId" FROM "Bid" WHERE "serviceId" = ${serviceId})
-    GROUP BY "receiverId"
-    `;
+// Buscar notas dos prestadores
+const providerRatings = await prisma.$queryRaw`
+SELECT "receiverId", AVG(rating) as avg_rating
+FROM "Review"
+WHERE "receiverId" IN (SELECT "providerId" FROM "Bid" WHERE "serviceId" = ${serviceId})
+GROUP BY "receiverId"
+`;
 
-    
-    let creatorRating = null;
-    if (reviews && (reviews as any[]).length > 0) {
-      const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
-      creatorRating = totalRating / (reviews as any[]).length;
-    }
+
+let creatorRating = null;
+if (reviews && (reviews as any[]).length > 0) {
+  const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
+  creatorRating = totalRating / (reviews as any[]).length;
+}
+
     
     // Formatar a resposta
     const formattedService = {
