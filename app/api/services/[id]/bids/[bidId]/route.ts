@@ -15,15 +15,15 @@ export async function GET(
     // Buscar a proposta usando SQL bruto
     const bids = await prisma.$queryRaw`
       SELECT 
-        sb.id, 
-        sb."serviceId", 
-        sb."providerId", 
-        sb.status,
-        sb.value,
-        sb."proposedDate",
-        sb.message,
-        sb."createdAt",
-        sb."updatedAt",
+        b.id, 
+        b."serviceId", 
+        b."providerId", 
+        b.status,
+        b.price,
+        b."proposedDate",
+        b.message,
+        b."createdAt",
+        b."updatedAt",
         s.id as service_id,
         s.title as service_title,
         s."creatorId" as service_creator_id,
@@ -31,10 +31,10 @@ export async function GET(
         p.id as provider_id,
         p.name as provider_name,
         p.image as provider_image
-      FROM "ServiceBid" sb
-      JOIN "Service" s ON sb."serviceId" = s.id
-      JOIN "User" p ON sb."providerId" = p.id
-      WHERE sb.id = ${bidId} AND sb."serviceId" = ${serviceId}
+      FROM "Bid" b
+      JOIN "Service" s ON b."serviceId" = s.id
+      JOIN "User" p ON b."providerId" = p.id
+      WHERE b.id = ${bidId} AND b."serviceId" = ${serviceId}
     `;
     
     if (!bids || (bids as any[]).length === 0) {
@@ -63,7 +63,7 @@ export async function GET(
       serviceId: bid.serviceId,
       providerId: bid.providerId,
       status: bid.status,
-      value: bid.value,
+      price: bid.price,
       proposedDate: bid.proposedDate,
       message: bid.message,
       createdAt: bid.createdAt,
@@ -108,25 +108,25 @@ export async function PUT(
     
     const { id: serviceId, bidId } = await params;
     const body = await request.json();
-    const { status, value, proposedDate, message } = body;
+    const { status, price, proposedDate, message } = body;
     
     // Buscar a proposta usando SQL bruto
     const bids = await prisma.$queryRaw`
       SELECT 
-        sb.id, 
-        sb."serviceId", 
-        sb."providerId", 
-        sb.status,
+        b.id, 
+        b."serviceId", 
+        b."providerId", 
+        b.status,
         s.id as service_id,
         s.title as service_title,
         s."creatorId" as service_creator_id,
         s.status as service_status,
         p.id as provider_id,
         p.name as provider_name
-      FROM "ServiceBid" sb
-      JOIN "Service" s ON sb."serviceId" = s.id
-      JOIN "User" p ON sb."providerId" = p.id
-      WHERE sb.id = ${bidId} AND sb."serviceId" = ${serviceId}
+      FROM "Bid" b
+      JOIN "Service" s ON b."serviceId" = s.id
+      JOIN "User" p ON b."providerId" = p.id
+      WHERE b.id = ${bidId} AND b."serviceId" = ${serviceId}
     `;
     
     if (!bids || (bids as any[]).length === 0) {
@@ -159,7 +159,7 @@ export async function PUT(
     if (isServiceCreator && status === "ACCEPTED") {
       // Atualizar o status da proposta
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET status = 'ACCEPTED', "updatedAt" = ${now}
         WHERE id = ${bidId}
       `;
@@ -173,7 +173,7 @@ export async function PUT(
       
       // Rejeitar todas as outras propostas
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET status = 'REJECTED', "updatedAt" = ${now}
         WHERE "serviceId" = ${serviceId} AND id != ${bidId}
       `;
@@ -184,7 +184,7 @@ export async function PUT(
     // Se o criador do serviço está rejeitando a proposta
     else if (isServiceCreator && status === "REJECTED") {
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET status = 'REJECTED', "updatedAt" = ${now}
         WHERE id = ${bidId}
       `;
@@ -194,15 +194,15 @@ export async function PUT(
     } 
     // Se o criador do serviço está fazendo uma contra-proposta
     else if (isServiceCreator && status === "COUNTER_OFFER") {
-      const newValue = value !== undefined ? value : null;
+      const newPrice = price !== undefined ? price : null;
       const newProposedDate = proposedDate ? new Date(proposedDate) : null;
       const newMessage = message || null;
       
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET 
           status = 'COUNTER_OFFER', 
-          value = COALESCE(${newValue}, value),
+          price = COALESCE(${newPrice}, price),
           "proposedDate" = COALESCE(${newProposedDate}, "proposedDate"),
           message = COALESCE(${newMessage}, message),
           "updatedAt" = ${now}
@@ -216,7 +216,7 @@ export async function PUT(
     else if (isProvider && status === "ACCEPTED" && bid.status === "COUNTER_OFFER") {
       // Atualizar o status da proposta
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET status = 'ACCEPTED', "updatedAt" = ${now}
         WHERE id = ${bidId}
       `;
@@ -230,7 +230,7 @@ export async function PUT(
       
       // Rejeitar todas as outras propostas
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET status = 'REJECTED', "updatedAt" = ${now}
         WHERE "serviceId" = ${serviceId} AND id != ${bidId}
       `;
@@ -241,7 +241,7 @@ export async function PUT(
     // Se o provedor está rejeitando uma contra-proposta
     else if (isProvider && status === "REJECTED" && bid.status === "COUNTER_OFFER") {
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET status = 'REJECTED', "updatedAt" = ${now}
         WHERE id = ${bidId}
       `;
@@ -251,14 +251,14 @@ export async function PUT(
     }
     // Se o provedor está atualizando sua proposta
     else if (isProvider && !status) {
-      const newValue = value !== undefined ? value : null;
+      const newPrice = price !== undefined ? price : null;
       const newProposedDate = proposedDate ? new Date(proposedDate) : null;
       const newMessage = message || null;
       
       await prisma.$executeRaw`
-        UPDATE "ServiceBid"
+        UPDATE "Bid"
         SET 
-          value = COALESCE(${newValue}, value),
+          price = COALESCE(${newPrice}, price),
           "proposedDate" = COALESCE(${newProposedDate}, "proposedDate"),
           message = COALESCE(${newMessage}, message),
           "updatedAt" = ${now}
@@ -304,7 +304,7 @@ export async function PUT(
     
     // Buscar a proposta atualizada
     const updatedBids = await prisma.$queryRaw`
-      SELECT * FROM "ServiceBid" WHERE id = ${bidId}
+      SELECT * FROM "Bid" WHERE id = ${bidId}
     `;
     
     return NextResponse.json((updatedBids as any[])[0]);
@@ -336,13 +336,13 @@ export async function DELETE(
     // Buscar a proposta usando SQL bruto
     const bids = await prisma.$queryRaw`
       SELECT 
-        sb.id, 
-        sb."serviceId", 
-        sb."providerId", 
+        b.id, 
+        b."serviceId", 
+        b."providerId", 
         s."creatorId" as service_creator_id
-      FROM "ServiceBid" sb
-      JOIN "Service" s ON sb."serviceId" = s.id
-      WHERE sb.id = ${bidId} AND sb."serviceId" = ${serviceId}
+      FROM "Bid" b
+      JOIN "Service" s ON b."serviceId" = s.id
+      WHERE b.id = ${bidId} AND b."serviceId" = ${serviceId}
     `;
     
     if (!bids || (bids as any[]).length === 0) {
@@ -366,7 +366,7 @@ export async function DELETE(
     
     // Excluir a proposta
     await prisma.$executeRaw`
-      DELETE FROM "ServiceBid" WHERE id = ${bidId}
+      DELETE FROM "Bid" WHERE id = ${bidId}
     `;
     
     return NextResponse.json({ message: "Proposta excluída com sucesso" });
