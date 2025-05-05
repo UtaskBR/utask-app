@@ -26,7 +26,7 @@ export default function CreateServicePage() {
     description: '',
     date: '',
     timeWindow: 60,
-    value: '',
+    price: '',
     professionId: '',
     latitude: null,
     longitude: null,
@@ -34,12 +34,10 @@ export default function CreateServicePage() {
   });
 
   useEffect(() => {
-    // Redirecionar se não estiver autenticado
     if (status === 'unauthenticated') {
       router.push('/auth/login');
     }
 
-    // Carregar profissões
     const fetchProfessions = async () => {
       try {
         const response = await fetch('/api/professions');
@@ -53,169 +51,63 @@ export default function CreateServicePage() {
     fetchProfessions();
   }, [status, router]);
 
-  interface FormData {
-    title: string;
-    description: string;
-    date: string;
-    timeWindow: number;
-    value: string;
-    professionId: string;
-    latitude: number | null;
-    longitude: number | null;
-    address: string;
-  }
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  interface PhotoChangeEvent extends React.ChangeEvent<HTMLInputElement> {}
-
-  const handlePhotoChange = (e: PhotoChangeEvent) => {
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Limitar a 5 fotos
     const totalPhotos = photos.length + files.length;
     if (totalPhotos > 5) {
       toast.error('Você pode adicionar no máximo 5 fotos');
       return;
     }
 
-    // Adicionar novas fotos
-    setPhotos((prev: File[]) => [...prev, ...files]);
-
-    // Criar previews
-    const newPreviews = files.map((file: File) => URL.createObjectURL(file));
-    setPhotoPreview((prev: string[]) => [...prev, ...newPreviews]);
+    setPhotos((prev) => [...prev, ...files]);
+    const newPreviews = files.map((file) => URL.createObjectURL(file));
+    setPhotoPreview((prev) => [...prev, ...newPreviews]);
   };
 
-  interface RemovePhotoParams {
-    index: number;
-  }
-
-  const removePhoto = (index: RemovePhotoParams['index']): void => {
-    // Remover foto e preview
-    const newPhotos: File[] = [...photos];
-    const newPreviews: string[] = [...photoPreview];
-    
-    // Liberar URL do objeto para evitar vazamento de memória
+  const removePhoto = (index: number): void => {
+    const newPhotos = [...photos];
+    const newPreviews = [...photoPreview];
     URL.revokeObjectURL(newPreviews[index]);
-    
     newPhotos.splice(index, 1);
     newPreviews.splice(index, 1);
-    
     setPhotos(newPhotos);
     setPhotoPreview(newPreviews);
   };
 
-  interface UploadPhotosResponse {
-    photos: any[]; // Replace `any` with the actual type if known
-  }
-
-  const uploadPhotos = async (serviceId: string): Promise<UploadPhotosResponse> => {
-    try {
-      // Criar FormData para upload de fotos
-      const photoFormData = new FormData();
-      photos.forEach((photo: File) => {
-        photoFormData.append('photos', photo);
-      });
-      photoFormData.append('serviceId', serviceId);
-      
-      console.log('Enviando fotos para o serviço:', serviceId);
-      
-      const photoResponse = await fetch('/api/photos', {
-        method: 'POST',
-        body: photoFormData
-      });
-      
-      // Verificar se a resposta é um erro 404 ou outro erro HTTP
-      if (!photoResponse.ok) {
-        if (photoResponse.status === 404) {
-          throw new Error('API de fotos não encontrada. Verifique se o endpoint está correto.');
-        }
-        
-        // Tentar ler o corpo da resposta como texto primeiro
-        const responseText = await photoResponse.text();
-        
-        // Tentar analisar como JSON se possível
-        let errorMessage = 'Erro desconhecido ao fazer upload das fotos';
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.error || errorMessage;
-        } catch (jsonError) {
-          // Se não for JSON válido, usar o texto da resposta
-          if (responseText.includes('<!DOCTYPE html>')) {
-            errorMessage = `Erro no servidor: ${photoResponse.status} ${photoResponse.statusText}`;
-          } else {
-            errorMessage = responseText || errorMessage;
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-      
-      // Tentar ler a resposta como texto primeiro
-      const responseText = await photoResponse.text();
-      
-      // Se a resposta estiver vazia, retornar um objeto vazio
-      if (!responseText.trim()) {
-        console.log('Resposta vazia do servidor');
-        return { photos: [] };
-      }
-      
-      // Tentar analisar como JSON
-      try {
-        const photoData: UploadPhotosResponse = JSON.parse(responseText);
-        console.log('Fotos enviadas com sucesso:', photoData);
-        return photoData;
-      } catch (jsonError) {
-        console.error('Erro ao analisar resposta JSON:', jsonError);
-        console.error('Resposta recebida:', responseText);
-        throw new Error('Erro ao processar resposta do servidor');
-      }
-    } catch (error) {
-      console.error('Exceção ao fazer upload de fotos:', error);
-      throw error;
-    }
+  const uploadPhotos = async (serviceId: string) => {
+    const photoFormData = new FormData();
+    photos.forEach((photo) => photoFormData.append('photos', photo));
+    photoFormData.append('serviceId', serviceId);
+    const res = await fetch('/api/photos', {
+      method: 'POST',
+      body: photoFormData
+    });
+    if (!res.ok) throw new Error('Erro ao fazer upload das fotos');
+    return res.json();
   };
 
-  interface HandleSubmitEvent extends React.FormEvent<HTMLFormElement> {}
-
-  interface CreateServiceResponse {
-    id: string;
-  }
-
-  interface CreateServiceRequest {
-    title: string;
-    description: string;
-    date: string;
-    timeWindow: number | null;
-    value: number | null;
-    professionId: string;
-    latitude: number | null;
-    longitude: number | null;
-    address: string;
-  }
-
-  const handleSubmit = async (e: HandleSubmitEvent): Promise<void> => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
-    
-    // Validação básica
+
     if (!formData.title || !formData.description) {
       setError('Título e descrição são obrigatórios');
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
-      // Primeiro, criar o serviço
-      const requestBody: CreateServiceRequest = {
+      const requestBody = {
         ...formData,
-        value: formData.value ? parseFloat(formData.value) : null,
+        price: formData.price ? parseFloat(formData.price) : null,
         timeWindow: formData.timeWindow ? parseInt(formData.timeWindow.toString()) : null
       };
 
@@ -226,33 +118,27 @@ export default function CreateServicePage() {
         },
         body: JSON.stringify(requestBody)
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Erro ao criar serviço');
       }
-      
-      const data: CreateServiceResponse = await response.json();
+
+      const data = await response.json();
       const serviceId = data.id;
-      
-      // Se houver fotos, fazer upload
+
       if (photos.length > 0) {
         try {
           await uploadPhotos(serviceId);
           toast.success('Serviço criado com sucesso com fotos!');
         } catch (photoErr: any) {
-          console.error('Exceção ao fazer upload de fotos:', photoErr);
-          // Não interromper o fluxo, mas mostrar erro específico
           toast.error(`Serviço criado, mas erro no upload de fotos: ${photoErr.message}`);
-          
-          // Aguardar um pouco antes de redirecionar para que o usuário veja o erro
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } else {
         toast.success('Serviço criado com sucesso!');
       }
-      
-      // Redirecionar para a página do serviço criado
+
       router.push(`/servicos/${serviceId}`);
     } catch (err: any) {
       console.error('Erro ao criar serviço:', err);
@@ -277,13 +163,13 @@ export default function CreateServicePage() {
           Preencha os detalhes do serviço que você precisa
         </p>
       </div>
-      
+
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
         <div className="space-y-6">
           <div>
@@ -301,7 +187,7 @@ export default function CreateServicePage() {
               onChange={handleChange}
             />
           </div>
-          
+
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-secondary-700">
               Descrição *
@@ -317,12 +203,9 @@ export default function CreateServicePage() {
               onChange={handleChange}
             />
           </div>
-          
-          {/* Componente de Upload de Fotos */}
+
           <div>
-            <label className="block text-sm font-medium text-secondary-700">
-              Fotos do Serviço
-            </label>
+            <label className="block text-sm font-medium text-secondary-700">Fotos do Serviço</label>
             <div className="mt-1 flex items-center">
               <input
                 type="file"
@@ -339,17 +222,14 @@ export default function CreateServicePage() {
               >
                 Adicionar Fotos
               </button>
-              <span className="ml-3 text-xs text-secondary-500">
-                Máximo de 5 fotos
-              </span>
+              <span className="ml-3 text-xs text-secondary-500">Máximo de 5 fotos</span>
             </div>
-            
-            {/* Preview das fotos */}
+
             {photoPreview.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {photoPreview.map((src, index) => (
                   <div key={index} className="relative">
-                    <div className="h-24 w-full rounded-md overflow-hidden">
+                    <div className="h-24 w-full rounded-md overflow-hidden relative">
                       <Image
                         src={src}
                         alt={`Foto ${index + 1}`}
@@ -371,7 +251,7 @@ export default function CreateServicePage() {
               </div>
             )}
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">
@@ -392,20 +272,20 @@ export default function CreateServicePage() {
                 ))}
               </select>
             </div>
-            
+
             <div>
-              <label htmlFor="value" className="block text-sm font-medium text-secondary-700">
+              <label htmlFor="price" className="block text-sm font-medium text-secondary-700">
                 Valor (R$)
               </label>
               <input
-                id="value"
-                name="value"
+                id="price"
+                name="price"
                 type="number"
                 step="0.01"
                 min="0"
                 className="input-field mt-1"
                 placeholder="Deixe em branco para receber propostas"
-                value={formData.value}
+                value={formData.price}
                 onChange={handleChange}
               />
               <p className="mt-1 text-xs text-secondary-500">
@@ -413,7 +293,7 @@ export default function CreateServicePage() {
               </p>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="date" className="block text-sm font-medium text-secondary-700">
@@ -428,7 +308,7 @@ export default function CreateServicePage() {
                 onChange={handleChange}
               />
             </div>
-            
+
             <div>
               <label htmlFor="timeWindow" className="block text-sm font-medium text-secondary-700">
                 Janela de Tempo (minutos)
@@ -451,7 +331,7 @@ export default function CreateServicePage() {
               </p>
             </div>
           </div>
-          
+
           <div>
             <label htmlFor="address" className="block text-sm font-medium text-secondary-700">
               Endereço
@@ -469,7 +349,7 @@ export default function CreateServicePage() {
               Deixe em branco para serviços remotos
             </p>
           </div>
-          
+
           <div className="pt-4">
             <button
               type="submit"

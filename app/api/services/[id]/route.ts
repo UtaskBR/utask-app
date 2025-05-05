@@ -20,8 +20,9 @@ export async function GET(
         s.description, 
         s.price, 
         s.date, 
-        s.time, 
-        s.location, 
+        s.latitude,
+        s.longitude,
+        s.address, 
         s.status, 
         s."createdAt", 
         s."updatedAt",
@@ -92,8 +93,9 @@ export async function GET(
       description: service.description,
       price: service.price,
       date: service.date,
-      time: service.time,
-      location: service.location,
+      latitude: service.latitude,
+      longitude: service.longitude,
+      address: service.address,
       status: service.status,
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,
@@ -153,7 +155,7 @@ export async function PUT(
     
     const { id: serviceId } = await params;
     const body = await request.json();
-    const { title, description, price, date, time, location, status, professionId } = body;
+    const { title, description, price, date, latitude, longitude, address, status, professionId } = body;
     
     // Verificar se o serviço existe e se o usuário é o criador
     const services = await prisma.$queryRaw`
@@ -195,8 +197,9 @@ export async function PUT(
         description = COALESCE(${description}, description),
         price = COALESCE(${price}, price),
         date = COALESCE(${dateValue}, date),
-        time = COALESCE(${time}, time),
-        location = COALESCE(${location}, location),
+        latitude = COALESCE(${latitude}, latitude),
+        longitude = COALESCE(${longitude}, longitude),
+        address = COALESCE(${address}, address),
         status = COALESCE(${status}, status),
         "professionId" = COALESCE(${professionId}, "professionId"),
         "updatedAt" = ${now}
@@ -211,8 +214,9 @@ export async function PUT(
         s.description, 
         s.price, 
         s.date, 
-        s.time, 
-        s.location, 
+        s.latitude,
+        s.longitude,
+        s.address, 
         s.status, 
         s."createdAt", 
         s."updatedAt",
@@ -264,8 +268,9 @@ export async function PUT(
       description: updatedService.description,
       price: updatedService.price,
       date: updatedService.date,
-      time: updatedService.time,
-      location: updatedService.location,
+      latitude: updatedService.latitude,
+      longitude: updatedService.longitude,
+      address: updatedService.address,
       status: updatedService.status,
       createdAt: updatedService.createdAt,
       updatedAt: updatedService.updatedAt,

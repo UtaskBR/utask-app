@@ -1,7 +1,3 @@
-// This is a fixed version of the Prisma schema
-// It removes duplicate model definitions and fixes relation references
-// Added many-to-many relation between User and Profession
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,15 +13,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -49,49 +44,49 @@ model VerificationToken {
 model Profession {
   id        String    @id @default(cuid())
   name      String
-  icon      String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  icon      String?
   services  Service[]
-  users     User[]    // Added relation field for many-to-many with User
+  users     User[]    @relation("ProfessionToUser")
 }
 
 model Service {
-  id           String    @id @default(cuid())
-  title        String
-  description  String
-  date         DateTime?
-  timeWindow   Int?
-  value        Float?
-  status       String    @default("OPEN")
-  latitude     Float?
-  longitude    Float?
-  address      String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  creatorId    String
-  creator      User      @relation("ServiceCreator", fields: [creatorId], references: [id])
-  professionId String?
-  profession   Profession? @relation(fields: [professionId], references: [id])
-  photos       Photo[]
-  bids         Bid[]
-  favorites    Favorite[]
+  id            String         @id @default(cuid())
+  title         String
+  description   String
+  date          DateTime?
+  timeWindow    Int?
+  price         Float?
+  latitude      Float?
+  longitude     Float?
+  address       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  creatorId     String
+  professionId  String?
+  status        String         @default("OPEN")
+  bids          Bid[]
   cancellations Cancellation[]
-  problems     Problem[]
+  favorites     Favorite[]
+  photos        Photo[]
+  problems      Problem[]
+  creator       User           @relation("ServiceCreator", fields: [creatorId], references: [id])
+  profession    Profession?    @relation(fields: [professionId], references: [id])
 }
 
 model Bid {
   id           String    @id @default(cuid())
-  value        Float?
+  price        Float?
   message      String?
   status       String    @default("PENDING")
   proposedDate DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   serviceId    String
-  service      Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   providerId   String
   provider     User      @relation("BidProvider", fields: [providerId], references: [id])
+  service      Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
 
 model Cancellation {
@@ -120,100 +115,99 @@ model Photo {
   publicId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  userId    String?
   serviceId String?
   service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Wallet {
-  id        String        @id @default(cuid())
-  balance   Float         @default(0)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  userId    String        @unique
-  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String        @id @default(cuid())
+  balance      Float         @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  userId       String        @unique
   transactions Transaction[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Transaction {
   id          String   @id @default(cuid())
   amount      Float
-  type        String
   description String?
-  status      String   @default("COMPLETED")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   walletId    String
-  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
   serviceId   String?
+  type        String
+  status      String   @default("COMPLETED")
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
-  id          String    @id @default(cuid())
-  type        String
-  title       String
-  message     String
-  read        Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  receiverId  String
-  receiver    User      @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-  senderId    String?
-  sender      User?     @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
-  serviceId   String?
-  bidId       String?
+  id         String   @id @default(cuid())
+  message    String
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  receiverId String
+  senderId   String?
+  bidId      String?
+  serviceId  String?
+  title      String
+  type       String
+  receiver   User     @relation("NotificationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender     User?    @relation("NotificationSender", fields: [senderId], references: [id])
 }
 
 model Favorite {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   serviceId String
   service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, serviceId])
 }
 
 model Review {
-  id          String   @id @default(cuid())
-  rating      Int
-  comment     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  receiverId  String
-  receiver    User     @relation("ReviewReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-  giverId     String
-  giver       User     @relation("ReviewGiver", fields: [giverId], references: [id], onDelete: Cascade)
-  serviceId   String?
+  id         String   @id @default(cuid())
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  receiverId String
+  giverId    String
+  serviceId  String?
+  giver      User     @relation("ReviewGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReviewReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
 }
 
 model User {
-  id                    String          @id @default(cuid())
+  id                    String         @id @default(cuid())
   name                  String?
-  email                 String?         @unique
+  email                 String?        @unique
   emailVerified         DateTime?
-  image                 String?
   password              String?
+  image                 String?
   about                 String?
   city                  String?
   state                 String?
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
   accounts              Account[]
-  sessions              Session[]
-  services              Service[]       @relation("ServiceCreator")
-  bids                  Bid[]           @relation("BidProvider")
-  cancellations         Cancellation[]  @relation("CancelRequester")
-  problems              Problem[]       @relation("ProblemReporter")
-  photos                Photo[]
-  wallet                Wallet?
-  receivedNotifications Notification[]  @relation("NotificationReceiver")
-  sentNotifications     Notification[]  @relation("NotificationSender")
+  bids                  Bid[]          @relation("BidProvider")
+  cancellations         Cancellation[] @relation("CancelRequester")
   favorites             Favorite[]
-  receivedReviews       Review[]        @relation("ReviewReceiver")
-  givenReviews          Review[]        @relation("ReviewGiver")
-  professions           Profession[]    // Added relation field for many-to-many with Profession
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  sentNotifications     Notification[] @relation("NotificationSender")
+  photos                Photo[]
+  problems              Problem[]      @relation("ProblemReporter")
+  givenReviews          Review[]       @relation("ReviewGiver")
+  receivedReviews       Review[]       @relation("ReviewReceiver")
+  services              Service[]      @relation("ServiceCreator")
+  sessions              Session[]
+  wallet                Wallet?
+  professions           Profession[]   @relation("ProfessionToUser")
 }
-

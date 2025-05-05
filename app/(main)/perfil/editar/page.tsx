@@ -1,102 +1,240 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 interface Profession {
   id: string;
   name: string;
-  icon?: string; // Optional icon field
+  icon?: string;
 }
 
-interface MultiSelectProfessionsProps {
-  selectedProfessionIds: string[]; // IDs of professions already selected by the user
-  onChange: (selectedIds: string[]) => void; // Callback function when selection changes
-}
+export default function EditarPerfilPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const avatarInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
-export default function MultiSelectProfessions({ 
-  selectedProfessionIds,
-  onChange 
-}: MultiSelectProfessionsProps) {
-  const [professions, setProfessions] = useState<Profession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [formData, setFormData] = useState({ name: '', about: '', city: '', state: '' });
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [gallery, setGallery] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
-  // Use a Set for efficient add/remove operations, initialized with current selections
-  const [currentSelection, setCurrentSelection] = useState<Set<string>>(new Set(selectedProfessionIds));
+  const [professions, setProfessions] = useState<Profession[]>([]);
+  const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
+  const [isLoadingProfessions, setIsLoadingProfessions] = useState(true);
 
-  // Fetch available professions on component mount
   useEffect(() => {
-    const fetchProfessions = async () => {
-      setIsLoading(true);
-      setError('');
-      try {
-        const response = await fetch('/api/professions');
-        if (!response.ok) {
-          throw new Error('Falha ao buscar profissões');
-        }
-        const data = await response.json();
-        setProfessions(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (status === 'authenticated' && session?.user?.id) {
+      fetch(`/api/users/${session.user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) setError(data.error);
+          else {
+            setFormData({
+              name: data.name || '',
+              about: data.about || '',
+              city: data.city || '',
+              state: data.state || '',
+            });
+            setAvatarUrl(data.image || '');
+            setGallery(data.photos || []);
+            if (data.professions) {
+              setSelectedProfessions(data.professions.map((p: any) => p.id));
+            }
+          }
+        })
+        .catch(() => setError('Erro ao carregar dados do usuário.'));
+    }
+  }, [status, session]);
 
-    fetchProfessions();
+  useEffect(() => {
+    fetch('/api/professions')
+      .then(res => res.json())
+      .then(data => {
+        setProfessions(data);
+        setIsLoadingProfessions(false);
+      })
+      .catch(() => setIsLoadingProfessions(false));
   }, []);
 
-  // Handle checkbox change
-  const handleCheckboxChange = (professionId: string) => {
-    const newSelection = new Set(currentSelection);
-    if (newSelection.has(professionId)) {
-      newSelection.delete(professionId);
-    } else {
-      newSelection.add(professionId);
-    }
-    setCurrentSelection(newSelection);
-    // Call the onChange callback with an array of selected IDs
-    onChange(Array.from(newSelection));
+  const handleChange = (e: any) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  if (isLoading) {
-    return <p className="text-sm text-secondary-500">Carregando profissões...</p>;
-  }
+  const handleProfessionToggle = (professionId: string) => {
+    setSelectedProfessions(prev =>
+      prev.includes(professionId)
+        ? prev.filter(id => id !== professionId)
+        : [...prev, professionId]
+    );
+  };
 
-  if (error) {
-    return <p className="text-sm text-red-600">Erro ao carregar profissões: {error}</p>;
-  }
+  const handleSave = async () => {
+    if (!session?.user?.id) return;
+    try {
+      const profileRes = await fetch(`/api/users/${session.user.id}`, {
+        method: 'PUT', // <-- alterado de PATCH para PUT
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!profileRes.ok) throw new Error(`Erro ao atualizar perfil: ${profileRes.status}`);
 
-  if (professions.length === 0) {
-    return <p className="text-sm text-secondary-500">Nenhuma profissão disponível.</p>;
-  }
+      const professionsRes = await fetch(`/api/users/${session.user.id}/professions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ professionIds: selectedProfessions }),
+      });
+      if (!professionsRes.ok) throw new Error(`Erro ao atualizar profissões: ${professionsRes.status}`);
+
+      alert('Perfil atualizado com sucesso!');
+      router.push(`/perfil/${session.user.id}`);
+    } catch (error: any) {
+      alert(`Falha ao atualizar perfil: ${error.message}`);
+    }
+  };
+
+  const handleAvatarUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file || !session?.user?.id) return;
+    setIsUploading(true);
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('upload_preset', 'utask-avatar');
+      formDataUpload.append('file', file);
+
+      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/dhkkz3vlv/image/upload`, {
+        method: 'POST',
+        body: formDataUpload,
+      });
+      const cloudinaryData = await cloudinaryRes.json();
+
+      await fetch('/api/upload/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session.user.id,
+          url: cloudinaryData.secure_url,
+          publicId: cloudinaryData.public_id,
+        }),
+      });
+
+      setAvatarUrl(cloudinaryData.secure_url);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      alert('Foto de perfil atualizada com sucesso!');
+    } catch (error) {
+      alert('Erro ao atualizar foto de perfil.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleGalleryUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file || !session?.user?.id) return;
+    setIsUploading(true);
+
+    const localPreview = URL.createObjectURL(file);
+    const tempPhoto = { id: `temp-${Date.now()}`, url: localPreview, isTemp: true };
+    setGallery(prev => [...prev, tempPhoto]);
+
+    const formDataUpload = new FormData();
+    formDataUpload.append('upload_preset', 'utask-gallery');
+    formDataUpload.append('file', file);
+
+    try {
+      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/dhkkz3vlv/image/upload`, {
+        method: 'POST',
+        body: formDataUpload,
+      });
+      const cloudinaryData = await cloudinaryRes.json();
+
+      const res = await fetch('/api/upload/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: session.user.id,
+          url: cloudinaryData.secure_url,
+          publicId: cloudinaryData.public_id,
+        }),
+      });
+      const data = await res.json();
+      setGallery(prev => prev.filter(p => p.id !== tempPhoto.id).concat(data.photo));
+      if (galleryInputRef.current) galleryInputRef.current.value = '';
+      alert('Foto adicionada à galeria com sucesso!');
+    } catch (error) {
+      alert('Erro ao adicionar à galeria.');
+      setGallery(prev => prev.filter(p => !p.isTemp));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  if (status === 'loading' || isLoadingProfessions) return <p>Carregando...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-secondary-700 mb-1">
-        Selecione suas profissões
-      </label>
-      <div className="max-h-60 overflow-y-auto border border-secondary-300 rounded-md p-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {professions.map((profession) => (
-          <div key={profession.id} className="flex items-center">
-            <input
-              id={`profession-${profession.id}`}
-              name="professions"
-              type="checkbox"
-              value={profession.id}
-              checked={currentSelection.has(profession.id)}
-              onChange={() => handleCheckboxChange(profession.id)}
-              className="h-4 w-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
-            />
-            <label 
-              htmlFor={`profession-${profession.id}`} 
-              className="ml-2 block text-sm text-secondary-900 cursor-pointer"
-            >
+    <div className="max-w-3xl mx-auto p-6 space-y-4">
+      <h1 className="text-xl font-bold">Editar Perfil</h1>
+
+      <div>
+        <label className="block text-sm font-medium">Nome</label>
+        <input name="name" value={formData.name} onChange={handleChange} className="input-field" />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">Sobre</label>
+        <textarea name="about" value={formData.about} onChange={handleChange} className="input-field" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium">Cidade</label>
+          <input name="city" value={formData.city} onChange={handleChange} className="input-field" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">Estado</label>
+          <input name="state" value={formData.state} onChange={handleChange} className="input-field" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium mb-1">Profissões</label>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {professions.map((profession) => (
+            <label key={profession.id} className="flex items-center">
+              <input
+                type="checkbox"
+                checked={selectedProfessions.includes(profession.id)}
+                onChange={() => handleProfessionToggle(profession.id)}
+                className="mr-2"
+              />
               {profession.name}
             </label>
+          ))}
+        </div>
+      </div>
+
+      <button onClick={handleSave} className="btn-primary" disabled={isUploading}>Salvar</button>
+
+      <hr className="my-6" />
+
+      <h2 className="text-lg font-semibold mb-2">Foto de Perfil</h2>
+      {avatarUrl && <img src={avatarUrl} alt="avatar" className="w-24 h-24 rounded-full object-cover mb-2" />}
+      <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} />
+
+      <h2 className="text-lg font-semibold mt-6">Galeria</h2>
+      <div className="grid grid-cols-3 gap-3">
+        {gallery.map((photo, i) => (
+          <div key={photo.id || i}>
+            <img src={photo.url} alt="Foto" className={`rounded-lg h-32 w-full object-cover ${photo.isTemp ? 'opacity-50' : ''}`} />
           </div>
         ))}
       </div>
+      <input ref={galleryInputRef} type="file" accept="image/*" onChange={handleGalleryUpload} />
     </div>
   );
 }
-

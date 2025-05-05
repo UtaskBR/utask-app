@@ -1,0 +1,12 @@
+{
+  "/api/notifications/route": "app/api/notifications/route.js",
+  "/api/services/route": "app/api/services/route.js",
+  "/api/users/[id]/services/route": "app/api/users/[id]/services/route.js",
+  "/api/professions/route": "app/api/professions/route.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/(main)/page": "app/(main)/page.js",
+  "/(main)/explorar/page": "app/(main)/explorar/page.js",
+  "/(main)/criar-servico/page": "app/(main)/criar-servico/page.js",
+  "/(main)/servicos/[id]/page": "app/(main)/servicos/[id]/page.js",
+  "/(main)/meus-servicos/page": "app/(main)/meus-servicos/page.js"
+}
