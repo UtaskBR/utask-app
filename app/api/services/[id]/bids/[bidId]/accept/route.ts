@@ -52,7 +52,11 @@ export async function POST(
     // Atualizar o status do serviço
     await prisma.service.update({
       where: { id: serviceId },
-      data: { status: "IN_PROGRESS" }
+      data: { 
+        status: "IN_PROGRESS",
+        price: bid.price, // <-- valor aceito
+        date: bid.proposedDate // <-- data combinada
+      }
     });
 
     // Rejeitar todas as outras propostas

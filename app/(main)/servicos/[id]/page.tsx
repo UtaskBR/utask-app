@@ -298,25 +298,7 @@ export default function ServiceDetailPage() {
             </div>
           )}
         </div>
-          {service.status === 'IN_PROGRESS' && (isCreator || isProvider) && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-secondary-800 mb-4">Ações de Execução</h3>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  className="btn-primary w-full sm:w-auto"
-                  onClick={() => handleExecutionAction('CONFIRM')}
-                >
-                  Confirmar Conclusão
-                </button>
-                <button
-                  className="btn-warning w-full sm:w-auto"
-                  onClick={() => handleExecutionAction('PROBLEM')}
-                >
-                  Temos um Problema
-                </button>
-              </div>
-            </div>
-          )}
+          
       </div>
 
       {/* Sidebar */}
@@ -377,6 +359,21 @@ export default function ServiceDetailPage() {
             </div>
           )}
           <button className="w-full btn-outline py-2">Adicionar aos Favoritos</button>
+
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            <button
+              className="btn-primary w-full sm:w-auto"
+              onClick={() => handleExecutionAction('CONFIRM')}
+            >
+              Confirmar Conclusão
+            </button>
+            <button
+              className="btn-warning w-full sm:w-auto"
+              onClick={() => handleExecutionAction('PROBLEM')}
+            >
+              Temos um Problema
+            </button>
+          </div>
         </div>
 
         {showBidForm && canBid && !hasUserBid && (
