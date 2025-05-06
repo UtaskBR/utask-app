@@ -346,10 +346,10 @@ export default function ServiceDetailPage() {
           </div>
         </div>
         {isCreator && service.bids && service.bids.length > 0 && (
-          <div className="bg-white shadow-md rounded-lg p-6">
+          <div className="space-y-4 mt-6">
             <h3 className="text-lg font-bold">Propostas Recebidas</h3>
             {service.bids.map((bid) => (
-              <div key={bid.id} className="border p-4 rounded-md shadow-sm">
+              <div key={bid.id} className="bg-white shadow-md rounded-lg p-6">
                 <p><strong>Prestador:</strong> {bid.provider.name}</p>
                 <p><strong>Mensagem:</strong> {bid.message}</p>
                 <p><strong>Valor:</strong> R$ {bid.price}</p>
