@@ -148,7 +148,7 @@ export default function ServiceDetailPage() {
 
   if (!service) return null;
 
-  const isCreator = session?.user?.id === service.creatorId;
+  const isCreator = session?.user?.id === service.creator?.id;
   const canBid = !isCreator && service.status === 'OPEN';
   const hasUserBid = service.bids?.some(bid => bid.providerId === session?.user?.id);
   const isProvider = service.bids?.some(b => b.providerId === session?.user?.id);
