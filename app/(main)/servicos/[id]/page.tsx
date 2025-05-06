@@ -346,7 +346,7 @@ export default function ServiceDetailPage() {
           </div>
         </div>
         {isCreator && service.bids && service.bids.length > 0 && (
-          <div className="space-y-4 mt-6">
+          <div className="bg-white shadow-md rounded-lg p-6">
             <h3 className="text-lg font-bold">Propostas Recebidas</h3>
             {service.bids.map((bid) => (
               <div key={bid.id} className="border p-4 rounded-md shadow-sm">
