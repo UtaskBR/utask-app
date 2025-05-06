@@ -156,7 +156,7 @@ export default function ServiceDetailPage() {
   async function handleAccept(id: string): Promise<void> {
     try {
       const response = await fetch(`/api/services/${serviceId}/bids/${id}/accept`, {
-        method: 'PUT',
+        method: 'POST', // <- Aqui estava errado
         headers: { 'Content-Type': 'application/json' }
       });
       const data = await response.json();
@@ -168,6 +168,7 @@ export default function ServiceDetailPage() {
       setError(err.message || 'Erro ao aceitar proposta');
     }
   }
+  
 
   async function handleCounterProposal(id: string): Promise<void> {
     const newPrice = prompt('Digite o valor da contra-proposta (R$):');
@@ -181,7 +182,7 @@ export default function ServiceDetailPage() {
 
     try {
       const response = await fetch(`/api/services/${serviceId}/bids/${id}/counter`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ price: priceValue })
       });
@@ -198,7 +199,7 @@ export default function ServiceDetailPage() {
   async function handleReject(id: string): Promise<void> {
     try {
       const response = await fetch(`/api/services/${serviceId}/bids/${id}/reject`, {
-        method: 'PUT',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
       const data = await response.json();
