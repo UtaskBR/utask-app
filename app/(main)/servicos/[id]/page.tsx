@@ -152,6 +152,15 @@ export default function ServiceDetailPage() {
   const canBid = !isCreator && service.status === 'OPEN';
   const hasUserBid = service.bids?.some(bid => bid.providerId === session?.user?.id);
   const isProvider = service.bids?.some(b => b.providerId === session?.user?.id);
+  const isInProgress = service.status === 'IN_PROGRESS';
+  const acceptedBid = service.bids?.find(
+    bid => bid.status === 'ACCEPTED'
+  );
+
+  const isAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
+
+  const canComplete = isInProgress && (isCreator || isAcceptedProvider);
+
 
   async function handleAccept(id: string): Promise<void> {
     try {
@@ -360,20 +369,22 @@ export default function ServiceDetailPage() {
           )}
           <button className="w-full btn-outline py-2">Adicionar aos Favoritos</button>
 
-          <div className="flex flex-col sm:flex-row gap-4 mt-4">
-            <button
-              className="btn-primary w-full sm:w-auto"
-              onClick={() => handleExecutionAction('CONFIRM')}
-            >
-              Confirmar Conclusão
-            </button>
-            <button
-              className="btn-warning w-full sm:w-auto"
-              onClick={() => handleExecutionAction('PROBLEM')}
-            >
-              Temos um Problema
-            </button>
-          </div>
+          {canComplete && (
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <button
+                className="btn-primary w-full sm:w-auto"
+                onClick={() => handleExecutionAction('CONFIRM')}
+              >
+                Confirmar Conclusão
+              </button>
+              <button
+                className="btn-warning w-full sm:w-auto"
+                onClick={() => handleExecutionAction('PROBLEM')}
+              >
+                Temos um Problema
+              </button>
+            </div>
+          )}
         </div>
 
         {showBidForm && canBid && !hasUserBid && (
