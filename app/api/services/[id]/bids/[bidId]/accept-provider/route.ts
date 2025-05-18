@@ -21,7 +21,7 @@ export async function POST(
     const bid = await prisma.bid.findUnique({
       where: { id: bidId },
       include: {
-        service: { select: { id: true, creatorId: true } }
+        service: { select: { id: true, creatorId: true, title: true } } // Added title for notification
       }
     });
 
@@ -34,7 +34,7 @@ export async function POST(
     }
 
     if (bid.status !== "COUNTER_OFFER") {
-      return NextResponse.json({ error: "A proposta não está em estado de contraproposta" }, { status: 400 });
+      return NextResponse.json({ error: "A proposta não está em estado de contraproposta para ser aceita pelo prestador" }, { status: 400 });
     }
 
     // Atualizar a proposta aceita
@@ -46,16 +46,18 @@ export async function POST(
       }
     });
 
-    // Atualizar o serviço para em andamento
+    // Atualizar o serviço para em andamento, incluindo preço e data acordados
     await prisma.service.update({
       where: { id: serviceId },
       data: {
         status: "IN_PROGRESS",
+        price: bid.price, // Atualiza o preço do serviço com o valor da proposta/contraproposta aceita
+        date: bid.proposedDate, // Atualiza a data do serviço com a data da proposta/contraproposta aceita
         updatedAt: new Date()
       }
     });
 
-    // Rejeitar outras propostas
+    // Rejeitar outras propostas para este serviço
     await prisma.bid.updateMany({
       where: {
         serviceId: serviceId,
@@ -67,22 +69,24 @@ export async function POST(
       }
     });
 
-    // Criar notificação para o contratante
+    // Criar notificação para o contratante (criador do serviço)
     await prisma.notification.create({
       data: {
         id: crypto.randomUUID(),
-        type: "ACCEPTANCE",
-        title: "Contraproposta aceita",
-        message: "O prestador aceitou sua contraproposta!",
+        type: "PROVIDER_ACCEPTS_COUNTER_OFFER", // More specific type
+        title: "Contraproposta Aceita!",
+        message: `O prestador ${session.user.name || 'desconhecido'} aceitou sua contraproposta para o serviço "${bid.service.title}".`,
         receiverId: bid.service.creatorId,
         senderId: session.user.id,
+        serviceId: serviceId,
+        bidId: bidId,
         read: false
       }
     });
 
     return NextResponse.json(acceptedBid);
   } catch (error: any) {
-    console.error("Erro ao aceitar contraproposta:", error);
+    console.error("Erro ao aceitar contraproposta pelo prestador:", error);
     return NextResponse.json(
       {
         error:
@@ -93,3 +97,4 @@ export async function POST(
     );
   }
 }
+

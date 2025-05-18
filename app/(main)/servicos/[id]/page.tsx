@@ -1,38 +1,51 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation'; // Added useRouter
 import Link from 'next/link';
-import Image from 'next/image';
+// import Image from 'next/image'; // Image component not used in the provided snippet, can be added if service.photos are displayed with it
+
+// Placeholder icons (Heroicons)
+const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
+const CheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>;
+const XMarkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
+const ArrowPathIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>;
+const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const ExclamationTriangleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>;
 
 export default function ServiceDetailPage() {
   const { data: session } = useSession();
   const params = useParams();
-  const serviceId = params.id;
+  const router = useRouter(); // Added for navigation/refresh
+  const serviceId = params.id as string; // Ensure serviceId is string
 
   type Photo = { id: string; url: string };
+  type BidUser = { id: string; name?: string | null; image?: string | null; rating?: number | null }; // Added image and rating
   type Bid = {
     id: string;
     providerId: string;
-    provider: { name: string; rating: number };
-    price?: number;
-    message?: string;
-    proposedDate?: string;
+    provider: BidUser;
+    price?: number | null;
+    message?: string | null;
+    proposedDate?: string | null;
     status: string;
+    createdAt: string; // Added for sorting or display
   };
+  type ServiceCreator = { id: string; name?: string | null; image?: string | null; rating?: number | null; about?: string | null };
   type Service = {
     id: string;
     title: string;
     description: string;
-    price?: number;
-    date?: string;
-    timeWindow?: number;
-    address?: string;
+    price?: number | null;
+    date?: string | null;
+    timeWindow?: number | null;
+    address?: string | null;
     profession?: { name: string };
     status: string;
     creatorId: string;
-    creator: { id: string; name: string; rating: number; about?: string };
+    creator: ServiceCreator;
     photos?: Photo[];
     bids?: Bid[];
   };
@@ -46,29 +59,30 @@ export default function ServiceDetailPage() {
     proposedDate: ''
   });
   const [showBidForm, setShowBidForm] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null); // For loading state on buttons
 
-  useEffect(() => {
-    const fetchService = async () => {
-      try {
-        const response = await fetch(`/api/services/${serviceId}`);
-
-        if (!response.ok) {
-          throw new Error('Serviço não encontrado');
-        }
-
-        const data = await response.json();
-        setService(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
-      } finally {
-        setIsLoading(false);
+  const fetchService = useCallback(async () => {
+    if (!serviceId) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/services/${serviceId}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'Serviço não encontrado ou erro na resposta.' }));
+        throw new Error(errData.error || 'Falha ao buscar o serviço');
       }
-    };
-
-    if (serviceId) {
-      fetchService();
+      const data = await response.json();
+      setService(data);
+      setError(''); // Clear previous errors
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
+    } finally {
+      setIsLoading(false);
     }
   }, [serviceId]);
+
+  useEffect(() => {
+    fetchService();
+  }, [fetchService]);
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -77,375 +91,319 @@ export default function ServiceDetailPage() {
 
   const handleBidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!session) {
-      setError('Você precisa estar logado para fazer uma proposta');
+    if (!session || !serviceId) {
+      setError('Você precisa estar logado para fazer uma proposta.');
       return;
     }
-
+    setActionLoading('submitBid');
     try {
       const response = await fetch(`/api/services/${serviceId}/bids`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           price: bidForm.price ? parseFloat(bidForm.price) : null,
           message: bidForm.message,
           proposedDate: bidForm.proposedDate || null
         })
       });
-
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao enviar proposta');
-      }
-
-      window.location.reload();
+      if (!response.ok) throw new Error(data.error || 'Erro ao enviar proposta');
+      setBidForm({ price: '', message: '', proposedDate: '' }); // Reset form
+      setShowBidForm(false); // Hide form
+      fetchService(); // Refresh service data to show new bid and potentially updated status
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleExecutionAction = async (action: 'CONFIRM' | 'PROBLEM') => {
+  // Generic action handler for API calls
+  const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
+    setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
     try {
-      const res = await fetch(`/api/services/${serviceId}/status`, {
-        method: 'PUT',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error);
-      window.location.reload();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao executar ação');
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p>Carregando...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4">
-          <p className="text-red-700">{error}</p>
-        </div>
-        <div className="mt-6">
-          <Link href="/explorar" className="btn-primary">
-            Voltar para Explorar
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (!service) return null;
-
-  const isCreator = session?.user?.id === service.creator?.id;
-  const canBid = !isCreator && service.status === 'OPEN';
-  const hasUserBid = service.bids?.some(bid => bid.providerId === session?.user?.id);
-  const isProvider = service.bids?.some(b => b.providerId === session?.user?.id);
-  const isInProgress = service.status === 'IN_PROGRESS';
-  const acceptedBid = service.bids?.find(
-    bid => bid.status === 'ACCEPTED'
-  );
-
-  const isAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
-
-  const canComplete = isInProgress && (isCreator || isAcceptedProvider);
-
-
-  async function handleAccept(id: string): Promise<void> {
-    try {
-      const response = await fetch(`/api/services/${serviceId}/bids/${id}/accept`, {
-        method: 'POST', // <- Aqui estava errado
-        headers: { 'Content-Type': 'application/json' }
+        body: body ? JSON.stringify(body) : undefined,
       });
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao aceitar proposta');
-      }
-      window.location.reload();
+      if (!response.ok) throw new Error(data.error || `Erro ao ${successMessage?.toLowerCase() || 'processar ação'}`);
+      if (successMessage) console.log(successMessage); // Or use a toast notification
+      fetchService(); // Refresh data
+      return data;
     } catch (err: any) {
-      setError(err.message || 'Erro ao aceitar proposta');
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
     }
-  }
-  
+  };
 
-  async function handleCounterProposal(id: string): Promise<void> {
-    const newPrice = prompt('Digite o valor da contra-proposta (R$):');
-    if (newPrice === null) return; // Cancelled
-
+  // --- Bid Actions by Service Creator ---
+  const handleAcceptBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/accept`, 'POST', { bidId }, 'Proposta aceita');
+  const handleRejectBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/reject`, 'POST', { bidId }, 'Proposta rejeitada');
+  const handleCounterOfferToProvider = (bidId: string) => {
+    const newPrice = prompt('Digite o novo valor para a contraproposta (R$):');
+    if (newPrice === null) return;
     const priceValue = parseFloat(newPrice);
     if (isNaN(priceValue) || priceValue <= 0) {
-      setError('Por favor, insira um valor válido para a contra-proposta.');
+      setError('Valor inválido para contraproposta.');
       return;
     }
+    const newMessage = prompt('Adicione uma mensagem para a contraproposta (opcional):');
+    callApi(`/api/services/${serviceId}/bids/${bidId}/counter`, 'POST', { bidId, price: priceValue, message: newMessage }, 'Contraproposta enviada');
+  };
 
-    try {
-      const response = await fetch(`/api/services/${serviceId}/bids/${id}/counter`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ price: priceValue })
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao enviar contra-proposta');
-      }
-      window.location.reload();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao enviar contra-proposta');
-    }
-  }
+  // --- Bid Actions by Bid Provider ---
+  const handleAcceptCounterOfferByProvider = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/accept-provider`, 'POST', { bidId }, 'Contraproposta aceita pelo prestador');
+  const handleRejectCounterOfferByProvider = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/reject-provider`, 'POST', { bidId }, 'Contraproposta rejeitada pelo prestador');
+  const handleWithdrawBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}`, 'DELETE', { bidId }, 'Proposta retirada');
 
-  async function handleReject(id: string): Promise<void> {
-    try {
-      const response = await fetch(`/api/services/${serviceId}/bids/${id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao rejeitar proposta');
-      }
-      window.location.reload();
-    } catch (err: any) {
-      setError(err.message || 'Erro ao rejeitar proposta');
+  // --- Service Completion/Problem Actions ---
+  const handleConfirmCompletion = () => {
+    // TODO: Implement API call to POST /api/services/${serviceId}/confirm-completion
+    // This API needs to be created on the backend.
+    // For now, simulate success and refresh.
+    console.log('Ação: Confirmar Conclusão (API a ser implementada)');
+    alert('Funcionalidade de confirmação de conclusão ainda em desenvolvimento no backend.');
+    // callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
+  };
+
+  const handleReportProblem = () => {
+    const reason = prompt('Descreva o problema ocorrido:');
+    if (reason === null || reason.trim() === '') {
+      setError('A descrição do problema é obrigatória.');
+      return;
     }
-  }
+    callApi(`/api/services/${serviceId}/problems`, 'POST', { reason }, 'Problema reportado');
+  };
+
+  if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando detalhes do serviço...</p></div>;
+  if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
+
+  const isCreator = session?.user?.id === service.creatorId;
+  const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
+  const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
+  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
+  const isServiceInProgress = service.status === 'IN_PROGRESS';
+  const isServiceOpen = service.status === 'OPEN';
+  const isUserAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
+
+  const getStatusClass = (status: string) => {
+    if (status === 'OPEN') return 'bg-green-100 text-green-800';
+    if (status === 'IN_PROGRESS') return 'bg-blue-100 text-blue-800';
+    if (status === 'COMPLETED') return 'bg-purple-100 text-purple-800';
+    if (status === 'CANCELLED') return 'bg-red-100 text-red-800';
+    return 'bg-gray-100 text-gray-800';
+  };
+  const getStatusText = (status: string) => {
+    if (status === 'OPEN') return 'Aberto';
+    if (status === 'IN_PROGRESS') return 'Em Andamento';
+    if (status === 'COMPLETED') return 'Concluído';
+    if (status === 'CANCELLED') return 'Cancelado';
+    return status;
+  };
+
+  const getBidStatusClass = (status: string) => {
+    if (status === 'PENDING') return 'bg-yellow-100 text-yellow-800';
+    if (status === 'ACCEPTED') return 'bg-green-100 text-green-800';
+    if (status === 'REJECTED') return 'bg-red-100 text-red-800';
+    if (status === 'COUNTER_OFFER') return 'bg-blue-100 text-blue-800';
+    return 'bg-gray-100 text-gray-800';
+  };
+  const getBidStatusText = (status: string) => {
+    if (status === 'PENDING') return 'Pendente';
+    if (status === 'ACCEPTED') return 'Aceita';
+    if (status === 'REJECTED') return 'Rejeitada';
+    if (status === 'COUNTER_OFFER') return 'Contraproposta';
+    return status;
+  };
+
+  // Button Styles
+  const btnBase = "px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  const btnPrimary = `${btnBase} bg-blue-500 hover:bg-blue-600 text-white`;
+  const btnSecondary = `${btnBase} bg-gray-200 hover:bg-gray-300 text-gray-700`;
+  const btnSuccess = `${btnBase} bg-green-500 hover:bg-green-600 text-white`;
+  const btnWarning = `${btnBase} bg-yellow-500 hover:bg-yellow-600 text-white`;
+  const btnDanger = `${btnBase} bg-red-500 hover:bg-red-600 text-white`;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <Link href="/explorar" className="text-primary-600 hover:text-primary-700 flex items-center mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-            </svg>
-            Voltar para Explorar
-          </Link>
-          <h1 className="text-2xl font-bold text-secondary-900">{service.title}</h1>
-          <div className="mt-1">
-            <span className={`inline-block px-2 py-1 text-xs rounded-full font-medium ${
-              service.status === 'OPEN' ? 'bg-green-100 text-green-800' :
-              service.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
-              service.status === 'COMPLETED' ? 'bg-purple-100 text-purple-800' :
-              'bg-red-100 text-red-800'
-            }`}>
-              {service.status === 'OPEN' ? 'Aberto' :
-               service.status === 'IN_PROGRESS' ? 'Em Andamento' :
-               service.status === 'COMPLETED' ? 'Concluído' :
-               'Cancelado'}
-            </span>
-          </div>
-          {service.price ? (
-            <div className="mt-2 text-xl font-bold text-primary-600">
-              R$ {service.price.toFixed(2)}
-            </div>
-          ) : (
-            <div className="mt-2 text-secondary-600">Aberto a propostas</div>
-          )}
-        </div>
-
-        {service.photos?.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-6 border-b border-gray-200">
-            {service.photos.slice(0, 5).map((photo) => (
-              <div key={photo.id} className="aspect-square overflow-hidden rounded-md">
-                <img
-                  src={photo.url}
-                  alt="Foto do serviço"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.onerror = null;
-                    target.src = "/fallback-image.png";
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="p-6 space-y-4">
-          <div>
-            <h2 className="text-lg font-medium text-secondary-900">Descrição</h2>
-            <p className="mt-2 text-secondary-600 whitespace-pre-line">{service.description}</p>
-          </div>
-          {service.date && (
-            <div>
-              <h2 className="text-lg font-medium text-secondary-900">Data e Hora</h2>
-              <p className="mt-2 text-secondary-600">
-                {new Date(service.date).toLocaleString('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-                {service.timeWindow && ` (Janela de ${service.timeWindow} minutos)`}
-              </p>
-            </div>
-          )}
-          {service.address && (
-            <div>
-              <h2 className="text-lg font-medium text-secondary-900">Localização</h2>
-              <p className="mt-2 text-secondary-600">{service.address}</p>
-            </div>
-          )}
-          {service.profession && (
-            <div>
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-                {service.profession.name}
-              </span>
-            </div>
-          )}
-        </div>
-          
-      </div>
-
-      {/* Sidebar */}
-      <div className="lg:col-span-1">
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-lg font-medium text-secondary-900 mb-4">Publicado por</h2>
-          <Link href={`/perfil/${service.creator.id}`} className="flex items-center">
-            <div className="flex-shrink-0 h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center">
-              <span className="text-primary-700 font-medium text-xl">
-                {service.creator.name.charAt(0)}
-              </span>
-            </div>
-            <div className="ml-3">
-              <p className="text-base font-medium text-secondary-900">{service.creator.name}</p>
-              <div className="flex items-center">
-                <span className="text-yellow-400">★</span>
-                <span className="ml-1 text-sm text-secondary-600">{service.creator.rating}</span>
-              </div>
-            </div>
-          </Link>
-          {service.creator.about && (
-            <p className="mt-4 text-secondary-600 text-sm">{service.creator.about}</p>
-          )}
-          <div className="mt-6">
-            <Link href={`/perfil/${service.creator.id}`} className="text-primary-600 hover:text-primary-700 text-sm font-medium">
-              Ver perfil completo
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {error && <div className="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4"><p>{error}</p></div>}
+      <div className="grid lg:grid-cols-3 gap-8">
+        {/* Service Details Column */}
+        <div className="lg:col-span-2 bg-white shadow-md rounded-lg overflow-hidden">
+          <div className="p-6 border-b border-gray-200">
+            <Link href="/explorar" className="text-blue-600 hover:text-blue-700 flex items-center mb-4">
+              <ArrowLeftIcon /> Voltar para Explorar
             </Link>
+            <h1 className="text-3xl font-bold text-gray-900">{service.title}</h1>
+            <div className="mt-2 flex items-center space-x-2">
+              <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(service.status)}`}>
+                {getStatusText(service.status)}
+              </span>
+              {service.profession && <span className="text-gray-600 text-sm">{service.profession.name}</span>}
+            </div>
+            {service.price ? (
+              <div className="mt-3 text-2xl font-bold text-blue-600">R$ {service.price.toFixed(2)}</div>
+            ) : (
+              <div className="mt-3 text-gray-700">Valor a combinar (aberto a propostas)</div>
+            )}
           </div>
-        </div>
-        {isCreator && service.bids && service.bids.length > 0 && (
-          <div className="space-y-4 mt-6">
-            <h3 className="text-lg font-bold">Propostas Recebidas</h3>
-            {service.bids.map((bid) => (
-              <div key={bid.id} className="bg-white shadow-md rounded-lg p-6">
-                <p><strong>Prestador:</strong> {bid.provider.name}</p>
-                <p><strong>Mensagem:</strong> {bid.message}</p>
-                <p><strong>Valor:</strong> R$ {bid.price}</p>
-                <p><strong>Status:</strong> {bid.status}</p>
-                <div className="flex gap-2 mt-2">
-                  <button onClick={() => handleAccept(bid.id)} className="bg-green-500 text-white px-3 py-1 rounded">Aceitar</button>
-                  <button onClick={() => handleCounterProposal(bid.id)} className="bg-yellow-500 text-white px-3 py-1 rounded">Contra-proposta</button>
-                  <button onClick={() => handleReject(bid.id)} className="bg-red-500 text-white px-3 py-1 rounded">Rejeitar</button>
-                </div>
+
+          {service.photos && service.photos.length > 0 && (
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800 mb-3">Fotos do Serviço</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {service.photos.map((photo) => (
+                  <div key={photo.id} className="aspect-square overflow-hidden rounded-lg shadow">
+                    <img src={photo.url} alt={`Foto do serviço ${service.title}`} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-        <div className="mt-6 bg-white shadow-md rounded-lg p-6">
-          <h2 className="text-lg font-medium text-secondary-900 mb-4">Ações</h2>
-          {canBid && !hasUserBid && (
-            <button onClick={() => setShowBidForm(!showBidForm)} className="w-full btn-primary py-2 mb-4">
-              Fazer Proposta
-            </button>
-          )}
-          {canBid && hasUserBid && (
-            <div className="text-center text-secondary-600 mb-4">
-              Você já fez uma proposta para este serviço
             </div>
           )}
-          <button className="w-full btn-outline py-2">Adicionar aos Favoritos</button>
 
-          {canComplete && (
-            <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <button
-                className="btn-primary w-full sm:w-auto"
-                onClick={() => handleExecutionAction('CONFIRM')}
-              >
-                Confirmar Conclusão
-              </button>
-              <button
-                className="btn-warning w-full sm:w-auto"
-                onClick={() => handleExecutionAction('PROBLEM')}
-              >
-                Temos um Problema
-              </button>
+          <div className="p-6 space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">Descrição Detalhada</h2>
+              <p className="mt-2 text-gray-600 whitespace-pre-line">{service.description}</p>
             </div>
-          )}
-        </div>
-
-        {showBidForm && canBid && !hasUserBid && (
-          <div className="mt-6 bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-lg font-medium text-secondary-900 mb-4">Fazer Proposta</h2>
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-                <p className="text-sm text-red-700">{error}</p>
+            {service.date && (
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800">Data e Hora Preferencial</h2>
+                <p className="mt-2 text-gray-600">
+                  {new Date(service.date).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {service.timeWindow && ` (Janela de ${service.timeWindow} min aprox.)`}
+                </p>
               </div>
             )}
-            <form onSubmit={handleBidSubmit} className="space-y-4">
+            {service.address && (
               <div>
-                <label htmlFor="price" className="block text-sm font-medium text-secondary-700">
-                  Valor Proposto (R$)
-                </label>
-                <input
-                  id="price"
-                  name="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  className="input-field mt-1"
-                  placeholder="Seu valor para o serviço"
-                  value={bidForm.price}
-                  onChange={handleBidChange}
-                />
+                <h2 className="text-xl font-semibold text-gray-800">Localização</h2>
+                <p className="mt-2 text-gray-600">{service.address}</p>
               </div>
-              <div>
-                <label htmlFor="proposedDate" className="block text-sm font-medium text-secondary-700">
-                  Data e Hora Proposta
-                </label>
-                <input
-                  id="proposedDate"
-                  name="proposedDate"
-                  type="datetime-local"
-                  className="input-field mt-1"
-                  value={bidForm.proposedDate}
-                  onChange={handleBidChange}
-                />
-              </div>
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-secondary-700">
-                  Mensagem
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={3}
-                  className="input-field mt-1"
-                  placeholder="Descreva sua proposta, experiência e disponibilidade"
-                  value={bidForm.message}
-                  onChange={handleBidChange}
-                />
-              </div>
-              <button type="submit" className="w-full btn-primary py-2">
-                Enviar Proposta
-              </button>
-            </form>
+            )}
           </div>
-        )}
+
+          {/* Service Actions: Confirm Completion / Report Problem */}
+          {isServiceInProgress && (isCreator || isUserAcceptedProvider) && (
+            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
+              <button onClick={handleConfirmCompletion} className={`${btnSuccess} w-full sm:w-auto`} disabled={!!actionLoading}><CheckCircleIcon /> Confirmar Conclusão</button>
+              <button onClick={handleReportProblem} className={`${btnDanger} w-full sm:w-auto`} disabled={!!actionLoading}><ExclamationTriangleIcon /> Tenho um Problema</button>
+            </div>
+          )}
+        </div>
+
+        {/* Creator Info & Bid Form/List Column */}
+        <div className="lg:col-span-1 space-y-6">
+          <div className="bg-white shadow-md rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-3">Criador do Serviço</h2>
+            <div className="flex items-center space-x-3">
+              <img src={service.creator.image || '/default-avatar.png'} alt={service.creator.name || 'Criador'} className="h-12 w-12 rounded-full object-cover" />
+              <div>
+                <p className="font-medium text-gray-900">{service.creator.name}</p>
+                {/* Placeholder for rating */}
+                {/* <p className="text-sm text-gray-500">Avaliação: {service.creator.rating?.toFixed(1) || 'N/A'}</p> */}
+              </div>
+            </div>
+            {service.creator.about && <p className="mt-3 text-sm text-gray-600">{service.creator.about}</p>}
+            {isCreator && service.status === 'OPEN' && (
+                <Link href={`/editar-servico/${service.id}`} className={`mt-4 block text-center ${btnSecondary}`}>Editar Serviço</Link>
+            )}
+          </div>
+
+          {/* Bid Form */}
+          {canCurrentUserBid && !existingUserBid && !acceptedBid && (
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Fazer uma Proposta</h2>
+              <form onSubmit={handleBidSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="price" className="block text-sm font-medium text-gray-700">Sua Oferta (R$)</label>
+                  <input type="number" name="price" id="price" value={bidForm.price} onChange={handleBidChange} className="input-field mt-1 w-full" placeholder="Ex: 150.00" step="0.01" />
+                </div>
+                <div>
+                  <label htmlFor="proposedDate" className="block text-sm font-medium text-gray-700">Data/Hora Proposta (Opcional)</label>
+                  <input type="datetime-local" name="proposedDate" id="proposedDate" value={bidForm.proposedDate} onChange={handleBidChange} className="input-field mt-1 w-full" />
+                </div>
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700">Mensagem (Opcional)</label>
+                  <textarea name="message" id="message" value={bidForm.message} onChange={handleBidChange} rows={3} className="input-field mt-1 w-full" placeholder="Detalhes adicionais sobre sua proposta..."></textarea>
+                </div>
+                <button type="submit" className={`${btnPrimary} w-full`} disabled={!!actionLoading}>{actionLoading === 'submitBid' ? 'Enviando...' : 'Enviar Proposta'}</button>
+              </form>
+            </div>
+          )}
+          {existingUserBid && !acceptedBid && isServiceOpen && (
+            <div className="bg-white shadow-md rounded-lg p-4 text-center">
+              <p className="text-gray-700">Você já enviou uma proposta para este serviço.</p>
+              {existingUserBid.status === 'PENDING' && (
+                <button onClick={() => handleWithdrawBid(existingUserBid.id)} className={`mt-2 ${btnDanger}`} disabled={!!actionLoading}><XMarkIcon/> Retirar Proposta</button>
+              )}
+            </div>
+          )}
+
+          {/* Bids List */}
+          {service.bids && service.bids.length > 0 && (
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Propostas Recebidas ({service.bids.length})</h2>
+              <div className="space-y-4">
+                {service.bids.map((bid) => (
+                  <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold text-gray-800">{bid.provider.name || 'Prestador Anônimo'}</p>
+                        {bid.price && <p className="text-lg font-bold text-blue-600">R$ {bid.price.toFixed(2)}</p>}
+                        {bid.proposedDate && <p className="text-sm text-gray-500">Data: {new Date(bid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(bid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>}
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid.status)}`}>{getBidStatusText(bid.status)}</span>
+                    </div>
+                    {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
+                    
+                    {/* Actions for Service Creator */}
+                    {isCreator && isServiceOpen && !acceptedBid && (
+                      <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
+                        {bid.status === 'PENDING' && (
+                          <>
+                            <button onClick={() => handleAcceptBid(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar</button>
+                            <button onClick={() => handleCounterOfferToProvider(bid.id)} className={btnWarning} disabled={!!actionLoading}><ArrowPathIcon /> Contraproposta</button>
+                            <button onClick={() => handleRejectBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar</button>
+                          </>
+                        )}
+                        {/* If creator made a counter-offer and provider rejected it, creator might want to re-negotiate or accept original? (complex) */}
+                      </div>
+                    )}
+
+                    {/* Actions for Bid Provider */}
+                    {session?.user?.id === bid.providerId && isServiceOpen && !acceptedBid && (
+                       <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
+                        {bid.status === 'COUNTER_OFFER' && (
+                          <>
+                            <button onClick={() => handleAcceptCounterOfferByProvider(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar Contraproposta</button>
+                            <button onClick={() => handleRejectCounterOfferByProvider(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar Contraproposta</button>
+                          </>
+                        )}
+                        {bid.status === 'PENDING' && (
+                            <button onClick={() => handleWithdrawBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon/> Retirar Minha Proposta</button>
+                        )}
+                      </div>
+                    )}
+                    {bid.status === 'ACCEPTED' && (
+                        <p className="text-sm text-green-600 font-semibold">Esta proposta foi aceita.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {service.bids && service.bids.length === 0 && isCreator && (
+             <div className="bg-white shadow-md rounded-lg p-6 text-center">
+                <p className="text-gray-600">Nenhuma proposta recebida ainda.</p>
+             </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
