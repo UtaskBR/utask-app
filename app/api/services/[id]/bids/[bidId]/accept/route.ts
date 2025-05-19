@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import crypto from "crypto";
 
 // POST /api/services/[id]/bids/[bidId]/accept
 export async function POST(
@@ -24,12 +25,14 @@ export async function POST(
           select: {
             id: true,
             creatorId: true,
-            status: true
+            status: true,
+            title: true
           }
         },
         provider: {
           select: {
-            id: true
+            id: true,
+            name: true
           }
         }
       }
@@ -41,6 +44,22 @@ export async function POST(
 
     if (bid.service.creatorId !== session.user.id) {
       return NextResponse.json({ error: "Apenas o criador do serviço pode aceitar propostas" }, { status: 403 });
+    }
+
+    // Formatar valores para exibição
+    const formattedPrice = bid.price ? `R$ ${bid.price.toFixed(2)}` : "valor não especificado";
+    
+    // Formatar datas para exibição
+    let formattedDate = "data não especificada";
+    if (bid.proposedDate) {
+      const date = new Date(bid.proposedDate);
+      formattedDate = date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
     }
 
     // Atualizar status da proposta aceita
@@ -68,16 +87,18 @@ export async function POST(
       data: { status: "REJECTED" }
     });
 
-    // Notificação para o prestador
+    // Notificação para o prestador com detalhes completos
     await prisma.notification.create({
       data: {
+        id: crypto.randomUUID(),
         type: "ACCEPTANCE",
         title: "Proposta Aceita",
-        message: "Sua proposta foi aceita!",
+        message: `Sua proposta para o serviço "${bid.service.title}" foi aceita! Valor: ${formattedPrice}. Data/hora: ${formattedDate}. O serviço está agora em andamento.`,
         receiverId: bid.provider.id,
         senderId: session.user.id,
         bidId: bid.id,
-        serviceId: bid.service.id
+        serviceId: bid.service.id,
+        read: false
       }
     });
 

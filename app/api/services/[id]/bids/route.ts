@@ -22,7 +22,7 @@ export async function POST(
     // Verificar se o serviço existe
     const service = await prisma.service.findUnique({
       where: { id: serviceId },
-      select: { id: true, creatorId: true, title: true, status: true }
+      select: { id: true, creatorId: true, title: true, status: true, price: true, date: true }
     });
 
     if (!service) {
@@ -49,6 +49,41 @@ export async function POST(
       return NextResponse.json({ error: "Você já fez uma proposta para este serviço" }, { status: 400 });
     }
 
+    // Buscar informações do prestador
+    const provider = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { name: true }
+    });
+
+    // Formatar valores para exibição
+    const formattedPrice = price ? `R$ ${parseFloat(price).toFixed(2)}` : "valor não especificado";
+    const originalPrice = service.price ? `R$ ${service.price.toFixed(2)}` : "valor não especificado";
+    
+    // Formatar datas para exibição
+    let formattedProposedDate = "data não especificada";
+    if (proposedDate) {
+      const date = new Date(proposedDate);
+      formattedProposedDate = date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+    
+    let formattedOriginalDate = "data não especificada";
+    if (service.date) {
+      const date = new Date(service.date);
+      formattedOriginalDate = date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
     // Criar a proposta
     const bid = await prisma.bid.create({
       data: {
@@ -62,15 +97,20 @@ export async function POST(
       }
     });
 
-    // Notificar o criador do serviço
+    // Notificar o criador do serviço com detalhes completos
     await prisma.notification.create({
       data: {
         id: crypto.randomUUID(),
         type: "BID",
         title: "Nova proposta recebida",
-        message: `Você recebeu uma nova proposta para o serviço "${service.title}"`,
+        message: `Você recebeu uma nova proposta para o serviço "${service.title}" de ${provider?.name || "um prestador"}. 
+        Valor proposto: ${formattedPrice} (original: ${originalPrice}). 
+        Data proposta: ${formattedProposedDate} (original: ${formattedOriginalDate}).
+        Mensagem: "${message || "Nenhuma mensagem adicional"}"`,
         receiverId: service.creatorId,
         senderId: session.user.id,
+        serviceId: serviceId,
+        bidId: bid.id,
         read: false
       }
     });

@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -128,9 +127,11 @@ model Wallet {
   balance      Float         @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  userId       String        @unique
+  userId       String?       @unique
+  platformId   String?       @unique
   transactions Transaction[]
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     Platform?     @relation(fields: [platformId], references: [id], onDelete: Cascade)
 }
 
 model Transaction {
@@ -141,7 +142,7 @@ model Transaction {
   updatedAt   DateTime @updatedAt
   walletId    String
   serviceId   String?  // Link to service for context
-  type        String   // e.g., PAYMENT, REFUND, WITHDRAWAL, DEPOSIT
+  type        String   // e.g., PAYMENT, REFUND, WITHDRAWAL, DEPOSIT, PLATFORM_FEE
   status      String   @default("COMPLETED") // COMPLETED, PENDING, FAILED
   wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
@@ -228,3 +229,12 @@ model CompletionConfirmation {
   @@unique([serviceId, userId]) // Garante que cada usuário só confirme uma vez por serviço
 }
 
+// New model for Platform
+model Platform {
+  id          String   @id @default(cuid())
+  name        String   @default("UTASK")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  wallet      Wallet?
+}

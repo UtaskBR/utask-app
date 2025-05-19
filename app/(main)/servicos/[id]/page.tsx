@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -14,6 +13,7 @@ const XMarkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" view
 const ArrowPathIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>;
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ExclamationTriangleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>;
+const ThumbUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" /></svg>;
 
 export default function ServiceDetailPage() {
   const { data: session } = useSession();
@@ -118,6 +118,28 @@ export default function ServiceDetailPage() {
     }
   };
 
+  // Nova função para candidatura direta (aceitar serviço com os termos originais)
+  const handleApplyDirectly = async () => {
+    if (!session || !serviceId) {
+      setError('Você precisa estar logado para se candidatar a este serviço.');
+      return;
+    }
+    setActionLoading('applyDirectly');
+    try {
+      const response = await fetch(`/api/services/${serviceId}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erro ao se candidatar para o serviço');
+      fetchService(); // Refresh service data
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Generic action handler for API calls
   const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
     setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
@@ -161,12 +183,7 @@ export default function ServiceDetailPage() {
 
   // --- Service Completion/Problem Actions ---
   const handleConfirmCompletion = () => {
-    // TODO: Implement API call to POST /api/services/${serviceId}/confirm-completion
-    // This API needs to be created on the backend.
-    // For now, simulate success and refresh.
-    console.log('Ação: Confirmar Conclusão (API a ser implementada)');
-    alert('Funcionalidade de confirmação de conclusão ainda em desenvolvimento no backend.');
-    // callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
+    callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
   };
 
   const handleReportProblem = () => {
@@ -313,10 +330,35 @@ export default function ServiceDetailPage() {
             )}
           </div>
 
-          {/* Bid Form */}
+          {/* Botão de Candidatura Direta */}
           {canCurrentUserBid && !existingUserBid && !acceptedBid && (
             <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Fazer uma Proposta</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Candidatar-se para este Serviço</h2>
+              <div className="space-y-4">
+                <button 
+                  onClick={handleApplyDirectly} 
+                  className={`${btnSuccess} w-full`} 
+                  disabled={!!actionLoading}
+                >
+                  {actionLoading === 'applyDirectly' ? 'Enviando...' : <><ThumbUpIcon /> Aceitar Serviço</>}
+                </button>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600">ou</p>
+                  <button 
+                    onClick={() => setShowBidForm(!showBidForm)} 
+                    className={`mt-2 ${btnSecondary}`}
+                  >
+                    {showBidForm ? 'Cancelar Proposta' : 'Fazer uma Proposta Personalizada'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bid Form */}
+          {canCurrentUserBid && !existingUserBid && !acceptedBid && showBidForm && (
+            <div className="bg-white shadow-md rounded-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">Fazer uma Proposta Personalizada</h2>
               <form onSubmit={handleBidSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700">Sua Oferta (R$)</label>
@@ -406,4 +448,3 @@ export default function ServiceDetailPage() {
     </div>
   );
 }
-

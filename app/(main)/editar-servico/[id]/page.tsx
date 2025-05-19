@@ -1,337 +1,296 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { toast } from 'react-hot-toast';
 
-// Definir interface para os parâmetros da página
-interface EditarServicoParams {
-  id: string;
-}
+// Placeholder icons (Heroicons)
+const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
+const SaveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M12 3v8.25m0 0l-3-3m3 3l3-3" /></svg>;
+const TrashIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>;
 
-export default function EditarServicoPage() {
-  // Usar o hook useParams para acessar os parâmetros de rota
+export default function EditServicePage() {
+  const { data: session } = useSession();
   const params = useParams();
-  const serviceId = params.id;
-  
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const serviceId = params.id as string;
+
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
-  const [professions, setProfessions] = useState<any[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [professions, setProfessions] = useState<{ id: string; name: string }[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    price: '',
     date: '',
-    timeWindow: 60,
-    value: '',
+    address: '',
     professionId: '',
-    latitude: null as number | null,
-    longitude: null as number | null,
-    address: ''
   });
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // Fetch service data
   useEffect(() => {
-    // Redirecionar se não estiver autenticado
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
-    }
-    if (status === 'authenticated' && serviceId) {
-      fetchServiceDetails();
+    const fetchService = async () => {
+      if (!serviceId) return;
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/services/${serviceId}`);
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ error: 'Serviço não encontrado ou erro na resposta.' }));
+          throw new Error(errData.error || 'Falha ao buscar o serviço');
+        }
+        const data = await response.json();
+        
+        // Check if user is the creator
+        if (session?.user?.id !== data.creatorId) {
+          router.push(`/servicos/${serviceId}`);
+          return;
+        }
+        
+        // Check if service can be edited
+        if (data.status !== 'OPEN' && data.status !== 'PENDING') {
+          setError('Este serviço não pode ser editado pois já foi aceito ou está em andamento.');
+          router.push(`/servicos/${serviceId}`);
+          return;
+        }
+        
+        // Format date for input
+        let formattedDate = '';
+        if (data.date) {
+          const date = new Date(data.date);
+          formattedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+            .toISOString()
+            .slice(0, 16);
+        }
+        
+        setFormData({
+          title: data.title || '',
+          description: data.description || '',
+          price: data.price ? data.price.toString() : '',
+          date: formattedDate,
+          address: data.address || '',
+          professionId: data.profession?.id || '',
+        });
+        
+        setError('');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const fetchProfessions = async () => {
+      try {
+        const response = await fetch('/api/professions');
+        if (!response.ok) throw new Error('Falha ao buscar profissões');
+        const data = await response.json();
+        setProfessions(data);
+      } catch (err) {
+        console.error('Erro ao buscar profissões:', err);
+      }
+    };
+
+    if (session) {
+      fetchService();
       fetchProfessions();
     }
-  }, [status, serviceId, router]);
-
-  const fetchServiceDetails = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(`/api/services/${serviceId}`);
-      
-      if (!response.ok) {
-        throw new Error('Erro ao carregar detalhes do serviço');
-      }
-      
-      const service = await response.json();
-      
-      // Verificar se o usuário é o criador do serviço
-      if (session?.user?.id !== service.creatorId) {
-        setError('Você não tem permissão para editar este serviço');
-        return;
-      }
-      
-      // Verificar se o serviço já foi aceito
-      if (service.status !== 'OPEN') {
-        setError('Este serviço não pode ser editado porque já foi aceito ou está em andamento');
-        return;
-      }
-      
-      // Formatar a data para o formato esperado pelo input datetime-local
-      let formattedDate = '';
-      if (service.date) {
-        const date = new Date(service.date);
-        formattedDate = date.toISOString().slice(0, 16);
-      }
-      
-      setFormData({
-        title: service.title,
-        description: service.description,
-        date: formattedDate,
-        timeWindow: service.timeWindow || 60,
-        value: service.value ? service.value.toString() : '',
-        professionId: service.professionId || '',
-        latitude: service.latitude,
-        longitude: service.longitude,
-        address: service.address || ''
-      });
-    } catch (error) {
-      console.error('Erro ao carregar serviço:', error);
-      toast.error('Erro ao carregar detalhes do serviço');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchProfessions = async () => {
-    try {
-      const response = await fetch('/api/professions');
-      
-      if (!response.ok) {
-        throw new Error('Erro ao carregar profissões');
-      }
-      
-      const data = await response.json();
-      setProfessions(data);
-    } catch (error) {
-      console.error('Erro ao carregar profissões:', error);
-      toast.error('Erro ao carregar categorias de serviço');
-    }
-  };
+  }, [serviceId, session, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!session) {
+      setError('Você precisa estar logado para editar um serviço.');
+      return;
+    }
     
+    setActionLoading('save');
     try {
-      setIsSaving(true);
-      
-      // Preparar os dados para envio
-      const serviceData = {
-        ...formData,
-        value: formData.value ? parseFloat(formData.value) : null,
-        timeWindow: parseInt(formData.timeWindow.toString()),
-        professionId: formData.professionId || null
-      };
-      
       const response = await fetch(`/api/services/${serviceId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(serviceData)
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          price: formData.price ? parseFloat(formData.price) : undefined,
+          date: formData.date || undefined,
+          address: formData.address,
+          professionId: formData.professionId || undefined,
+        }),
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao atualizar serviço');
-      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erro ao atualizar serviço');
       
-      toast.success('Serviço atualizado com sucesso!');
-      router.push('/meus-servicos');
-    } catch (error: any) {
-      console.error('Erro ao atualizar serviço:', error);
-      toast.error(error.message || 'Erro ao atualizar serviço');
+      router.push(`/servicos/${serviceId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
     } finally {
-      setIsSaving(false);
+      setActionLoading(null);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    
+    setActionLoading('delete');
+    try {
+      const response = await fetch(`/api/services/${serviceId}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Erro ao excluir serviço');
+      
+      router.push('/meus-servicos');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
+    } finally {
+      setActionLoading(null);
+      setConfirmDelete(false);
+    }
+  };
 
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-red-700 mb-2">Erro</h2>
-          <p className="text-red-600 mb-4">{error}</p>
-          <Link
-            href="/meus-servicos"
-            className="inline-block py-2 px-4 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-md transition-colors"
-          >
-            Voltar para Meus Serviços
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando...</p></div>;
+
+  // Button Styles
+  const btnBase = "px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  const btnPrimary = `${btnBase} bg-blue-500 hover:bg-blue-600 text-white`;
+  const btnSecondary = `${btnBase} bg-gray-200 hover:bg-gray-300 text-gray-700`;
+  const btnDanger = `${btnBase} bg-red-500 hover:bg-red-600 text-white`;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Editar Serviço</h1>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <Link href={`/servicos/${serviceId}`} className="text-blue-600 hover:text-blue-700 flex items-center mb-6">
+        <ArrowLeftIcon /> Voltar para o serviço
+      </Link>
       
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-6 space-y-6">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Editar Serviço</h1>
+      
+      {error && (
+        <div className="mb-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+          <p>{error}</p>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6 space-y-6">
+        <div>
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700">Título do Serviço</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={formData.title}
+            onChange={handleChange}
+            required
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="Ex: Conserto de encanamento"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">Descrição Detalhada</label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            required
+            rows={5}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="Descreva o serviço com detalhes..."
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-secondary-700">
-              Título *
-            </label>
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700">Valor (R$)</label>
             <input
-              id="title"
-              name="title"
-              type="text"
-              required
-              className="input-field mt-1"
-              placeholder="Ex: Instalação de Ar Condicionado"
-              value={formData.title}
+              type="number"
+              id="price"
+              name="price"
+              value={formData.price}
               onChange={handleChange}
+              step="0.01"
+              min="0"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="Ex: 150.00"
             />
           </div>
           
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-secondary-700">
-              Descrição *
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={4}
-              required
-              className="input-field mt-1"
-              placeholder="Descreva detalhadamente o serviço que você precisa"
-              value={formData.description}
-              onChange={handleChange}
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">
-                Tipo de Serviço
-              </label>
-              <select
-                id="professionId"
-                name="professionId"
-                className="input-field mt-1"
-                value={formData.professionId}
-                onChange={handleChange}
-              >
-                <option value="">Selecione uma categoria</option>
-                {professions.map((profession) => (
-                  <option key={profession.id} value={profession.id}>
-                    {profession.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label htmlFor="value" className="block text-sm font-medium text-secondary-700">
-                Valor (R$)
-              </label>
-              <input
-                id="value"
-                name="value"
-                type="number"
-                step="0.01"
-                min="0"
-                className="input-field mt-1"
-                placeholder="Deixe em branco para receber propostas"
-                value={formData.value}
-                onChange={handleChange}
-              />
-              <p className="mt-1 text-xs text-secondary-500">
-                Deixe em branco para receber propostas de valor dos prestadores
-              </p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-secondary-700">
-                Data e Hora
-              </label>
-              <input
-                id="date"
-                name="date"
-                type="datetime-local"
-                className="input-field mt-1"
-                value={formData.date}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="timeWindow" className="block text-sm font-medium text-secondary-700">
-                Janela de Tempo (minutos)
-              </label>
-              <select
-                id="timeWindow"
-                name="timeWindow"
-                className="input-field mt-1"
-                value={formData.timeWindow}
-                onChange={handleChange}
-              >
-                <option value="30">30 minutos</option>
-                <option value="60">1 hora</option>
-                <option value="120">2 horas</option>
-                <option value="180">3 horas</option>
-                <option value="240">4 horas</option>
-              </select>
-              <p className="mt-1 text-xs text-secondary-500">
-                Flexibilidade de horário para a realização do serviço
-              </p>
-            </div>
-          </div>
-          
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-secondary-700">
-              Endereço
-            </label>
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700">Data e Hora</label>
             <input
-              id="address"
-              name="address"
-              type="text"
-              className="input-field mt-1"
-              placeholder="Endereço completo onde o serviço será realizado"
-              value={formData.address}
+              type="datetime-local"
+              id="date"
+              name="date"
+              value={formData.date}
               onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
-            <p className="mt-1 text-xs text-secondary-500">
-              Deixe em branco para serviços remotos
-            </p>
           </div>
+        </div>
+        
+        <div>
+          <label htmlFor="address" className="block text-sm font-medium text-gray-700">Endereço</label>
+          <input
+            type="text"
+            id="address"
+            name="address"
+            value={formData.address}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="Ex: Rua Exemplo, 123 - Bairro, Cidade"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="professionId" className="block text-sm font-medium text-gray-700">Categoria/Profissão</label>
+          <select
+            id="professionId"
+            name="professionId"
+            value={formData.professionId}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">Selecione uma categoria</option>
+            {professions.map((profession) => (
+              <option key={profession.id} value={profession.id}>
+                {profession.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={handleDelete}
+            className={`${btnDanger} order-2 sm:order-1`}
+            disabled={!!actionLoading}
+          >
+            <TrashIcon />
+            {confirmDelete ? 'Confirmar Exclusão' : 'Excluir Serviço'}
+          </button>
           
-          <div className="pt-4 flex space-x-3">
-            <Link
-              href="/meus-servicos"
-              className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition-colors text-center"
-            >
-              Cancelar
-            </Link>
-            <button
-              type="submit"
-              disabled={isSaving}
-              className="flex-1 btn-primary py-3 flex justify-center items-center"
-            >
-              {isSaving ? 'Salvando...' : 'Salvar Alterações'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            className={`${btnPrimary} order-1 sm:order-2`}
+            disabled={!!actionLoading}
+          >
+            <SaveIcon />
+            {actionLoading === 'save' ? 'Salvando...' : 'Salvar Alterações'}
+          </button>
         </div>
       </form>
     </div>

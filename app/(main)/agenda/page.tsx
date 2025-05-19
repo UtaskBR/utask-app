@@ -1,429 +1,300 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { toast } from 'react-hot-toast';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
-import { Value } from 'react-calendar/dist/cjs/shared/types';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-// Definir interface para o tipo de compromisso
-interface Appointment {
+// Placeholder icons (Heroicons)
+const CalendarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>;
+const ClockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const MapPinIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>;
+const CurrencyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>;
+const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
+
+type ServiceType = {
   id: string;
   title: string;
   description: string;
-  status: string;
+  price: number | null;
   date: string | null;
-  value: number | null;
+  address: string | null;
+  status: string;
   creatorId: string;
-  creator?: {
+  creator: {
     id: string;
     name: string | null;
     image: string | null;
   };
-  bids?: Array<{
+  provider: {
     id: string;
-    status: string;
-    value: number | null;
-    providerId: string;
-    provider?: {
-      id: string;
-      name: string | null;
-      image: string | null;
-      professions?: any[];
-    };
-  }>;
-}
+    name: string | null;
+    image: string | null;
+  } | null;
+};
 
 export default function AgendaPage() {
-  const { data: session } = useSession();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('calendar'); // 'calendar', 'upcoming', 'past'
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [markedDates, setMarkedDates] = useState<Date[]>([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewService, setPreviewService] = useState<Appointment | null>(null);
-  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
+  const { data: session, status } = useSession();
+  const [services, setServices] = useState<ServiceType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('all'); // 'all', 'upcoming', 'past'
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchAppointments();
-    }
-  }, [session]);
-
-  const fetchAppointments = async () => {
-    try {
-      setLoading(true);
-      // Adicionar verificação de nulidade usando o operador opcional
-      const response = await fetch(`/api/users/${session?.user?.id}/appointments`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Filtrar apenas serviços aceitos (IN_PROGRESS) que ainda não foram concluídos
-        const filteredAppointments = data.filter((appointment: Appointment) => 
-          appointment.status === 'IN_PROGRESS'
-        );
-        
-        setAppointments(filteredAppointments);
-        
-        // Extrair datas para marcar no calendário
-        const dates = filteredAppointments
-          .filter((app: Appointment) => app.date)
-          .map((app: Appointment) => new Date(app.date as string));
-        
-        setMarkedDates(dates);
-      } else {
-        toast.error('Erro ao carregar compromissos');
+    const fetchAgendaServices = async () => {
+      if (status === 'loading') return;
+      if (!session?.user?.id) {
+        setError('Você precisa estar logado para ver sua agenda.');
+        setIsLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Erro ao buscar compromissos:', error);
-      toast.error('Erro ao carregar compromissos');
-    } finally {
-      setLoading(false);
+
+      setIsLoading(true);
+      try {
+        // Buscar serviços em andamento ou concluídos onde o usuário é criador ou prestador
+        const response = await fetch('/api/agenda');
+        
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({ error: 'Erro ao buscar serviços agendados.' }));
+          throw new Error(errData.error || 'Falha ao buscar serviços agendados');
+        }
+        
+        const data = await response.json();
+        setServices(data);
+        setError('');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
+        console.error('Erro ao buscar serviços agendados:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAgendaServices();
+  }, [session, status]);
+
+  // Filtrar serviços com base na seleção
+  const filteredServices = services.filter(service => {
+    if (filter === 'all') return true;
+    
+    const serviceDate = service.date ? new Date(service.date) : null;
+    const now = new Date();
+    
+    if (filter === 'upcoming' && serviceDate) {
+      return serviceDate > now;
     }
-  };
-
-  // Função para lidar com a mudança de data no calendário
-  const handleDateChange = (value: Value) => {
-    // Converter o valor para Date | null
-    if (value instanceof Date) {
-      setSelectedDate(value);
-    } else if (Array.isArray(value) && value.length > 0 && value[0] instanceof Date) {
-      setSelectedDate(value[0]);
-    } else {
-      setSelectedDate(null);
+    
+    if (filter === 'past' && serviceDate) {
+      return serviceDate <= now;
     }
-  };
-
-  // Filtrar compromissos por data selecionada
-  const filteredAppointments = selectedDate
-    ? appointments.filter(app => {
-        if (!app.date) return false;
-        const appDate = new Date(app.date);
-        return (
-          appDate.getDate() === selectedDate.getDate() &&
-          appDate.getMonth() === selectedDate.getMonth() &&
-          appDate.getFullYear() === selectedDate.getFullYear()
-        );
-      })
-    : appointments;
-
-  // Separar compromissos futuros e passados
-  const now = new Date();
-  const upcomingAppointments = appointments.filter(app => {
-    if (!app.date) return false;
-    return new Date(app.date) >= now;
-  });
-  
-  const pastAppointments = appointments.filter(app => {
-    if (!app.date) return false;
-    return new Date(app.date) < now;
+    
+    return true;
   });
 
-  // Função para mostrar preview do serviço
-  const handleShowPreview = (service: Appointment, event: React.MouseEvent) => {
-    setPreviewService(service);
-    setPreviewPosition({
-      x: event.clientX,
-      y: event.clientY
-    });
-    setShowPreview(true);
-  };
+  // Ordenar serviços por data (próximos primeiro)
+  const sortedServices = [...filteredServices].sort((a, b) => {
+    const dateA = a.date ? new Date(a.date).getTime() : Infinity;
+    const dateB = b.date ? new Date(b.date).getTime() : Infinity;
+    return dateA - dateB;
+  });
 
-  // Função para esconder preview
-  const handleHidePreview = () => {
-    setShowPreview(false);
-  };
-
-  // Função para renderizar marcações no calendário
-  const tileContent = ({ date, view }: { date: Date; view: string }) => {
-    if (view === 'month') {
-      const hasAppointment = markedDates.some(
-        markedDate =>
-          markedDate.getDate() === date.getDate() &&
-          markedDate.getMonth() === date.getMonth() &&
-          markedDate.getFullYear() === date.getFullYear()
-      );
-
-      return hasAppointment ? (
-        <div className="h-2 w-2 bg-primary-500 rounded-full mx-auto mt-1"></div>
-      ) : null;
+  // Agrupar serviços por data
+  const groupedServices: Record<string, ServiceType[]> = {};
+  sortedServices.forEach(service => {
+    if (!service.date) {
+      const key = 'Sem data definida';
+      if (!groupedServices[key]) groupedServices[key] = [];
+      groupedServices[key].push(service);
+      return;
     }
-    return null;
+    
+    const date = new Date(service.date);
+    const key = format(date, 'dd/MM/yyyy', { locale: ptBR });
+    if (!groupedServices[key]) groupedServices[key] = [];
+    groupedServices[key].push(service);
+  });
+
+  // Função para formatar data e hora
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return 'Data não definida';
+    const date = new Date(dateString);
+    return format(date, "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
   };
+
+  // Função para determinar se o usuário é o criador ou prestador
+  const getUserRole = (service: ServiceType) => {
+    if (!session?.user?.id) return '';
+    if (service.creatorId === session.user.id) return 'Contratante';
+    return 'Prestador';
+  };
+
+  // Função para obter o nome da outra parte
+  const getOtherPartyName = (service: ServiceType) => {
+    if (!session?.user?.id) return '';
+    if (service.creatorId === session.user.id) {
+      return service.provider?.name || 'Prestador';
+    }
+    return service.creator?.name || 'Contratante';
+  };
+
+  // Função para obter a cor de status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'IN_PROGRESS':
+        return 'bg-blue-100 text-blue-800';
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800';
+      case 'CANCELLED':
+        return 'bg-red-100 text-red-800';
+      case 'DISPUTED':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Função para obter o texto de status
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'IN_PROGRESS':
+        return 'Em andamento';
+      case 'COMPLETED':
+        return 'Concluído';
+      case 'CANCELLED':
+        return 'Cancelado';
+      case 'DISPUTED':
+        return 'Em disputa';
+      default:
+        return status;
+    }
+  };
+
+  if (status === 'loading') {
+    return <div className="flex justify-center items-center min-h-screen"><p>Carregando...</p></div>;
+  }
 
   if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <h1 className="text-2xl font-bold mb-4">Acesso Restrito</h1>
-        <p className="mb-6">Faça login para acessar sua agenda de serviços.</p>
-        <Link
-          href="/login"
-          className="px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors"
-        >
-          Fazer Login
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <p className="text-yellow-700">Você precisa estar logado para ver sua agenda.</p>
+        </div>
+        <Link href="/login" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          Fazer login
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Minha Agenda</h1>
-      
-      <div className="flex flex-wrap gap-4 mb-6">
-        <button
-          onClick={() => setView('calendar')}
-          className={`px-4 py-2 rounded-md ${
-            view === 'calendar'
-              ? 'bg-primary-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Calendário
-        </button>
-        <button
-          onClick={() => setView('upcoming')}
-          className={`px-4 py-2 rounded-md ${
-            view === 'upcoming'
-              ? 'bg-primary-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Próximos ({upcomingAppointments.length})
-        </button>
-        <button
-          onClick={() => setView('past')}
-          className={`px-4 py-2 rounded-md ${
-            view === 'past'
-              ? 'bg-primary-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-          }`}
-        >
-          Passados ({pastAppointments.length})
-        </button>
-      </div>
-      
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
-        </div>
-      ) : (
-        <div>
-          {view === 'calendar' && (
-            <div className="mb-8">
-              <div className="calendar-container mb-6">
-                <Calendar
-                  onChange={handleDateChange}
-                  value={selectedDate}
-                  tileContent={tileContent}
-                  className="rounded-lg shadow-md border border-gray-200 p-4 w-full"
-                />
-              </div>
-              
-              {selectedDate && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">
-                    Serviços em {selectedDate.toLocaleDateString('pt-BR')}
-                    <span className="ml-2 text-sm font-normal text-gray-500">
-                      ({filteredAppointments.length})
-                    </span>
-                  </h2>
-                  
-                  {filteredAppointments.length === 0 ? (
-                    <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                      <p className="text-gray-700">Nenhum serviço agendado para esta data.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredAppointments.map(appointment => (
-                        <ServiceCard 
-                          key={appointment.id} 
-                          service={appointment} 
-                          userId={session?.user?.id}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {view === 'upcoming' && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">
-                Próximos serviços
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  ({upcomingAppointments.length})
-                </span>
-              </h2>
-              
-              {upcomingAppointments.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                  <p className="text-gray-700">Você não tem serviços agendados.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {upcomingAppointments.map(appointment => (
-                    <ServiceCard 
-                      key={appointment.id} 
-                      service={appointment} 
-                      userId={session?.user?.id}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {view === 'past' && (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">
-                Serviços passados
-                <span className="ml-2 text-sm font-normal text-gray-500">
-                  ({pastAppointments.length})
-                </span>
-              </h2>
-              
-              {pastAppointments.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-md p-6 text-center">
-                  <p className="text-gray-700">Você não tem serviços passados.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pastAppointments.map(appointment => (
-                    <ServiceCard 
-                      key={appointment.id} 
-                      service={appointment} 
-                      userId={session?.user?.id}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6 flex items-center">
+        <CalendarIcon /> Minha Agenda de Serviços
+      </h1>
+
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <p className="text-red-700">{error}</p>
         </div>
       )}
-    </div>
-  );
-}
 
-// Componente de cartão de serviço
-interface ServiceCardProps {
-  service: Appointment;
-  userId: string | undefined;
-}
-
-function ServiceCard({ service, userId }: ServiceCardProps) {
-  // Determinar se o usuário é o criador ou o prestador
-  const isCreator = service.creatorId === userId;
-  const isProvider = service.bids?.some(bid => 
-    bid.providerId === userId && bid.status === 'ACCEPTED'
-  );
-  
-  // Encontrar a proposta aceita
-  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
-  
-  // Função para formatar o valor do serviço
-  const formatValue = (value: number | null | undefined) => {
-    if (value === null || value === undefined) return 'A combinar';
-    return `R$ ${value.toFixed(2).replace('.', ',')}`;
-  };
-
-  // Função para formatar a data do serviço
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return 'A combinar';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR');
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="text-lg font-semibold text-gray-900 truncate">
-            {service.title}
-          </h3>
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              filter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setFilter('upcoming')}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              filter === 'upcoming' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Próximos
+          </button>
+          <button
+            onClick={() => setFilter('past')}
+            className={`px-4 py-2 rounded-md text-sm font-medium ${
+              filter === 'past' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            Passados
+          </button>
         </div>
-        
-        <p className="text-gray-700 text-sm mb-4 line-clamp-2">
-          {service.description}
-        </p>
-        
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div>
-            <p className="text-xs text-gray-500">Valor:</p>
-            <p className="text-sm font-medium">
-              {acceptedBid ? formatValue(acceptedBid.value) : formatValue(service.value)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500">Data:</p>
-            <p className="text-sm font-medium">{formatDate(service.date)}</p>
-          </div>
-        </div>
-        
-        {isCreator ? (
-          <div className="mb-4">
-            <p className="text-xs text-gray-500">Prestador:</p>
-            <div className="flex items-center mt-1">
-              <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mr-2">
-                {acceptedBid?.provider?.image ? (
-                  <Image
-                    src={acceptedBid.provider.image}
-                    alt={acceptedBid.provider.name || "Prestador"}
-                    width={24}
-                    height={24}
-                    className="h-6 w-6 rounded-full"
-                  />
-                ) : (
-                  <span className="text-xs text-gray-700 font-medium">
-                    {acceptedBid?.provider?.name?.charAt(0) || "P"}
-                  </span>
-                )}
-              </div>
-              <span className="text-sm font-medium">
-                {acceptedBid?.provider?.name || "Prestador não disponível"}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="mb-4">
-            <p className="text-xs text-gray-500">Cliente:</p>
-            <div className="flex items-center mt-1">
-              <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden mr-2">
-                {service.creator?.image ? (
-                  <Image
-                    src={service.creator.image}
-                    alt={service.creator.name || "Cliente"}
-                    width={24}
-                    height={24}
-                    className="h-6 w-6 rounded-full"
-                  />
-                ) : (
-                  <span className="text-xs text-gray-700 font-medium">
-                    {service.creator?.name?.charAt(0) || "C"}
-                  </span>
-                )}
-              </div>
-              <span className="text-sm font-medium">
-                {service.creator?.name || "Cliente não disponível"}
-              </span>
-            </div>
-          </div>
-        )}
-        
-        <Link 
-          href={`/servicos/${service.id}`}
-          className="w-full block text-center py-2 px-4 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-md transition-colors"
-        >
-          Ver detalhes
-        </Link>
       </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <p>Carregando serviços agendados...</p>
+        </div>
+      ) : sortedServices.length === 0 ? (
+        <div className="bg-gray-50 rounded-lg p-8 text-center">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum serviço agendado</h3>
+          <p className="text-gray-600 mb-4">
+            Você não possui serviços agendados no momento.
+          </p>
+          <Link href="/" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+            Explorar serviços
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {Object.entries(groupedServices).map(([date, dateServices]) => (
+            <div key={date} className="border-b pb-6 last:border-b-0">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">{date}</h2>
+              <div className="space-y-4">
+                {dateServices.map((service) => (
+                  <Link 
+                    href={`/servicos/${service.id}`} 
+                    key={service.id}
+                    className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow p-4 border border-gray-200"
+                  >
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-medium text-gray-900 mb-1">{service.title}</h3>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(service.status)}`}>
+                        {getStatusText(service.status)}
+                      </span>
+                    </div>
+                    
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <ClockIcon />
+                        <span>{formatDateTime(service.date)}</span>
+                      </div>
+                      
+                      {service.address && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <MapPinIcon />
+                          <span>{service.address}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center text-sm text-gray-600">
+                        <CurrencyIcon />
+                        <span>{service.price ? `R$ ${service.price.toFixed(2)}` : 'Valor não definido'}</span>
+                      </div>
+                      
+                      <div className="flex items-center text-sm text-gray-600">
+                        <UserIcon />
+                        <span>
+                          <span className="font-medium">{getUserRole(service)}:</span> Você | 
+                          <span className="font-medium"> {service.creatorId === session.user.id ? 'Prestador' : 'Contratante'}:</span> {getOtherPartyName(service)}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

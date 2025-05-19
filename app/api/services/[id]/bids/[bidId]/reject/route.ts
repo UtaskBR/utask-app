@@ -26,20 +26,36 @@ export async function POST(
             id: true,
             creatorId: true,
             status: true,
+            title: true,
           },
         },
         provider: {
           select: {
             id: true,
+            name: true,
           },
         },
       },
     });
 
-    if (!bid || bid.service.id !== serviceId) {
+    if (!bid) {
       return NextResponse.json(
         { error: "Proposta não encontrada" },
         { status: 404 }
+      );
+    }
+
+    if (bid.service.id !== serviceId) {
+      return NextResponse.json(
+        { error: "Proposta não pertence a este serviço" },
+        { status: 400 }
+      );
+    }
+
+    if (bid.service.status !== "OPEN") {
+      return NextResponse.json(
+        { error: "Não é possível rejeitar propostas para serviços que não estão abertos" },
+        { status: 400 }
       );
     }
 
@@ -50,9 +66,35 @@ export async function POST(
       );
     }
 
+    if (bid.status !== "PENDING") {
+      return NextResponse.json(
+        { error: "Apenas propostas pendentes podem ser rejeitadas" },
+        { status: 400 }
+      );
+    }
+
+    // Formatar o valor para exibição
+    const formattedPrice = bid.price 
+      ? `R$ ${bid.price.toFixed(2)}` 
+      : "valor não especificado";
+
+    // Formatar a data para exibição
+    const formattedDate = bid.proposedDate 
+      ? new Date(bid.proposedDate).toLocaleString('pt-BR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        })
+      : "data não especificada";
+
     const updatedBid = await prisma.bid.update({
       where: { id: bidId },
-      data: { status: "REJECTED" },
+      data: { 
+        status: "REJECTED",
+        updatedAt: new Date()
+      },
     });
 
     await prisma.notification.create({
@@ -60,14 +102,19 @@ export async function POST(
         id: crypto.randomUUID(),
         type: "REJECTION",
         title: "Proposta rejeitada",
-        message: "Sua proposta foi rejeitada.",
+        message: `Sua proposta para o serviço "${bid.service.title}" com valor ${formattedPrice} e data ${formattedDate} foi rejeitada pelo contratante.`,
         receiverId: bid.provider.id,
         senderId: session.user.id,
+        serviceId: serviceId,
+        bidId: bidId,
         read: false,
       },
     });
 
-    return NextResponse.json(updatedBid);
+    return NextResponse.json({
+      ...updatedBid,
+      message: "Proposta rejeitada com sucesso"
+    });
   } catch (error: any) {
     console.error("Erro ao rejeitar proposta:", error);
     return NextResponse.json(

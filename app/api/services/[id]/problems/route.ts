@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import crypto from "crypto";
 
 // POST /api/services/[id]/problem - Reportar um problema com o serviço
 export async function POST(
@@ -69,6 +70,24 @@ export async function POST(
       );
     }
 
+    // Formatar valores para exibição
+    const formattedPrice = existingService.price 
+      ? `R$ ${existingService.price.toFixed(2)}` 
+      : "valor não especificado";
+    
+    // Formatar datas para exibição
+    let formattedDate = "data não especificada";
+    if (existingService.date) {
+      const date = new Date(existingService.date);
+      formattedDate = date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
     // Registrar o cancelamento usando ServiceCancelRequest em vez de ServiceProblem
     await prisma.serviceCancelRequest.create({
       data: {
@@ -81,7 +100,7 @@ export async function POST(
     // Estornar o valor para o contratante
     // Primeiro, verificar se o serviço tem um valor definido
     const acceptedBid = existingService.bids[0];
-    const serviceValue = acceptedBid.value ?? existingService.value;
+    const serviceValue = acceptedBid?.price ?? existingService.price;
 
     if (serviceValue == null) {
       return NextResponse.json(
@@ -115,20 +134,33 @@ export async function POST(
 
     // Criar notificações para ambas as partes
     const providerId = acceptedBid.providerId;
+    const requesterName = session.user.id === existingService.creatorId 
+      ? existingService.creator.name || "O contratante" 
+      : acceptedBid.provider.name || "O prestador";
 
     await prisma.notification.create({
       data: {
+        id: crypto.randomUUID(),
         type: "SERVICE_PROBLEM",
-        message: `Um problema foi reportado no serviço "${existingService.title}" e ele foi cancelado. O valor foi estornado.`,
-        receiverId: existingService.creatorId
+        title: "Serviço Cancelado por Problema",
+        message: `Um problema foi reportado por ${requesterName} no serviço "${existingService.title}" (${formattedPrice}, ${formattedDate}) e ele foi cancelado. O valor foi estornado para sua carteira. Motivo: ${body.reason || "Não especificado"}`,
+        receiverId: existingService.creatorId,
+        senderId: session.user.id,
+        serviceId: id,
+        read: false
       }
     });
 
     await prisma.notification.create({
       data: {
+        id: crypto.randomUUID(),
         type: "SERVICE_PROBLEM",
-        message: `Um problema foi reportado no serviço "${existingService.title}" e ele foi cancelado. Motivo: ${body.reason || "Não especificado"}`,
-        receiverId: providerId
+        title: "Serviço Cancelado por Problema",
+        message: `Um problema foi reportado por ${requesterName} no serviço "${existingService.title}" (${formattedPrice}, ${formattedDate}) e ele foi cancelado. Motivo: ${body.reason || "Não especificado"}`,
+        receiverId: providerId,
+        senderId: session.user.id,
+        serviceId: id,
+        read: false
       }
     });
 

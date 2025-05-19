@@ -73,6 +73,22 @@ export async function POST(
       );
     }
 
+    // Formatar valores para exibição
+    const formattedPrice = service.price ? `R$ ${service.price.toFixed(2)}` : "valor não especificado";
+    
+    // Formatar datas para exibição
+    let formattedDate = "data não especificada";
+    if (service.date) {
+      const date = new Date(service.date);
+      formattedDate = date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
     // 4. Record the confirmation
     await prisma.completionConfirmation.create({
       data: {
@@ -105,19 +121,21 @@ export async function POST(
               id: crypto.randomUUID(),
               type: "SERVICE_COMPLETED_NO_PAYMENT",
               title: "Serviço Concluído",
-              message: `O serviço "${service.title}" foi concluído por ambas as partes (sem valor transacionado).`,
+              message: `O serviço "${service.title}" foi concluído por ambas as partes em ${formattedDate} (sem valor transacionado).`,
               receiverId: creatorId,
               senderId: providerId, // Or system
               serviceId: serviceId,
+              read: false
             },
             {
               id: crypto.randomUUID(),
               type: "SERVICE_COMPLETED_NO_PAYMENT",
               title: "Serviço Concluído",
-              message: `O serviço "${service.title}" foi concluído por ambas as partes (sem valor transacionado).`,
+              message: `O serviço "${service.title}" foi concluído por ambas as partes em ${formattedDate} (sem valor transacionado).`,
               receiverId: providerId,
               senderId: creatorId, // Or system
               serviceId: serviceId,
+              read: false
             },
           ],
         });
@@ -160,6 +178,46 @@ export async function POST(
         return NextResponse.json({ error: "Saldo insuficiente na carteira do contratante. Serviço marcado como DISPUTADO." }, { status: 400 });
       }
 
+      // Calcular a taxa da plataforma (15%)
+      const platformFee = amountToPay * 0.15;
+      const providerAmount = amountToPay - platformFee;
+
+      // Buscar ou criar a wallet da plataforma
+      let platformWallet = await prisma.wallet.findFirst({
+        where: {
+          platform: {
+            name: "UTASK"
+          }
+        }
+      });
+
+      // Se não existir uma wallet da plataforma, criar uma
+      if (!platformWallet) {
+        // Primeiro, verificar se existe uma entidade Platform
+        let platform = await prisma.platform.findFirst({
+          where: { name: "UTASK" }
+        });
+
+        // Se não existir, criar a entidade Platform
+        if (!platform) {
+          platform = await prisma.platform.create({
+            data: {
+              name: "UTASK",
+              description: "Plataforma de serviços autônomos"
+            }
+          });
+        }
+
+        // Criar a wallet da plataforma
+        platformWallet = await prisma.wallet.create({
+          data: {
+            id: crypto.randomUUID(),
+            balance: 0,
+            platformId: platform.id
+          }
+        });
+      }
+
       // Perform the transaction within a Prisma transaction
       try {
         await prisma.$transaction(async (tx) => {
@@ -169,10 +227,16 @@ export async function POST(
             data: { balance: { decrement: amountToPay } },
           });
 
-          // Credit to provider's wallet
+          // Credit to provider's wallet (menos a taxa da plataforma)
           await tx.wallet.update({
             where: { id: providerWallet.id },
-            data: { balance: { increment: amountToPay } },
+            data: { balance: { increment: providerAmount } },
+          });
+
+          // Credit to platform's wallet (a taxa de 15%)
+          await tx.wallet.update({
+            where: { id: platformWallet!.id },
+            data: { balance: { increment: platformFee } },
           });
 
           // Record transaction for creator (debit)
@@ -193,9 +257,22 @@ export async function POST(
             data: {
               id: crypto.randomUUID(),
               walletId: providerWallet.id,
-              amount: amountToPay,
+              amount: providerAmount,
               type: "PAYMENT_RECEIVED",
-              description: `Recebimento pelo serviço: ${service.title} de ${service.creator.name}`,
+              description: `Recebimento pelo serviço: ${service.title} de ${service.creator.name} (já descontada taxa de 15% da plataforma)`,
+              serviceId: serviceId,
+              status: "COMPLETED",
+            },
+          });
+
+          // Record transaction for platform (fee)
+          await tx.transaction.create({
+            data: {
+              id: crypto.randomUUID(),
+              walletId: platformWallet!.id,
+              amount: platformFee,
+              type: "PLATFORM_FEE",
+              description: `Taxa de 15% do serviço: ${service.title} (${service.creator.name} -> ${acceptedBid.provider.name})`,
               serviceId: serviceId,
               status: "COMPLETED",
             },
@@ -215,26 +292,40 @@ export async function POST(
               id: crypto.randomUUID(),
               type: "SERVICE_COMPLETED_PAID",
               title: "Serviço Concluído e Pago",
-              message: `O serviço "${service.title}" foi concluído e o pagamento de R$${amountToPay.toFixed(2)} foi efetuado para ${acceptedBid.provider.name}.`,
+              message: `O serviço "${service.title}" foi concluído em ${formattedDate} e o pagamento de ${formattedPrice} foi efetuado para ${acceptedBid.provider.name}.`,
               receiverId: creatorId,
               senderId: providerId, // or system
               serviceId: serviceId,
+              read: false
             },
             {
               id: crypto.randomUUID(),
               type: "SERVICE_COMPLETED_PAYMENT_RECEIVED",
               title: "Serviço Concluído e Pagamento Recebido",
-              message: `O serviço "${service.title}" foi concluído e você recebeu R$${amountToPay.toFixed(2)} de ${service.creator.name}.`,
+              message: `O serviço "${service.title}" foi concluído em ${formattedDate} e você recebeu R$${providerAmount.toFixed(2)} de ${service.creator.name} (já descontada taxa de 15% da plataforma).`,
               receiverId: providerId,
               senderId: creatorId, // or system
               serviceId: serviceId,
+              read: false
             },
+            {
+              id: crypto.randomUUID(),
+              type: "PLATFORM_FEE_RECEIVED",
+              title: "Taxa de Plataforma Recebida",
+              message: `Taxa de 15% (R$${platformFee.toFixed(2)}) recebida do serviço "${service.title}" concluído em ${formattedDate}.`,
+              receiverId: creatorId, // Notificação para o sistema, mas usamos o creatorId como placeholder
+              senderId: providerId, // Placeholder
+              serviceId: serviceId,
+              read: false
+            }
           ],
         });
 
         return NextResponse.json({
           message: "Serviço concluído e pagamento processado com sucesso!",
           serviceStatus: "COMPLETED",
+          platformFee: platformFee,
+          providerAmount: providerAmount
         });
 
       } catch (transactionError) {
@@ -256,10 +347,11 @@ export async function POST(
           id: crypto.randomUUID(),
           type: "SERVICE_COMPLETION_CONFIRMED_BY_ONE_PARTY",
           title: "Confirmação de Conclusão Pendente",
-          message: `${confirmerName || 'Uma parte'} confirmou a conclusão do serviço "${service.title}". Aguardando sua confirmação.`,
+          message: `${confirmerName || 'Uma parte'} confirmou a conclusão do serviço "${service.title}" (${formattedPrice}, ${formattedDate}). Aguardando sua confirmação para finalizar o processo.`,
           receiverId: otherPartyId,
           senderId: userId,
           serviceId: serviceId,
+          read: false
         }
       });
 

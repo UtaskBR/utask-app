@@ -378,7 +378,7 @@ export async function DELETE(
     
     // Excluir propostas do serviço
     await prisma.$executeRaw`
-      DELETE FROM "ServiceBid" WHERE "serviceId" = ${serviceId}
+      DELETE FROM "Bid" WHERE "serviceId" = ${serviceId}
     `;
     
     // Excluir favoritos do serviço
@@ -400,3 +400,4 @@ export async function DELETE(
     );
   }
 }
+
