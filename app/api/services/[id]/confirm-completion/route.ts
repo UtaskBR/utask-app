@@ -3,6 +3,29 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import crypto from "crypto";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+// Funções utilitárias para formatação
+const formatCurrency = (value: number | null): string => {
+  if (value === null || value === undefined) return "valor não especificado";
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+};
+
+const formatDate = (dateString: Date | string | null): string => {
+  if (!dateString) return "data não especificada";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "data inválida";
+    return format(date, "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return "data inválida";
+  }
+};
 
 // POST /api/services/[id]/confirm-completion
 export async function POST(
@@ -27,7 +50,7 @@ export async function POST(
           where: { status: "ACCEPTED" },
           include: { provider: { select: { id: true, name: true, wallet: true } } }, // Include wallet for payment
         },
-        completionConfirmations: true, // To check existing confirmations
+        completionConfirmations: { select: { userId: true } }, // To check existing confirmations
       },
     });
 
@@ -73,21 +96,9 @@ export async function POST(
       );
     }
 
-    // Formatar valores para exibição
-    const formattedPrice = service.price ? `R$ ${service.price.toFixed(2)}` : "valor não especificado";
-    
-    // Formatar datas para exibição
-    let formattedDate = "data não especificada";
-    if (service.date) {
-      const date = new Date(service.date);
-      formattedDate = date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    }
+    // Formatar valores para exibição usando as funções utilitárias
+    const formattedPrice = formatCurrency(service.price);
+    const formattedDate = formatDate(service.date);
 
     // 4. Record the confirmation
     await prisma.completionConfirmation.create({
@@ -302,7 +313,7 @@ export async function POST(
               id: crypto.randomUUID(),
               type: "SERVICE_COMPLETED_PAYMENT_RECEIVED",
               title: "Serviço Concluído e Pagamento Recebido",
-              message: `O serviço "${service.title}" foi concluído em ${formattedDate} e você recebeu R$${providerAmount.toFixed(2)} de ${service.creator.name} (já descontada taxa de 15% da plataforma).`,
+              message: `O serviço "${service.title}" foi concluído em ${formattedDate} e você recebeu ${formatCurrency(providerAmount)} de ${service.creator.name} (já descontada taxa de 15% da plataforma).`,
               receiverId: providerId,
               senderId: creatorId, // or system
               serviceId: serviceId,
@@ -312,7 +323,7 @@ export async function POST(
               id: crypto.randomUUID(),
               type: "PLATFORM_FEE_RECEIVED",
               title: "Taxa de Plataforma Recebida",
-              message: `Taxa de 15% (R$${platformFee.toFixed(2)}) recebida do serviço "${service.title}" concluído em ${formattedDate}.`,
+              message: `Taxa de 15% (${formatCurrency(platformFee)}) recebida do serviço "${service.title}" concluído em ${formattedDate}.`,
               receiverId: creatorId, // Notificação para o sistema, mas usamos o creatorId como placeholder
               senderId: providerId, // Placeholder
               serviceId: serviceId,

@@ -35,6 +35,27 @@ type ServiceType = {
   } | null;
 };
 
+// Funções utilitárias para formatação
+const formatCurrency = (value: number | null): string => {
+  if (value === null || value === undefined) return "Valor não definido";
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+};
+
+const formatDateTime = (dateString: string | null): string => {
+  if (!dateString) return 'Data não definida';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Data inválida';
+    return format(date, "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error('Erro ao formatar data:', error);
+    return 'Data inválida';
+  }
+};
+
 export default function AgendaPage() {
   const { data: session, status } = useSession();
   const [services, setServices] = useState<ServiceType[]>([]);
@@ -62,6 +83,7 @@ export default function AgendaPage() {
         }
         
         const data = await response.json();
+        console.log(`Serviços encontrados na agenda: ${data.length}`);
         setServices(data);
         setError('');
       } catch (err) {
@@ -110,18 +132,25 @@ export default function AgendaPage() {
       return;
     }
     
-    const date = new Date(service.date);
-    const key = format(date, 'dd/MM/yyyy', { locale: ptBR });
-    if (!groupedServices[key]) groupedServices[key] = [];
-    groupedServices[key].push(service);
+    try {
+      const date = new Date(service.date);
+      if (isNaN(date.getTime())) {
+        const key = 'Data inválida';
+        if (!groupedServices[key]) groupedServices[key] = [];
+        groupedServices[key].push(service);
+        return;
+      }
+      
+      const key = format(date, 'dd/MM/yyyy', { locale: ptBR });
+      if (!groupedServices[key]) groupedServices[key] = [];
+      groupedServices[key].push(service);
+    } catch (error) {
+      console.error('Erro ao processar data do serviço:', error);
+      const key = 'Data inválida';
+      if (!groupedServices[key]) groupedServices[key] = [];
+      groupedServices[key].push(service);
+    }
   });
-
-  // Função para formatar data e hora
-  const formatDateTime = (dateString: string | null) => {
-    if (!dateString) return 'Data não definida';
-    const date = new Date(dateString);
-    return format(date, "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR });
-  };
 
   // Função para determinar se o usuário é o criador ou prestador
   const getUserRole = (service: ServiceType) => {
@@ -169,6 +198,14 @@ export default function AgendaPage() {
       default:
         return status;
     }
+  };
+
+  // Função para debug (temporária)
+  const debugAgenda = () => {
+    console.log('Sessão atual:', session);
+    console.log('Serviços na agenda:', services);
+    console.log('Serviços filtrados:', filteredServices);
+    console.log('Serviços agrupados:', groupedServices);
   };
 
   if (status === 'loading') {
@@ -229,6 +266,14 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      {/* Botão de debug temporário */}
+      <button 
+        onClick={debugAgenda}
+        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 mb-4"
+      >
+        Debug Agenda
+      </button>
+
       {isLoading ? (
         <div className="flex justify-center items-center py-12">
           <p>Carregando serviços agendados...</p>
@@ -277,7 +322,7 @@ export default function AgendaPage() {
                       
                       <div className="flex items-center text-sm text-gray-600">
                         <CurrencyIcon />
-                        <span>{service.price ? `R$ ${service.price.toFixed(2)}` : 'Valor não definido'}</span>
+                        <span>{formatCurrency(service.price)}</span>
                       </div>
                       
                       <div className="flex items-center text-sm text-gray-600">
