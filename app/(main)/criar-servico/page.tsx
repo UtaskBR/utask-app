@@ -1,364 +1,323 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useSession } from 'next-auth/react';
-import Link from 'next/link';
-import Image from 'next/image';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 
-export default function CreateServicePage() {
-  const { data: session, status } = useSession();
+export default function CriarServicoPage() {
+  const { data: session } = useSession();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
-  interface Profession {
-    id: string;
-    name: string;
-  }
-
-  const [professions, setProfessions] = useState<Profession[]>([]);
-  const [error, setError] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [date, setDate] = useState('');
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [professions, setProfessions] = useState([]);
+  const [professionId, setProfessionId] = useState('');
   const [photos, setPhotos] = useState<File[]>([]);
-  const [photoPreview, setPhotoPreview] = useState<string[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    date: '',
-    timeWindow: 60,
-    price: '',
-    professionId: '',
-    latitude: null,
-    longitude: null,
-    address: ''
-  });
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
-    }
-
+    // Carregar profissões
     const fetchProfessions = async () => {
       try {
         const response = await fetch('/api/professions');
-        const data = await response.json();
-        setProfessions(data);
-      } catch (err) {
-        console.error('Erro ao carregar profissões:', err);
+        if (response.ok) {
+          const data = await response.json();
+          setProfessions(data);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar profissões:', error);
       }
     };
 
     fetchProfessions();
-  }, [status, router]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const totalPhotos = photos.length + files.length;
-    if (totalPhotos > 5) {
-      toast.error('Você pode adicionar no máximo 5 fotos');
-      return;
+    if (e.target.files && e.target.files.length > 0) {
+      const newPhotos = Array.from(e.target.files);
+      setPhotos(prevPhotos => [...prevPhotos, ...newPhotos]);
+      
+      // Criar URLs para preview
+      const newPreviewUrls = newPhotos.map(file => URL.createObjectURL(file));
+      setPhotoPreviewUrls(prevUrls => [...prevUrls, ...newPreviewUrls]);
     }
-
-    setPhotos((prev) => [...prev, ...files]);
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setPhotoPreview((prev) => [...prev, ...newPreviews]);
   };
 
-  const removePhoto = (index: number): void => {
-    const newPhotos = [...photos];
-    const newPreviews = [...photoPreview];
-    URL.revokeObjectURL(newPreviews[index]);
-    newPhotos.splice(index, 1);
-    newPreviews.splice(index, 1);
-    setPhotos(newPhotos);
-    setPhotoPreview(newPreviews);
+  const removePhoto = (index: number) => {
+    // Revogar URL do objeto para evitar vazamento de memória
+    URL.revokeObjectURL(photoPreviewUrls[index]);
+    
+    setPhotos(prevPhotos => prevPhotos.filter((_, i) => i !== index));
+    setPhotoPreviewUrls(prevUrls => prevUrls.filter((_, i) => i !== index));
   };
 
-  const uploadPhotos = async (serviceId: string) => {
-    const photoFormData = new FormData();
-    photos.forEach((photo) => photoFormData.append('photos', photo));
-    photoFormData.append('serviceId', serviceId);
-    const res = await fetch('/api/photos', {
-      method: 'POST',
-      body: photoFormData
-    });
-    if (!res.ok) throw new Error('Erro ao fazer upload das fotos');
-    return res.json();
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!formData.title || !formData.description) {
-      setError('Título e descrição são obrigatórios');
+    
+    if (!title || !description) {
+      toast.error('Preencha os campos obrigatórios');
       return;
     }
-
-    setIsLoading(true);
-
+    
+    setIsSubmitting(true);
+    
     try {
-      const requestBody = {
-        ...formData,
-        price: formData.price ? parseFloat(formData.price) : null,
-        timeWindow: formData.timeWindow ? parseInt(formData.timeWindow.toString()) : null
-      };
-
+      // Criar um objeto FormData
+      const formData = new FormData();
+      
+      // Adicionar campos de texto
+      formData.append('title', title);
+      formData.append('description', description);
+      if (price) formData.append('price', price);
+      if (date) formData.append('date', date);
+      if (address) formData.append('address', address);
+      if (latitude) formData.append('latitude', latitude);
+      if (longitude) formData.append('longitude', longitude);
+      if (professionId) formData.append('professionId', professionId);
+      
+      // Adicionar fotos
+      if (photos.length > 0) {
+        photos.forEach(photo => {
+          formData.append('photos', photo);
+        });
+      }
+      
+      // Configurar o cabeçalho corretamente - NÃO DEFINIR Content-Type manualmente
+      // O navegador definirá automaticamente com o boundary correto
       const response = await fetch('/api/services', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
+        body: formData,
+        // Não definir Content-Type aqui!
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao criar serviço');
-      }
-
-      const data = await response.json();
-      const serviceId = data.id;
-
-      if (photos.length > 0) {
-        try {
-          await uploadPhotos(serviceId);
-          toast.success('Serviço criado com sucesso com fotos!');
-        } catch (photoErr: any) {
-          toast.error(`Serviço criado, mas erro no upload de fotos: ${photoErr.message}`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      } else {
+      
+      if (response.ok) {
+        const data = await response.json();
         toast.success('Serviço criado com sucesso!');
+        router.push(`/servicos/${data.id}`);
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Erro ao criar serviço');
       }
-
-      router.push(`/servicos/${serviceId}`);
-    } catch (err: any) {
-      console.error('Erro ao criar serviço:', err);
-      setError(err.message);
-      setIsLoading(false);
+    } catch (error) {
+      console.error('Erro ao criar serviço:', error);
+      toast.error('Erro ao criar serviço');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p>Carregando...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-secondary-900">Criar Novo Serviço</h1>
-        <p className="mt-2 text-secondary-600">
-          Preencha os detalhes do serviço que você precisa
-        </p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-          <p className="text-sm text-red-700">{error}</p>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Criar Novo Serviço</h1>
+      
+      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
+        <div className="mb-4">
+          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+            Título <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            required
+          />
         </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6">
-        <div className="space-y-6">
+        
+        <div className="mb-4">
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            Descrição <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            required
+          ></textarea>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-secondary-700">
-              Título do Serviço *
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+              Valor (R$)
             </label>
             <input
-              id="title"
-              name="title"
-              type="text"
-              required
-              className="input-field mt-1"
-              placeholder="Ex: Instalação de Ar Condicionado"
-              value={formData.title}
-              onChange={handleChange}
+              type="number"
+              id="price"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              min="0"
+              step="0.01"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Deixe em branco para 'A combinar'"
             />
           </div>
-
+          
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-secondary-700">
-              Descrição *
+            <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">
+              Data e Hora
             </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={4}
-              required
-              className="input-field mt-1"
-              placeholder="Descreva detalhadamente o serviço que você precisa"
-              value={formData.description}
-              onChange={handleChange}
+            <input
+              type="datetime-local"
+              id="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
-
+        </div>
+        
+        <div className="mb-4">
+          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+            Endereço
+          </label>
+          <input
+            type="text"
+            id="address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-secondary-700">Fotos do Serviço</label>
-            <div className="mt-1 flex items-center">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                ref={fileInputRef}
-                onChange={handlePhotoChange}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="btn-outline py-2 px-4"
+            <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
+              Latitude
+            </label>
+            <input
+              type="text"
+              id="latitude"
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
+              Longitude
+            </label>
+            <input
+              type="text"
+              id="longitude"
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+        </div>
+        
+        <div className="mb-4">
+          <label htmlFor="profession" className="block text-sm font-medium text-gray-700 mb-1">
+            Categoria
+          </label>
+          <select
+            id="profession"
+            value={professionId}
+            onChange={(e) => setProfessionId(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          >
+            <option value="">Selecione uma categoria</option>
+            {professions.map((profession: any) => (
+              <option key={profession.id} value={profession.id}>
+                {profession.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Fotos
+          </label>
+          
+          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+            <div className="space-y-1 text-center">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                stroke="currentColor"
+                fill="none"
+                viewBox="0 0 48 48"
+                aria-hidden="true"
               >
-                Adicionar Fotos
-              </button>
-              <span className="ml-3 text-xs text-secondary-500">Máximo de 5 fotos</span>
-            </div>
-
-            {photoPreview.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {photoPreview.map((src, index) => (
-                  <div key={index} className="relative">
-                    <div className="h-24 w-full rounded-md overflow-hidden relative">
-                      <Image
-                        src={src}
-                        alt={`Foto ${index + 1}`}
-                        fill
-                        style={{ objectFit: 'cover' }}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(index)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                <path
+                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div className="flex text-sm text-gray-600">
+                <label
+                  htmlFor="file-upload"
+                  className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary-500"
+                >
+                  <span>Carregar fotos</span>
+                  <input
+                    id="file-upload"
+                    name="file-upload"
+                    type="file"
+                    className="sr-only"
+                    accept="image/*"
+                    multiple
+                    ref={fileInputRef}
+                    onChange={handlePhotoChange}
+                  />
+                </label>
+                <p className="pl-1">ou arraste e solte</p>
               </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">
-                Tipo de Serviço
-              </label>
-              <select
-                id="professionId"
-                name="professionId"
-                className="input-field mt-1"
-                value={formData.professionId}
-                onChange={handleChange}
-              >
-                <option value="">Selecione uma categoria</option>
-                {professions.map((profession) => (
-                  <option key={profession.id} value={profession.id}>
-                    {profession.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-secondary-700">
-                Valor (R$)
-              </label>
-              <input
-                id="price"
-                name="price"
-                type="number"
-                step="0.01"
-                min="0"
-                className="input-field mt-1"
-                placeholder="Deixe em branco para receber propostas"
-                value={formData.price}
-                onChange={handleChange}
-              />
-              <p className="mt-1 text-xs text-secondary-500">
-                Deixe em branco para receber propostas de valor dos prestadores
-              </p>
+              <p className="text-xs text-gray-500">PNG, JPG, GIF até 10MB</p>
             </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="date" className="block text-sm font-medium text-secondary-700">
-                Data e Hora
-              </label>
-              <input
-                id="date"
-                name="date"
-                type="datetime-local"
-                className="input-field mt-1"
-                value={formData.date}
-                onChange={handleChange}
-              />
+          
+          {photoPreviewUrls.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              {photoPreviewUrls.map((url, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={url}
+                    alt={`Preview ${index + 1}`}
+                    className="h-24 w-full object-cover rounded-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(index)}
+                    className="absolute top-0 right-0 -mt-2 -mr-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
             </div>
-
-            <div>
-              <label htmlFor="timeWindow" className="block text-sm font-medium text-secondary-700">
-                Janela de Tempo (minutos)
-              </label>
-              <select
-                id="timeWindow"
-                name="timeWindow"
-                className="input-field mt-1"
-                value={formData.timeWindow}
-                onChange={handleChange}
-              >
-                <option value="30">30 minutos</option>
-                <option value="60">1 hora</option>
-                <option value="120">2 horas</option>
-                <option value="180">3 horas</option>
-                <option value="240">4 horas</option>
-              </select>
-              <p className="mt-1 text-xs text-secondary-500">
-                Flexibilidade de horário para a realização do serviço
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-secondary-700">
-              Endereço
-            </label>
-            <input
-              id="address"
-              name="address"
-              type="text"
-              className="input-field mt-1"
-              placeholder="Endereço completo onde o serviço será realizado"
-              value={formData.address}
-              onChange={handleChange}
-            />
-            <p className="mt-1 text-xs text-secondary-500">
-              Deixe em branco para serviços remotos
-            </p>
-          </div>
-
-          <div className="pt-4">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full btn-primary py-3 flex justify-center items-center"
-            >
-              {isLoading ? 'Processando...' : 'Criar Serviço'}
-            </button>
-          </div>
+          )}
+        </div>
+        
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="mr-4 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-primary-300"
+          >
+            {isSubmitting ? 'Criando...' : 'Criar Serviço'}
+          </button>
         </div>
       </form>
     </div>

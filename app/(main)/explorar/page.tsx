@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 export default function ExplorarPage() {
   const { data: session, status } = useSession();
@@ -45,20 +46,51 @@ export default function ExplorarPage() {
         url += `minValue=${filters.minValue}&`;
       }
       const response = await fetch(url);
-      const data = await response.json();
-
-      let sortedServices = [...data];
-      if (filters.sortBy === 'recent') {
-        sortedServices.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      } else if (filters.sortBy === 'price-low') {
-        sortedServices.sort((a, b) => (a.price || 0) - (b.price || 0));
-      } else if (filters.sortBy === 'price-high') {
-        sortedServices.sort((a, b) => (b.price || 0) - (a.price || 0));
+      
+      if (!response.ok) {
+        throw new Error('Falha ao buscar serviços');
       }
-
+      
+      const data = await response.json();
+      
+      // Garantir que temos um array para trabalhar
+      let servicesArray = [];
+      
+      // Verificar a estrutura da resposta e extrair o array de serviços
+      if (data && Array.isArray(data)) {
+        servicesArray = data;
+      } else if (data && data.services && Array.isArray(data.services)) {
+        servicesArray = data.services;
+      } else {
+        console.warn('Formato de resposta inesperado:', data);
+        servicesArray = []; // Garantir um array vazio como fallback
+      }
+      
+      let sortedServices = [...servicesArray];
+      
+      // Ordenação com tratamento de erro
+      try {
+        if (filters.sortBy === 'recent') {
+          sortedServices.sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+        } else if (filters.sortBy === 'price-low') {
+          sortedServices.sort((a, b) => (a.price || 0) - (b.price || 0));
+        } else if (filters.sortBy === 'price-high') {
+          sortedServices.sort((a, b) => (b.price || 0) - (a.price || 0));
+        }
+      } catch (sortError) {
+        console.error('Erro ao ordenar serviços:', sortError);
+        // Manter a ordem original em caso de erro
+      }
+      
       setServices(sortedServices);
     } catch (error) {
       console.error('Erro ao buscar serviços:', error);
+      toast.error('Erro ao carregar serviços');
+      setServices([]); // Garantir um array vazio em caso de erro
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +175,7 @@ export default function ExplorarPage() {
                 <Link href={`/servicos/${service.id}`} key={service.id}>
                   <div className="card h-full flex flex-col hover:shadow-lg transition-shadow">
                     <div className="h-40 bg-secondary-200 rounded-t-lg flex items-center justify-center overflow-hidden">
-                      {service.photos?.[0]?.url ? (
+                      {service.photos && service.photos[0] && service.photos[0].url ? (
                         <Image src={service.photos[0].url} alt="Imagem do serviço" width={400} height={160} className="object-cover w-full h-full" />
                       ) : (
                         <span className="text-secondary-400">Imagem do Serviço</span>
@@ -152,7 +184,7 @@ export default function ExplorarPage() {
                     <div className="p-6 flex-grow">
                       <div className="flex justify-between items-start">
                         <h3 className="text-lg font-medium text-secondary-900">{service.title}</h3>
-                        {service.price ? (
+                        {service.price != null ? (
                           <span className="text-primary-600 font-bold">R$ {service.price.toFixed(2)}</span>
                         ) : (
                           <span className="text-secondary-600 text-sm">Aberto a propostas</span>
@@ -161,13 +193,13 @@ export default function ExplorarPage() {
                       <p className="mt-2 text-secondary-600 line-clamp-2">{service.description}</p>
                       <div className="mt-4 flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-primary-700 font-medium">{service.creator.name.charAt(0)}</span>
+                          <span className="text-primary-700 font-medium">{service.creator && service.creator.name ? service.creator.name.charAt(0) : '?'}</span>
                         </div>
                         <div className="ml-3">
-                          <p className="text-sm font-medium text-secondary-900">{service.creator.name}</p>
+                          <p className="text-sm font-medium text-secondary-900">{service.creator ? service.creator.name : 'Usuário'}</p>
                           <div className="flex items-center">
                             <span className="text-yellow-400">★</span>
-                            <span className="ml-1 text-sm text-secondary-600">{service.creator.rating}</span>
+                            <span className="ml-1 text-sm text-secondary-600">{service.creator && service.creator.rating ? service.creator.rating : 'N/A'}</span>
                           </div>
                         </div>
                       </div>
