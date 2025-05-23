@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-// import Image from 'next/image'; // Image component not used in the provided snippet, can be added if service.photos are displayed with it
+import Image from 'next/image';
 
 // Placeholder icons (Heroicons)
 const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
@@ -14,15 +14,16 @@ const ArrowPathIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" 
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 const ExclamationTriangleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>;
 const ThumbUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" /></svg>;
+const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>;
 
 export default function ServiceDetailPage() {
   const { data: session } = useSession();
   const params = useParams();
-  const router = useRouter(); // Added for navigation/refresh
-  const serviceId = params.id as string; // Ensure serviceId is string
+  const router = useRouter();
+  const serviceId = params.id as string;
 
   type Photo = { id: string; url: string };
-  type BidUser = { id: string; name?: string | null; image?: string | null; rating?: number | null }; // Added image and rating
+  type BidUser = { id: string; name?: string | null; image?: string | null; rating?: number | null };
   type Bid = {
     id: string;
     providerId: string;
@@ -31,7 +32,7 @@ export default function ServiceDetailPage() {
     message?: string | null;
     proposedDate?: string | null;
     status: string;
-    createdAt: string; // Added for sorting or display
+    createdAt: string;
   };
   type ServiceCreator = { id: string; name?: string | null; image?: string | null; rating?: number | null; about?: string | null };
   type Service = {
@@ -59,7 +60,8 @@ export default function ServiceDetailPage() {
     proposedDate: ''
   });
   const [showBidForm, setShowBidForm] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null); // For loading state on buttons
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showUserProfile, setShowUserProfile] = useState<string | null>(null);
 
   const fetchService = useCallback(async () => {
     if (!serviceId) return;
@@ -72,7 +74,7 @@ export default function ServiceDetailPage() {
       }
       const data = await response.json();
       setService(data);
-      setError(''); // Clear previous errors
+      setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
     } finally {
@@ -108,9 +110,9 @@ export default function ServiceDetailPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erro ao enviar proposta');
-      setBidForm({ price: '', message: '', proposedDate: '' }); // Reset form
-      setShowBidForm(false); // Hide form
-      fetchService(); // Refresh service data to show new bid and potentially updated status
+      setBidForm({ price: '', message: '', proposedDate: '' });
+      setShowBidForm(false);
+      fetchService();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -118,7 +120,6 @@ export default function ServiceDetailPage() {
     }
   };
 
-  // Nova função para candidatura direta (aceitar serviço com os termos originais)
   const handleApplyDirectly = async () => {
     if (!session || !serviceId) {
       setError('Você precisa estar logado para se candidatar a este serviço.');
@@ -132,7 +133,7 @@ export default function ServiceDetailPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erro ao se candidatar para o serviço');
-      fetchService(); // Refresh service data
+      fetchService();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -140,7 +141,6 @@ export default function ServiceDetailPage() {
     }
   };
 
-  // Generic action handler for API calls
   const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
     setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
     try {
@@ -151,8 +151,8 @@ export default function ServiceDetailPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Erro ao ${successMessage?.toLowerCase() || 'processar ação'}`);
-      if (successMessage) console.log(successMessage); // Or use a toast notification
-      fetchService(); // Refresh data
+      if (successMessage) console.log(successMessage);
+      fetchService();
       return data;
     } catch (err: any) {
       setError(err.message);
@@ -193,6 +193,120 @@ export default function ServiceDetailPage() {
       return;
     }
     callApi(`/api/services/${serviceId}/problems`, 'POST', { reason }, 'Problema reportado');
+  };
+
+  // --- User Profile Modal ---
+  const UserProfileModal = ({ userId, onClose }: { userId: string, onClose: () => void }) => {
+    const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchUserProfile = async () => {
+        try {
+          const response = await fetch(`/api/users/${userId}/profile`);
+          if (!response.ok) throw new Error('Falha ao carregar perfil');
+          const data = await response.json();
+          setUser(data);
+        } catch (error) {
+          console.error('Erro ao carregar perfil:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchUserProfile();
+    }, [userId]);
+
+    if (loading) return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <p className="text-center">Carregando perfil...</p>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-xl font-bold">Perfil do Usuário</h2>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <XMarkIcon />
+            </button>
+          </div>
+          
+          {user ? (
+            <div>
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200">
+                  {user.image ? (
+                    <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-xl font-bold">
+                      {user.name?.charAt(0) || '?'}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">{user.name}</h3>
+                  <div className="flex items-center">
+                    <span className="text-yellow-400">★</span>
+                    <span className="ml-1 text-sm text-gray-600">{user.rating?.toFixed(1) || 'Sem avaliações'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {user.about && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Sobre</h4>
+                  <p className="text-sm text-gray-600">{user.about}</p>
+                </div>
+              )}
+              
+              {user.professions && user.professions.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Profissões</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {user.professions.map((profession: any) => (
+                      <span key={profession.id} className="px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded-full">
+                        {profession.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {user.reviews && user.reviews.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-1">Avaliações Recentes</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {user.reviews.map((review: any) => (
+                      <div key={review.id} className="border-b border-gray-100 pb-2">
+                        <div className="flex items-center">
+                          <div className="text-yellow-400 mr-1">{'★'.repeat(review.rating)}</div>
+                          <div className="text-gray-400 text-xs">{'★'.repeat(5 - review.rating)}</div>
+                        </div>
+                        <p className="text-sm text-gray-600">{review.comment}</p>
+                        <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-center text-gray-600">Não foi possível carregar o perfil.</p>
+          )}
+          
+          <button 
+            onClick={onClose}
+            className="mt-4 w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md text-sm font-medium"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando detalhes do serviço...</p></div>;
@@ -317,11 +431,29 @@ export default function ServiceDetailPage() {
           <div className="bg-white shadow-md rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-3">Criador do Serviço</h2>
             <div className="flex items-center space-x-3">
-              <img src={service.creator.image || '/default-avatar.png'} alt={service.creator.name || 'Criador'} className="h-12 w-12 rounded-full object-cover" />
+              <div 
+                className="h-12 w-12 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
+                onClick={() => setShowUserProfile(service.creatorId)}
+              >
+                {service.creator.image ? (
+                  <img src={service.creator.image} alt={service.creator.name || 'Criador'} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-xl font-bold">
+                    {service.creator.name?.charAt(0) || '?'}
+                  </div>
+                )}
+              </div>
               <div>
-                <p className="font-medium text-gray-900">{service.creator.name}</p>
-                {/* Placeholder for rating */}
-                {/* <p className="text-sm text-gray-500">Avaliação: {service.creator.rating?.toFixed(1) || 'N/A'}</p> */}
+                <p 
+                  className="font-medium text-gray-900 cursor-pointer hover:underline"
+                  onClick={() => setShowUserProfile(service.creatorId)}
+                >
+                  {service.creator.name}
+                </p>
+                <div className="flex items-center">
+                  <span className="text-yellow-400">★</span>
+                  <span className="ml-1 text-sm text-gray-600">{service.creator.rating?.toFixed(1) || 'N/A'}</span>
+                </div>
               </div>
             </div>
             {service.creator.about && <p className="mt-3 text-sm text-gray-600">{service.creator.about}</p>}
@@ -330,7 +462,7 @@ export default function ServiceDetailPage() {
             )}
           </div>
 
-          {/* Botão de Candidatura Direta */}
+          {/* Botão de Candidatura Direta - Apenas para não criadores */}
           {canCurrentUserBid && !existingUserBid && !acceptedBid && (
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Candidatar-se para este Serviço</h2>
@@ -385,56 +517,119 @@ export default function ServiceDetailPage() {
             </div>
           )}
 
-          {/* Bids List */}
-          {service.bids && service.bids.length > 0 && (
+          {/* Bids List - Apenas para o criador ou quando há uma proposta aceita */}
+          {service.bids && service.bids.length > 0 && (isCreator || acceptedBid) && (
             <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Propostas Recebidas ({service.bids.length})</h2>
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                {isCreator ? `Propostas Recebidas (${service.bids.length})` : 'Proposta Aceita'}
+              </h2>
               <div className="space-y-4">
-                {service.bids.map((bid) => (
-                  <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
+                {/* Se não for o criador, mostrar apenas a proposta aceita */}
+                {!isCreator && acceptedBid ? (
+                  <div key={acceptedBid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-gray-800">{bid.provider.name || 'Prestador Anônimo'}</p>
-                        {bid.price && <p className="text-lg font-bold text-blue-600">R$ {bid.price.toFixed(2)}</p>}
-                        {bid.proposedDate && <p className="text-sm text-gray-500">Data: {new Date(bid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(bid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</p>}
+                      <div className="flex items-center space-x-2">
+                        <div 
+                          className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
+                          onClick={() => setShowUserProfile(acceptedBid.providerId)}
+                        >
+                          {acceptedBid.provider.image ? (
+                            <img src={acceptedBid.provider.image} alt={acceptedBid.provider.name || 'Prestador'} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-sm font-bold">
+                              {acceptedBid.provider.name?.charAt(0) || '?'}
+                            </div>
+                          )}
+                        </div>
+                        <p 
+                          className="font-semibold text-gray-800 cursor-pointer hover:underline"
+                          onClick={() => setShowUserProfile(acceptedBid.providerId)}
+                        >
+                          {acceptedBid.provider.name || 'Prestador'}
+                        </p>
                       </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid.status)}`}>{getBidStatusText(bid.status)}</span>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(acceptedBid.status)}`}>
+                        {getBidStatusText(acceptedBid.status)}
+                      </span>
                     </div>
-                    {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
-                    
-                    {/* Actions for Service Creator */}
-                    {isCreator && isServiceOpen && !acceptedBid && (
-                      <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
-                        {bid.status === 'PENDING' && (
-                          <>
-                            <button onClick={() => handleAcceptBid(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar</button>
-                            <button onClick={() => handleCounterOfferToProvider(bid.id)} className={btnWarning} disabled={!!actionLoading}><ArrowPathIcon /> Contraproposta</button>
-                            <button onClick={() => handleRejectBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar</button>
-                          </>
-                        )}
-                        {/* If creator made a counter-offer and provider rejected it, creator might want to re-negotiate or accept original? (complex) */}
-                      </div>
+                    {acceptedBid.price && <p className="text-lg font-bold text-blue-600">R$ {acceptedBid.price.toFixed(2)}</p>}
+                    {acceptedBid.proposedDate && (
+                      <p className="text-sm text-gray-500">
+                        Data: {new Date(acceptedBid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(acceptedBid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                      </p>
                     )}
-
-                    {/* Actions for Bid Provider */}
-                    {session?.user?.id === bid.providerId && isServiceOpen && !acceptedBid && (
-                       <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
-                        {bid.status === 'COUNTER_OFFER' && (
-                          <>
-                            <button onClick={() => handleAcceptCounterOfferByProvider(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar Contraproposta</button>
-                            <button onClick={() => handleRejectCounterOfferByProvider(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar Contraproposta</button>
-                          </>
-                        )}
-                        {bid.status === 'PENDING' && (
-                            <button onClick={() => handleWithdrawBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon/> Retirar Minha Proposta</button>
-                        )}
-                      </div>
-                    )}
-                    {bid.status === 'ACCEPTED' && (
-                        <p className="text-sm text-green-600 font-semibold">Esta proposta foi aceita.</p>
-                    )}
+                    {acceptedBid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{acceptedBid.message}</p>}
                   </div>
-                ))}
+                ) : (
+                  // Se for o criador, mostrar todas as propostas
+                  service.bids.map((bid) => (
+                    <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
+                            onClick={() => setShowUserProfile(bid.providerId)}
+                          >
+                            {bid.provider.image ? (
+                              <img src={bid.provider.image} alt={bid.provider.name || 'Prestador'} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-sm font-bold">
+                                {bid.provider.name?.charAt(0) || '?'}
+                              </div>
+                            )}
+                          </div>
+                          <p 
+                            className="font-semibold text-gray-800 cursor-pointer hover:underline"
+                            onClick={() => setShowUserProfile(bid.providerId)}
+                          >
+                            {bid.provider.name || 'Prestador'}
+                          </p>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid.status)}`}>
+                          {getBidStatusText(bid.status)}
+                        </span>
+                      </div>
+                      {bid.price && <p className="text-lg font-bold text-blue-600">R$ {bid.price.toFixed(2)}</p>}
+                      {bid.proposedDate && (
+                        <p className="text-sm text-gray-500">
+                          Data: {new Date(bid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(bid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                        </p>
+                      )}
+                      {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
+                      
+                      {/* Actions for Service Creator */}
+                      {isCreator && isServiceOpen && !acceptedBid && (
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
+                          {bid.status === 'PENDING' && (
+                            <>
+                              <button onClick={() => handleAcceptBid(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar</button>
+                              <button onClick={() => handleCounterOfferToProvider(bid.id)} className={btnWarning} disabled={!!actionLoading}><ArrowPathIcon /> Contraproposta</button>
+                              <button onClick={() => handleRejectBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar</button>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Actions for Bid Provider */}
+                      {session?.user?.id === bid.providerId && isServiceOpen && !acceptedBid && (
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
+                          {bid.status === 'COUNTER_OFFER' && (
+                            <>
+                              <button onClick={() => handleAcceptCounterOfferByProvider(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar Contraproposta</button>
+                              <button onClick={() => handleRejectCounterOfferByProvider(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar Contraproposta</button>
+                            </>
+                          )}
+                          {bid.status === 'PENDING' && (
+                              <button onClick={() => handleWithdrawBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon/> Retirar Minha Proposta</button>
+                          )}
+                        </div>
+                      )}
+                      {bid.status === 'ACCEPTED' && (
+                          <p className="text-sm text-green-600 font-semibold">Esta proposta foi aceita.</p>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -445,6 +640,14 @@ export default function ServiceDetailPage() {
           )}
         </div>
       </div>
+
+      {/* User Profile Modal */}
+      {showUserProfile && (
+        <UserProfileModal 
+          userId={showUserProfile} 
+          onClose={() => setShowUserProfile(null)} 
+        />
+      )}
     </div>
   );
 }
