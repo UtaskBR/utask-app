@@ -100,6 +100,7 @@ if (reviews && (reviews as any[]).length > 0) {
       status: service.status,
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,
+      creatorId: service.creatorId, // Added this line
       creator: {
         id: service.creator_id,
         name: service.creator_name,

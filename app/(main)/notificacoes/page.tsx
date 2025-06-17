@@ -37,9 +37,17 @@ export default function NotificacoesPage() {
   interface Notification {
     id: string;
     type: string;
+    title: string; // Added title
     message: string;
     createdAt: string;
     read: boolean;
+    sender: { // Added sender
+      id: string;
+      name?: string | null;
+      image?: string | null;
+    } | null;
+    serviceId?: string | null; // Added serviceId
+    bidId?: string | null; // Added bidId
   }
 
   const markAsRead = async (id: string): Promise<void> => {
@@ -225,36 +233,78 @@ export default function NotificacoesPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`bg-white shadow-md rounded-lg p-4 ${
-                  !notification.read ? 'border-l-4 border-primary-500' : ''
-                }`}
-              >
-                <div className="flex items-start">
-                  {getNotificationIcon(notification.type)}
+            {notifications.map((notification) => {
+              const notificationContent = (
+                <div className="flex items-start w-full">
+                  {/* Sender Avatar */}
+                  {notification.sender?.image ? (
+                    <img
+                      src={notification.sender.image}
+                      alt={notification.sender.name || 'Avatar do remetente'}
+                      className="h-10 w-10 rounded-full mr-3"
+                    />
+                  ) : notification.sender ? (
+                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 text-gray-500 font-semibold">
+                      {notification.sender.name?.charAt(0)?.toUpperCase() || 'S'}
+                    </div>
+                  ) : (
+                    // Fallback icon if no sender (e.g. system notification)
+                    getNotificationIcon(notification.type)
+                  )}
                   
-                  <div className="ml-3 flex-grow">
-                    <p className={`text-secondary-900 ${!notification.read ? 'font-medium' : ''}`}>
+                  <div className="flex-grow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {notification.sender && (
+                          <p className={`text-sm font-medium text-secondary-700 ${!notification.read ? 'font-semibold' : ''}`}>
+                            {notification.sender.name || 'Sistema'}
+                          </p>
+                        )}
+                        <p className={`text-lg font-semibold text-secondary-900 ${!notification.read ? 'font-bold' : ''}`}>
+                          {notification.title}
+                        </p>
+                      </div>
+                      {!notification.read && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault(); // Prevent link navigation if inside a link
+                            e.stopPropagation(); // Stop event bubbling
+                            markAsRead(notification.id);
+                          }}
+                          className="ml-4 text-primary-600 hover:text-primary-700 text-xs font-medium"
+                        >
+                          Marcar como lida
+                        </button>
+                      )}
+                    </div>
+                    <p className={`text-secondary-800 text-sm mt-1 ${!notification.read ? '' : 'text-gray-600'}`}>
                       {notification.message}
                     </p>
-                    <p className="text-secondary-500 text-sm mt-1">
+                    <p className="text-secondary-500 text-xs mt-1">
                       {formatDate(notification.createdAt)}
                     </p>
                   </div>
-                  
-                  {!notification.read && (
-                    <button
-                      onClick={() => markAsRead(notification.id)}
-                      className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                    >
-                      Marcar como lida
-                    </button>
+                </div>
+              );
+
+              return (
+                <div
+                  key={notification.id}
+                  className={`bg-white shadow-md rounded-lg p-4 flex ${
+                    !notification.read ? 'border-l-4 border-primary-500' : 'border-l-4 border-transparent'
+                  } hover:bg-gray-50 transition-colors duration-150 ease-in-out`}
+                >
+                  {notification.serviceId ? (
+                    <Link href={`/servicos/${notification.serviceId}`} className="block w-full">
+                      {notificationContent}
+                    </Link>
+                  ) : (
+                    // Render content without Link if no serviceId
+                    notificationContent
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
