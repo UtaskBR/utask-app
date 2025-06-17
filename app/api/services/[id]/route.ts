@@ -54,6 +54,7 @@ export async function GET(
       FROM "Photo"
       WHERE "serviceId" = ${serviceId}
     `;
+    console.log(`[Service ID: ${serviceId}] Raw photos from DB:`, JSON.stringify(photos, null, 2));
     
     // Buscar avaliações do criador
     const reviews = await prisma.$queryRaw`
@@ -129,6 +130,7 @@ if (reviews && (reviews as any[]).length > 0) {
         }
       }))
     };    
+    console.log(`[Service ID: ${serviceId}] Formatted photos being sent to client:`, JSON.stringify(formattedService.photos, null, 2));
     
     return NextResponse.json(formattedService);
   } catch (error) {
