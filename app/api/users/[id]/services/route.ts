@@ -17,8 +17,8 @@ export async function GET(
         id: true,
         title: true,
         description: true,
-        // Remover referência a price se não existir no banco de dados
-        // value: true, // Corrigido de price para value, mas ainda comentado por precaução
+        price: true, // Adicionado price
+        date: true, // Adicionado date
         status: true,
         createdAt: true,
         updatedAt: true,

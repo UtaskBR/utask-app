@@ -73,7 +73,7 @@ export default function MeusServicosPage() {
     id: string;
     title: string;
     description: string;
-    value: number | null;
+    price: number | null;
     date: string | null;
     status: 'OPEN' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
     creatorId: string;
@@ -113,9 +113,9 @@ export default function MeusServicosPage() {
   };
 
   // Função para formatar o valor do serviço
-  const formatValue = (value: number | null | undefined): string => {
-    if (value === null || value === undefined) return 'A combinar';
-    return `R$ ${value.toFixed(2).replace('.', ',')}`;
+  const formatValue = (price: number | null | undefined): string => {
+    if (price === null || price === undefined) return 'A combinar';
+    return `R$ ${price.toFixed(2).replace('.', ',')}`;
   };
 
   // Função para formatar a data do serviço
@@ -325,7 +325,7 @@ export default function MeusServicosPage() {
                     <div className="grid grid-cols-2 gap-2 mb-4">
                       <div>
                         <p className="text-xs text-gray-500">Valor:</p>
-                        <p className="text-sm font-medium">{formatValue(service.value)}</p>
+                        <p className="text-sm font-medium">{formatValue(service.price)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500">Data:</p>
