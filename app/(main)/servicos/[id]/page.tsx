@@ -320,6 +320,17 @@ export default function ServiceDetailPage() {
   const isServiceOpen = service.status === 'OPEN';
   const isUserAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
 
+  let bidsToDisplay = [];
+  if (isCreator) {
+    bidsToDisplay = service.bids || [];
+  } else if (existingUserBid?.status === 'COUNTER_OFFER') {
+    bidsToDisplay = [existingUserBid];
+  } else if (acceptedBid) {
+    bidsToDisplay = [acceptedBid];
+  } else if (existingUserBid) {
+    bidsToDisplay = [existingUserBid];
+  }
+
   const getStatusClass = (status: string) => {
     if (status === 'OPEN') return 'bg-green-100 text-green-800';
     if (status === 'IN_PROGRESS') return 'bg-blue-100 text-blue-800';
@@ -508,61 +519,30 @@ export default function ServiceDetailPage() {
               </form>
             </div>
           )}
-          {existingUserBid && !acceptedBid && isServiceOpen && (
+          {existingUserBid &&
+           existingUserBid.status !== 'COUNTER_OFFER' &&
+           existingUserBid.status !== 'ACCEPTED' &&
+           !acceptedBid &&
+           isServiceOpen && (
             <div className="bg-white shadow-md rounded-lg p-4 text-center">
               <p className="text-gray-700">Você já enviou uma proposta para este serviço.</p>
-              {existingUserBid.status === 'PENDING' && (
+              {existingUserBid.status === 'PENDING' && ( // Keep withdraw for PENDING bids here
                 <button onClick={() => handleWithdrawBid(existingUserBid.id)} className={`mt-2 ${btnDanger}`} disabled={!!actionLoading}><XMarkIcon/> Retirar Proposta</button>
               )}
             </div>
           )}
 
-          {/* Bids List - Apenas para o criador ou quando há uma proposta aceita */}
-          {service.bids && service.bids.length > 0 && (isCreator || acceptedBid) && (
+          {/* Bids List */}
+          {bidsToDisplay && bidsToDisplay.length > 0 && (
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                {isCreator ? `Propostas Recebidas (${service.bids.length})` : 'Proposta Aceita'}
+                {isCreator ? `Propostas Recebidas (${bidsToDisplay.length})`
+                           : existingUserBid?.status === 'COUNTER_OFFER' ? 'Você recebeu uma Contraproposta'
+                           : acceptedBid ? 'Proposta Aceita'
+                           : 'Sua Proposta'}
               </h2>
               <div className="space-y-4">
-                {/* Se não for o criador, mostrar apenas a proposta aceita */}
-                {!isCreator && acceptedBid ? (
-                  <div key={acceptedBid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center space-x-2">
-                        <div 
-                          className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
-                          onClick={() => setShowUserProfile(acceptedBid.providerId)}
-                        >
-                          {acceptedBid.provider.image ? (
-                            <img src={acceptedBid.provider.image} alt={acceptedBid.provider.name || 'Prestador'} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-sm font-bold">
-                              {acceptedBid.provider.name?.charAt(0) || '?'}
-                            </div>
-                          )}
-                        </div>
-                        <p 
-                          className="font-semibold text-gray-800 cursor-pointer hover:underline"
-                          onClick={() => setShowUserProfile(acceptedBid.providerId)}
-                        >
-                          {acceptedBid.provider.name || 'Prestador'}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(acceptedBid.status)}`}>
-                        {getBidStatusText(acceptedBid.status)}
-                      </span>
-                    </div>
-                    {acceptedBid.price && <p className="text-lg font-bold text-blue-600">R$ {acceptedBid.price.toFixed(2)}</p>}
-                    {acceptedBid.proposedDate && (
-                      <p className="text-sm text-gray-500">
-                        Data: {new Date(acceptedBid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(acceptedBid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                      </p>
-                    )}
-                    {acceptedBid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{acceptedBid.message}</p>}
-                  </div>
-                ) : (
-                  // Se for o criador, mostrar todas as propostas
-                  service.bids.map((bid) => (
+                {bidsToDisplay.map((bid) => (
                     <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
@@ -582,7 +562,7 @@ export default function ServiceDetailPage() {
                             className="font-semibold text-gray-800 cursor-pointer hover:underline"
                             onClick={() => setShowUserProfile(bid.providerId)}
                           >
-                            {bid.provider.name || 'Prestador'}
+                            {isCreator || bid.providerId === session?.user?.id ? bid.provider.name : 'Prestador'} {/* Show name if creator or own bid */}
                           </p>
                         </div>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid.status)}`}>
@@ -607,6 +587,10 @@ export default function ServiceDetailPage() {
                               <button onClick={() => handleRejectBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar</button>
                             </>
                           )}
+                           {/* Creator can also see options if they sent a counter-offer, though they can't act on it */}
+                           {bid.status === 'COUNTER_OFFER' && (
+                            <p className="text-sm text-blue-600">Contraproposta enviada ao prestador. Aguardando resposta.</p>
+                          )}
                         </div>
                       )}
 
@@ -625,15 +609,19 @@ export default function ServiceDetailPage() {
                         </div>
                       )}
                       {bid.status === 'ACCEPTED' && (
-                          <p className="text-sm text-green-600 font-semibold">Esta proposta foi aceita.</p>
+                          <p className="text-sm text-green-600 font-semibold">
+                            {isCreator ? `Esta proposta foi aceita.` : `Sua proposta foi aceita!`}
+                          </p>
+                      )}
+                       {bid.status === 'REJECTED' && session?.user?.id === bid.providerId && (
+                          <p className="text-sm text-red-600">Sua proposta foi rejeitada.</p>
                       )}
                     </div>
-                  ))
-                )}
+                  ))}
               </div>
             </div>
           )}
-          {service.bids && service.bids.length === 0 && isCreator && (
+          {bidsToDisplay.length === 0 && isCreator && service.bids?.length === 0 && ( // Show "No bids received" only if creator and bids array is empty
              <div className="bg-white shadow-md rounded-lg p-6 text-center">
                 <p className="text-gray-600">Nenhuma proposta recebida ainda.</p>
              </div>
