@@ -32,6 +32,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const EPSILON = 0.00001; // Epsilon for floating point comparison
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -179,7 +181,8 @@ export async function POST(
         return NextResponse.json({ error: "Carteira do prestador não encontrada. Serviço marcado como DISPUTADO." }, { status: 500 });
       }
 
-      if (creatorWallet.balance < amountToPay) {
+      // if (creatorWallet.balance < amountToPay) { // Old check
+      if (amountToPay - creatorWallet.balance > EPSILON) { // New check
         // Mark service as disputed or requires admin intervention due to insufficient funds
          await prisma.service.update({
             where: { id: serviceId },
