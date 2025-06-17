@@ -298,12 +298,19 @@ export default function ServiceDetailPage() {
             <p className="text-center text-gray-600">Não foi possível carregar o perfil.</p>
           )}
           
-          <button 
-            onClick={onClose}
-            className="mt-4 w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md text-sm font-medium"
-          >
-            Fechar
-          </button>
+          <div className="mt-4 space-y-2">
+            <Link href={`/perfil/${userId}`} passHref>
+              <button className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium text-center">
+                Ver Perfil Completo
+              </button>
+            </Link>
+            <button
+              onClick={onClose}
+              className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md text-sm font-medium"
+            >
+              Fechar
+            </button>
+          </div>
         </div>
       </div>
     );

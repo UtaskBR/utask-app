@@ -111,7 +111,7 @@ if (reviews && (reviews as any[]).length > 0) {
         id: service.profession_id,
         name: service.profession_name
       } : null,
-      photos: (photos as any[]).map(photo => ({ url: photo.url })),
+      photos: (photos as any[]).map(photo => ({ id: photo.id, url: photo.url })),
       bids: (bids as any[]).map(bid => ({
         id: bid.id,
         providerId: bid.providerId,
@@ -297,7 +297,7 @@ export async function PUT(
         id: updatedService.profession_id,
         name: updatedService.profession_name
       } : null,
-      photos: (photos as any[]).map(photo => ({ url: photo.url })),
+      photos: (photos as any[]).map(photo => ({ id: photo.id, url: photo.url })),
       bids: (bids as any[]).map(bid => ({
         id: bid.id,
         providerId: bid.providerId,
