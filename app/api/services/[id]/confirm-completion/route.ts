@@ -181,6 +181,27 @@ export async function POST(
         return NextResponse.json({ error: "Carteira do prestador não encontrada. Serviço marcado como DISPUTADO." }, { status: 500 });
       }
 
+      // --- BEGIN TEMPORARY DIAGNOSTIC LOGGING ---
+      console.log("--- Confirm Completion: Balance Check Diagnostic ---");
+      console.log("Service ID:", serviceId);
+      console.log("Confirmer User ID:", userId);
+      console.log("Service Price (source of amountToPay):", service.price);
+      console.log("Creator Wallet ID:", creatorWallet ? creatorWallet.id : 'N/A');
+      console.log("Creator Wallet Balance (raw):", creatorWallet ? creatorWallet.balance : 'N/A');
+      console.log("Amount to Pay (calculated):", amountToPay);
+      
+      if (creatorWallet && typeof creatorWallet.balance === 'number' && typeof amountToPay === 'number') {
+        console.log("Balance Check: amountToPay - creatorWallet.balance =", amountToPay - creatorWallet.balance);
+        console.log("Balance Check: EPSILON =", EPSILON);
+        console.log("Balance Check: Condition (amountToPay - creatorWallet.balance > EPSILON) is", (amountToPay - creatorWallet.balance > EPSILON));
+      } else {
+        console.log("Balance Check: Could not perform detailed check due to missing data or incorrect types.");
+        console.log("Type of creatorWallet.balance:", typeof creatorWallet?.balance);
+        console.log("Type of amountToPay:", typeof amountToPay);
+      }
+      console.log("--- End Balance Check Diagnostic ---");
+      // --- END TEMPORARY DIAGNOSTIC LOGGING ---
+
       // if (creatorWallet.balance < amountToPay) { // Old check
       if (amountToPay - creatorWallet.balance > EPSILON) { // New check
         // Mark service as disputed or requires admin intervention due to insufficient funds
@@ -189,7 +210,9 @@ export async function POST(
             data: { status: "DISPUTED", updatedAt: new Date() },
         });
         // Notify admin and users
-        return NextResponse.json({ error: "Saldo insuficiente na carteira do contratante. Serviço marcado como DISPUTADO." }, { status: 400 });
+        return NextResponse.json({ 
+          error: `Saldo insuficiente. Saldo disponível: ${creatorWallet.balance}, Valor do serviço: ${amountToPay}. Detalhe: (${amountToPay} - ${creatorWallet.balance} > ${EPSILON}). Serviço marcado como DISPUTADO.` 
+        }, { status: 400 });
       }
 
       // Calcular a taxa da plataforma (15%)
