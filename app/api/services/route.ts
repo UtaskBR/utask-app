@@ -3,6 +3,7 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import crypto from "crypto";
+import cloudinary from '@/lib/cloudinary'; // Added Cloudinary import
 
 // POST /api/services - Criar um novo serviço
 export async function POST(request: NextRequest) {
@@ -109,43 +110,55 @@ export async function POST(request: NextRequest) {
 
     // Processar fotos (se houver)
     const photos = formData.getAll("photos") as File[];
-    const photoUrls: string[] = [];
+    // const photoUrls: string[] = []; // Removed this line
 
     if (photos && photos.length > 0) {
       for (const photo of photos) {
         if (!photo.name || !photo.type.startsWith("image/")) {
-          continue; // Pular arquivos que não são imagens
+          console.warn(`[Service ID: ${service.id}] Skipping non-image file: ${photo.name}`);
+          continue;
         }
 
         try {
-          // Ler o arquivo como array de bytes
-          const bytes = await photo.arrayBuffer();
-          const buffer = Buffer.from(bytes);
-          
-          // Gerar nome único para o arquivo
-          const fileName = `${crypto.randomUUID()}-${photo.name.replace(/\s+/g, '_')}`;
-          
-          // Aqui você implementaria o upload para seu serviço de armazenamento
-          // Por exemplo, para o S3, Azure Blob Storage, etc.
-          // Para este exemplo, vamos simular um URL de imagem
-          const photoUrl = `/uploads/services/${fileName}`;
-          
-          // Em um ambiente real, você faria algo como:
-          // await uploadToStorage(buffer, fileName, photo.type);
-          
-          // Registrar a foto no banco de dados
-          await prisma.photo.create({
-            data: {
-              id: crypto.randomUUID(),
-              url: photoUrl,
-              serviceId: service.id
-            }
+          const arrayBuffer = await photo.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+
+          console.log(`[Service ID: ${service.id}] Attempting Cloudinary upload for file: ${photo.name}`);
+
+          const result = await new Promise<any>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              { folder: "utask/services", upload_preset: "utask-gallery" },
+              (error, cloudinaryResult) => {
+                if (error) {
+                  console.error(`[Service ID: ${service.id}] Cloudinary upload stream error for ${photo.name}:`, error);
+                  return reject(error);
+                }
+                console.log(`[Service ID: ${service.id}] Cloudinary upload stream success for ${photo.name}.`);
+                return resolve(cloudinaryResult);
+              }
+            );
+            stream.end(buffer);
           });
-          
-          photoUrls.push(photoUrl);
+
+          console.log(`[Service ID: ${service.id}] Cloudinary Result for ${photo.name} (Full):`, JSON.stringify(result, null, 2));
+          console.log(`[Service ID: ${service.id}] Cloudinary result.secure_url for ${photo.name}:`, result?.secure_url);
+
+          if (result?.secure_url) {
+            await prisma.photo.create({
+              data: {
+                // id field is omitted, Prisma schema handles default generation
+                url: result.secure_url,
+                publicId: result.public_id, // Store public_id
+                serviceId: service.id,
+              },
+            });
+            // photoUrls.push(result.secure_url); // Removed, not needed
+          } else {
+            console.error(`[Service ID: ${service.id}] Cloudinary upload for ${photo.name} succeeded but no secure_url was returned. Full result:`, JSON.stringify(result, null, 2));
+          }
         } catch (photoError) {
-          console.error("Erro ao processar foto:", photoError);
-          // Continuar com as outras fotos mesmo se uma falhar
+          console.error(`[Service ID: ${service.id}] Error processing photo ${photo.name}:`, photoError);
+          // Continue with other photos
         }
       }
     }
