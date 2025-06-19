@@ -143,6 +143,7 @@ export default function ServiceDetailPage() {
 
   const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
     setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
+    // let operationSucceeded = false; // Flag to track success - Not strictly needed if not re-throwing
     try {
       const response = await fetch(url, {
         method,
@@ -150,13 +151,20 @@ export default function ServiceDetailPage() {
         body: body ? JSON.stringify(body) : undefined,
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `Erro ao ${successMessage?.toLowerCase() || 'processar ação'}`);
-      if (successMessage) console.log(successMessage);
-      fetchService();
+      if (!response.ok) {
+        throw new Error(data.error || `Falha na operação: ${response.status} ${response.statusText}`);
+      }
+      if (successMessage) {
+        console.log(successMessage); // Or use a toast notification
+      }
+      // operationSucceeded = true; // Not strictly needed
       return data;
     } catch (err: any) {
       setError(err.message);
+      // Do not re-throw if setError is the intended way to communicate failure to UI
     } finally {
+      // Always refresh service data to get the latest state from the server
+      fetchService();
       setActionLoading(null);
     }
   };

@@ -100,11 +100,20 @@ export async function POST(
     const { amount, type, description, serviceId } = await request.json();
     
     // Validar os dados da transação
-    if (!amount || !type) {
-      return NextResponse.json(
-        { error: "Dados incompletos" },
-        { status: 400 }
-      );
+    // if (!amount || !type) { // Old basic validation
+    //   return NextResponse.json(
+    //     { error: "Dados incompletos" },
+    //     { status: 400 }
+    //   );
+    // }
+
+    if (!type || (type !== 'DEPOSIT' && type !== 'WITHDRAWAL')) {
+      return NextResponse.json({ error: "Tipo de transação inválido. Use 'DEPOSIT' ou 'WITHDRAWAL'." }, { status: 400 });
+    }
+
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return NextResponse.json({ error: "O valor da transação deve ser um número positivo." }, { status: 400 });
     }
     
     // Buscar a carteira do usuário
@@ -123,18 +132,23 @@ export async function POST(
     
     const wallet = (wallets as any[])[0];
     
-    // Verificar se há saldo suficiente para débito
-    if (type === 'DEBIT' && wallet.balance < amount) {
-      return NextResponse.json(
-        { error: "Saldo insuficiente" },
-        { status: 400 }
-      );
+    // Calcular o novo saldo e verificar fundos para saque
+    let newBalance;
+    if (type === 'DEPOSIT') {
+      newBalance = wallet.balance + numericAmount;
+    } else if (type === 'WITHDRAWAL') {
+      if (wallet.balance < numericAmount) {
+        return NextResponse.json(
+          { error: "Saldo insuficiente para saque." },
+          { status: 400 }
+        );
+      }
+      newBalance = wallet.balance - numericAmount;
     }
-    
-    // Calcular o novo saldo
-    const newBalance = type === 'CREDIT' 
-      ? wallet.balance + amount 
-      : wallet.balance - amount;
+    // else { // This case is already handled by the type check above
+    //   console.error(`Invalid transaction type from client form: ${type}`);
+    //   return NextResponse.json({ error: "Tipo de transação inválido." }, { status: 400 });
+    // }
     
     // Atualizar o saldo da carteira
     await prisma.$executeRaw`
@@ -152,7 +166,7 @@ export async function POST(
         id, amount, type, description, "walletId", "serviceId", "createdAt", "updatedAt"
       )
       VALUES (
-        ${transactionId}, ${amount}, ${type}, ${description || null}, 
+        ${transactionId}, ${numericAmount}, ${type}, ${description || null},
         ${wallet.id}, ${serviceId || null}, ${now}, ${now}
       )
     `;
