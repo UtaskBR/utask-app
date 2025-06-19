@@ -245,7 +245,7 @@ export default function CarteiraPage() {
                   </p>
                 </div>
               ) : (
-                <div className="bg-white shadow-md rounded-lg overflow-hidden">
+                <div className="bg-white shadow-md rounded-lg overflow-x-auto">
                   <table className="min-w-full divide-y divide-secondary-200">
                     <thead className="bg-secondary-50">
                       <tr>
@@ -284,7 +284,7 @@ export default function CarteiraPage() {
                                 : 'Recebimento'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
+                          <td className="px-6 py-4 text-sm text-secondary-900 break-words">
                             {transaction.description || '-'}
                           </td>
                           <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
