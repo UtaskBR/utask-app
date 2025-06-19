@@ -9,7 +9,7 @@ import cloudinary from '@/lib/cloudinary'; // Cloudinary import
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Não autorizado" },
@@ -166,6 +166,92 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(createdService, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar serviço:", error);
+    return NextResponse.json(
+      { error: "Erro ao processar a solicitação" },
+      { status: 500 }
+    );
+  }
+}
+
+// GET /api/services - Listar serviços
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    const url = new URL(request.url);
+    const status = url.searchParams.get("status");
+    const creatorId = url.searchParams.get("creatorId");
+    const providerId = url.searchParams.get("providerId");
+    const limit = parseInt(url.searchParams.get("limit") || "20");
+    const offset = parseInt(url.searchParams.get("offset") || "0");
+
+    const filters: any = {};
+
+    if (status) {
+      filters.status = status;
+    }
+
+    if (creatorId) {
+      filters.creatorId = creatorId;
+    }
+
+    if (providerId) {
+      filters.bids = {
+        some: {
+          providerId,
+          status: "ACCEPTED"
+        }
+      };
+    }
+
+    const services = await prisma.service.findMany({
+      where: filters,
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        },
+        profession: true,
+        photos: true,
+        bids: {
+          where: {
+            status: "ACCEPTED"
+          },
+          include: {
+            provider: {
+              select: {
+                id: true,
+                name: true,
+                image: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      },
+      skip: offset,
+      take: limit
+    });
+
+    const total = await prisma.service.count({
+      where: filters
+    });
+
+    return NextResponse.json({
+      services,
+      pagination: {
+        total,
+        limit,
+        offset
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao listar serviços:", error);
     return NextResponse.json(
       { error: "Erro ao processar a solicitação" },
       { status: 500 }
