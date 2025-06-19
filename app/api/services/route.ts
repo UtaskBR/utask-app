@@ -9,7 +9,7 @@ import cloudinary from '@/lib/cloudinary'; // Cloudinary import
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
+    
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Não autorizado" },
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     if (photos && photos.length > 0) {
       for (const photo of photos) {
         if (!photo.name || !photo.type.startsWith("image/")) {
-          console.warn(`[Service ID: ${service.id}] Skipping non-image file: ${photo.name}`);
+          console.warn([Service ID: ${service.id}] Skipping non-image file: ${photo.name});
           continue;
         }
 
@@ -111,25 +111,25 @@ export async function POST(request: NextRequest) {
           const arrayBuffer = await photo.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
 
-          console.log(`[Service ID: ${service.id}] Attempting Cloudinary upload for file: ${photo.name}`);
+          console.log([Service ID: ${service.id}] Attempting Cloudinary upload for file: ${photo.name});
 
           const result = await new Promise<any>((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
               { folder: "utask/services", upload_preset: "utask-gallery" },
               (error, cloudinaryResult) => {
                 if (error) {
-                  console.error(`[Service ID: ${service.id}] Cloudinary upload stream error for ${photo.name}:`, error);
+                  console.error([Service ID: ${service.id}] Cloudinary upload stream error for ${photo.name}:, error);
                   return reject(error);
                 }
-                console.log(`[Service ID: ${service.id}] Cloudinary upload stream success for ${photo.name}.`);
+                console.log([Service ID: ${service.id}] Cloudinary upload stream success for ${photo.name}.);
                 return resolve(cloudinaryResult);
               }
             );
             stream.end(buffer);
           });
 
-          console.log(`[Service ID: ${service.id}] Cloudinary Result for ${photo.name} (Full):`, JSON.stringify(result, null, 2));
-          console.log(`[Service ID: ${service.id}] Cloudinary result.secure_url for ${photo.name}:`, result?.secure_url);
+          console.log([Service ID: ${service.id}] Cloudinary Result for ${photo.name} (Full):, JSON.stringify(result, null, 2));
+          console.log([Service ID: ${service.id}] Cloudinary result.secure_url for ${photo.name}:, result?.secure_url);
 
           if (result?.secure_url) {
             await prisma.photo.create({
@@ -140,10 +140,10 @@ export async function POST(request: NextRequest) {
               },
             });
           } else {
-            console.error(`[Service ID: ${service.id}] Cloudinary upload for ${photo.name} succeeded but no secure_url was returned. Full result:`, JSON.stringify(result, null, 2));
+            console.error([Service ID: ${service.id}] Cloudinary upload for ${photo.name} succeeded but no secure_url was returned. Full result:, JSON.stringify(result, null, 2));
           }
         } catch (photoError) {
-          console.error(`[Service ID: ${service.id}] Error processing photo ${photo.name}:`, photoError);
+          console.error([Service ID: ${service.id}] Error processing photo ${photo.name}:, photoError);
         }
       }
     }
@@ -166,92 +166,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(createdService, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar serviço:", error);
-    return NextResponse.json(
-      { error: "Erro ao processar a solicitação" },
-      { status: 500 }
-    );
-  }
-}
-
-// GET /api/services - Listar serviços
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-
-    const url = new URL(request.url);
-    const status = url.searchParams.get("status");
-    const creatorId = url.searchParams.get("creatorId");
-    const providerId = url.searchParams.get("providerId");
-    const limit = parseInt(url.searchParams.get("limit") || "20");
-    const offset = parseInt(url.searchParams.get("offset") || "0");
-
-    const filters: any = {};
-
-    if (status) {
-      filters.status = status;
-    }
-
-    if (creatorId) {
-      filters.creatorId = creatorId;
-    }
-
-    if (providerId) {
-      filters.bids = {
-        some: {
-          providerId,
-          status: "ACCEPTED"
-        }
-      };
-    }
-
-    const services = await prisma.service.findMany({
-      where: filters,
-      include: {
-        creator: {
-          select: {
-            id: true,
-            name: true,
-            image: true
-          }
-        },
-        profession: true,
-        photos: true,
-        bids: {
-          where: {
-            status: "ACCEPTED"
-          },
-          include: {
-            provider: {
-              select: {
-                id: true,
-                name: true,
-                image: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      skip: offset,
-      take: limit
-    });
-
-    const total = await prisma.service.count({
-      where: filters
-    });
-
-    return NextResponse.json({
-      services,
-      pagination: {
-        total,
-        limit,
-        offset
-      }
-    });
-  } catch (error) {
-    console.error("Erro ao listar serviços:", error);
     return NextResponse.json(
       { error: "Erro ao processar a solicitação" },
       { status: 500 }
