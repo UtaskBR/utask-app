@@ -21,7 +21,11 @@ export async function GET(request: NextRequest) {
 
     // Corrected parameter setup for the query
     const queryParams: any[] = [lat, lng]; // $1=lat, $2=lng
-    let sqlConditions = ["s.status = 'OPEN'"];
+    let sqlConditions = [
+      "s.status = 'OPEN'",
+      "s.latitude IS NOT NULL",
+      "s.longitude IS NOT NULL"
+    ];
 
     if (professionId) {
       sqlConditions.push(`s."professionId" = $${queryParams.length + 1}`);
@@ -61,9 +65,11 @@ export async function GET(request: NextRequest) {
         (SELECT ph.url FROM "Photo" ph WHERE ph."serviceId" = s.id ORDER BY ph."createdAt" ASC LIMIT 1) as "photoUrl",
         (
           ${R} * acos(
-            cos(radians($1)) * cos(radians(s.latitude)) *
-            cos(radians(s.longitude) - radians($2)) +
-            sin(radians($1)) * sin(radians(s.latitude))
+            GREATEST(-1.0, LEAST(1.0,
+              cos(radians($1)) * cos(radians(s.latitude)) *
+              cos(radians(s.longitude) - radians($2)) +
+              sin(radians($1)) * sin(radians(s.latitude))
+            ))
           )
         ) AS distance
       FROM "Service" s
@@ -71,9 +77,11 @@ export async function GET(request: NextRequest) {
       ${finalWhereClause}
       HAVING (
         ${R} * acos(
-          cos(radians($1)) * cos(radians(s.latitude)) *
-          cos(radians(s.longitude) - radians($2)) +
-          sin(radians($1)) * sin(radians(s.latitude))
+          GREATEST(-1.0, LEAST(1.0,
+            cos(radians($1)) * cos(radians(s.latitude)) *
+            cos(radians(s.longitude) - radians($2)) +
+            sin(radians($1)) * sin(radians(s.latitude))
+          ))
         )
       ) <= $${radiusParamIndex}
       ORDER BY distance ASC;
