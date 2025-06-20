@@ -129,20 +129,73 @@ export default function MapaPage() {
       <div className="p-4 bg-gray-50 border-b"> {/* This was original line 136 */}
         <h2 className="text-lg font-semibold mb-3 text-gray-800">Filtrar Serviços no Mapa</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-          {/* Placeholder for filter inputs */}
-          <div>Filter 1 Placeholder</div>
-          <div>Filter 2 Placeholder</div>
-          <div>Filter 3 Placeholder</div>
-          <div>Filter 4 Placeholder</div>
+          <div>
+            <label htmlFor="radius" className="block text-sm font-medium text-gray-700">Raio (km)</label>
+            <input type="number" name="radius" id="radius" value={filters.radius} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 10" />
+          </div>
+          <div>
+            <label htmlFor="professionId" className="block text-sm font-medium text-gray-700">Profissão</label>
+            <select name="professionId" id="professionId" value={filters.professionId} onChange={handleFilterChange} className="input-field mt-1 w-full">
+              <option value="">Todas</option>
+              {professions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700">Preço Mín.</label>
+            <input type="number" name="minPrice" id="minPrice" value={filters.minPrice} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 50" step="0.01"/>
+          </div>
+          <div>
+            <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700">Preço Máx.</label>
+            <input type="number" name="maxPrice" id="maxPrice" value={filters.maxPrice} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 300" step="0.01"/>
+          </div>
         </div>
       </div>
 
-      {/* Placeholder for the rest of the content (map and services list) */}
-      <div style={{ padding: '20px', textAlign: 'center', flexGrow: 1, backgroundColor: '#f0f0f0' }}>
-        <h1>Map and Services Area</h1>
-        <p>This area will eventually hold the map and service cards.</p>
-        <p>The MapClient and StaticMap components are still effectively commented out (not included here).</p>
-      </div>
+      <div className="flex flex-col flex-grow overflow-hidden">
+    <div className="h-3/5 md:h-2/3 relative"> {/* Map container */}
+      {useGL ? (
+        <MapClient
+          userLocation={userLocation}
+          services={services}
+        />
+      ) : (
+        <StaticMap userLocation={userLocation} services={services} />
+      )}
+    </div>
+    {/* Placeholder for Cards container - to be restored in the next step */}
+    <div className="flex-grow overflow-y-auto p-2 md:p-4 bg-gray-100">
+        {isLoadingServices && services.length === 0 && <p className="text-center text-gray-500 py-4">Carregando serviços...</p>}
+        {!isLoadingServices && services.length === 0 && <p className="text-center text-gray-500 py-4">Nenhum serviço encontrado nas proximidades.</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {services.map(service => (
+            <Link href={`/servicos/${service.id}`} key={service.id} legacyBehavior>
+              <a className="block bg-white shadow-md rounded-lg hover:shadow-lg transition-shadow overflow-hidden">
+                <div className="h-32 sm:h-40 bg-gray-200 flex items-center justify-center">
+                  {service.photoUrl ? (
+                    <img src={service.photoUrl} alt={service.title} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                  ) : (
+                    <img src="/placeholder-image.png" alt="Serviço sem imagem" className="w-full h-full object-cover opacity-50" />
+                  )}
+                </div>
+                <div className="p-3">
+                  <h3 className="text-md font-semibold text-gray-800 truncate" title={service.title}>{service.title}</h3>
+                  <p className="text-sm text-blue-600 font-medium mt-1">
+                    {service.price != null ? `R$ ${service.price.toFixed(2)}` : 'A combinar'}
+                  </p>
+                  {service.date && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {/* Consider more robust date formatting if needed, and timezone handling */}
+                      Data: {new Date(service.date).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                  {/* Other details like professionName or address can be added here if desired in future */}
+                </div>
+              </a>
+            </Link>
+          ))}
+        </div>
+    </div>
+  </div>
     </div>
   );
 }
