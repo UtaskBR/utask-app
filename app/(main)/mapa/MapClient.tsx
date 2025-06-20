@@ -30,6 +30,18 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
     try {
+      if (!userLocation || typeof userLocation.lat !== 'number' || typeof userLocation.lng !== 'number') {
+        console.error('MapClient: userLocation is invalid.', userLocation);
+        // Optionally, display a message in the container div
+        if (container.current) {
+          container.current.innerHTML = '<p style="color: red; text-align: center; padding-top: 20px;">Localização do usuário inválida para carregar o mapa.</p>';
+        }
+        return; // Early exit
+      }
+      // Clear any previous error message if location becomes valid
+      if (container.current && container.current.firstChild?.nodeName === 'P') {
+        container.current.innerHTML = '';
+      }
       mapRef.current = new mapboxgl.Map({
         container: container.current,
         style: 'mapbox://styles/mapbox/streets-v11',

@@ -126,33 +126,33 @@ export default function MapaPage() {
   return (
     // Original comment: Add a parent div or fragment to hold filters + map/cards section
     <div className="h-full flex flex-col"> {/* This was the problematic line 135 */}
-      <div className="p-4 bg-gray-50 border-b"> {/* This was original line 136 */}
-        <h2 className="text-lg font-semibold mb-3 text-gray-800">Filtrar Serviços no Mapa</h2>
+      <div className="bg-white shadow-md rounded-lg p-4"> {/* This was original line 136 */}
+        <h2 className="text-lg font-medium mb-3 text-secondary-900">Filtrar Serviços no Mapa</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
           <div>
-            <label htmlFor="radius" className="block text-sm font-medium text-gray-700">Raio (km)</label>
+            <label htmlFor="radius" className="block text-sm font-medium text-secondary-700">Raio (km)</label>
             <input type="number" name="radius" id="radius" value={filters.radius} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 10" />
           </div>
           <div>
-            <label htmlFor="professionId" className="block text-sm font-medium text-gray-700">Profissão</label>
+            <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">Profissão</label>
             <select name="professionId" id="professionId" value={filters.professionId} onChange={handleFilterChange} className="input-field mt-1 w-full">
               <option value="">Todas</option>
               {professions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700">Preço Mín.</label>
+            <label htmlFor="minPrice" className="block text-sm font-medium text-secondary-700">Preço Mín.</label>
             <input type="number" name="minPrice" id="minPrice" value={filters.minPrice} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 50" step="0.01"/>
           </div>
           <div>
-            <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700">Preço Máx.</label>
+            <label htmlFor="maxPrice" className="block text-sm font-medium text-secondary-700">Preço Máx.</label>
             <input type="number" name="maxPrice" id="maxPrice" value={filters.maxPrice} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 300" step="0.01"/>
           </div>
         </div>
       </div>
 
       <div className="flex flex-col flex-grow overflow-hidden">
-    <div className="h-3/5 md:h-2/3 relative"> {/* Map container */}
+    <div className="h-3/5 md:h-2/3 relative min-h-[400px]"> {/* Map container */}
       {useGL ? (
         <MapClient
           userLocation={userLocation}
