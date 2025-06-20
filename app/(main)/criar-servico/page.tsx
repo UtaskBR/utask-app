@@ -12,9 +12,19 @@ export default function CriarServicoPage() {
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [date, setDate] = useState('');
-  const [address, setAddress] = useState('');
+  const [complemento, setComplemento] = useState(''); // Renamed from address
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
+  const [cep, setCep] = useState('');
+  const [numero, setNumero] = useState('');
+  const [logradouro, setLogradouro] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [uf, setUf] = useState('');
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [cepError, setCepError] = useState('');
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState('');
   const [professions, setProfessions] = useState([]);
   const [professionId, setProfessionId] = useState('');
   const [photos, setPhotos] = useState<File[]>([]);
@@ -38,6 +48,146 @@ export default function CriarServicoPage() {
 
     fetchProfessions();
   }, []);
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawCep = e.target.value;
+    // Formato CEP para display: 00000-000
+    let formattedCep = rawCep.replace(/\D/g, '');
+    if (formattedCep.length > 5) {
+      formattedCep = formattedCep.slice(0, 5) + '-' + formattedCep.slice(5, 8);
+    }
+    setCep(formattedCep);
+
+    if (formattedCep.replace(/\D/g, '').length === 8) {
+      fetchAddressFromCep(formattedCep.replace(/\D/g, ''));
+    } else {
+      // Limpar campos relacionados ao endereço se o CEP não estiver completo/válido
+      setLogradouro('');
+      setBairro('');
+      setCidade('');
+      setUf('');
+      setLatitude('');
+      setLongitude('');
+      setCepError('');
+      setGeocodeError('');
+    }
+  };
+
+  const fetchAddressFromCep = async (cleanedCep: string) => {
+    setIsFetchingCep(true);
+    setCepError('');
+    setLogradouro('');
+    setBairro('');
+    setCidade('');
+    setUf('');
+    setLatitude('');
+    setLongitude('');
+    setGeocodeError('');
+
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
+      const data = await response.json();
+      if (data.erro) {
+        setCepError('CEP não encontrado.');
+        toast.error('CEP não encontrado.');
+      } else {
+        setLogradouro(data.logradouro);
+        setBairro(data.bairro);
+        setCidade(data.localidade);
+        setUf(data.uf);
+        toast.success('Endereço encontrado pelo CEP.');
+        // Se não houver número, pode tentar geocodificar apenas com CEP e logradouro
+        // Mas idealmente, esperamos pelo número.
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+      setCepError('Erro ao buscar CEP. Verifique sua conexão.');
+      toast.error('Erro ao buscar CEP.');
+    } finally {
+      setIsFetchingCep(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchCoordinates = async () => {
+      if (!numero || !cep || !logradouro || !cidade || !uf) {
+        // Não tentar geocodificar se informações essenciais estiverem faltando
+        // ou se o CEP não for válido (ex: usuário apagou)
+        if (cep.replace(/\D/g, '').length !== 8 && (latitude || longitude)) {
+          // Limpa coordenadas se o CEP se tornar inválido e coordenadas existiam
+          setLatitude('');
+          setLongitude('');
+          setGeocodeError('CEP inválido para geocodificação.');
+        }
+        return;
+      }
+
+      setIsGeocoding(true);
+      setGeocodeError('');
+      // Não limpar lat/lng aqui para não piscar se o usuário só mudar o número e o resto for igual
+
+      const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      if (!mapboxToken) {
+        setGeocodeError('Chave de API do Mapbox não configurada.');
+        setIsGeocoding(false);
+        return;
+      }
+
+      // Priorizar uso do CEP limpo para o postcode
+      const cleanedCepForApi = cep.replace(/\D/g, '');
+
+      // Construir query de forma mais flexível, focando nos campos mais relevantes
+      // A API do Mapbox é boa em lidar com queries parciais, mas quanto mais info, melhor.
+      let queryParams = [];
+      if (logradouro) queryParams.push(encodeURIComponent(logradouro));
+      if (numero) queryParams.push(encodeURIComponent(numero)); // Número é importante
+      if (cidade) queryParams.push(encodeURIComponent(cidade));
+      if (uf) queryParams.push(encodeURIComponent(uf));
+      // O CEP é usado no parâmetro postcode
+
+      const mapboxApiUrl = `https://api.mapbox.com/search/geocode/v6/forward?country=BR&postcode=${cleanedCepForApi}&q=${queryParams.join(', ')}&language=pt-BR&limit=1&access_token=${mapboxToken}`;
+      // Alternativa de URL, se a de cima não for boa:
+      // const mapboxApiUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(logradouro)}, ${encodeURIComponent(numero)}, ${encodeURIComponent(cidade)}, ${encodeURIComponent(uf)}.json?country=BR&postcode=${cleanedCepForApi}&access_token=${mapboxToken}&limit=1`;
+
+
+      try {
+        const response = await fetch(mapboxApiUrl);
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+          const coordinates = data.features[0].geometry.coordinates;
+          setLongitude(coordinates[0].toString());
+          setLatitude(coordinates[1].toString());
+          setGeocodeError(''); // Limpa erro anterior se sucesso
+          toast.success('Coordenadas obtidas com sucesso!');
+        } else {
+          setLatitude('');
+          setLongitude('');
+          setGeocodeError('Não foi possível obter as coordenadas para este endereço. Verifique os dados ou ajuste manualmente se necessário.');
+          toast.error('Coordenadas não encontradas.');
+        }
+      } catch (error) {
+        console.error('Erro ao geocodificar:', error);
+        setLatitude('');
+        setLongitude('');
+        setGeocodeError('Erro ao obter coordenadas. Verifique sua conexão.');
+        toast.error('Erro ao obter coordenadas.');
+      } finally {
+        setIsGeocoding(false);
+      }
+    };
+
+    // Debounce para evitar chamadas excessivas à API enquanto o usuário digita o número
+    const handler = setTimeout(() => {
+      if (cep.replace(/\D/g, '').length === 8 && numero && logradouro && cidade && uf) {
+         fetchCoordinates();
+      }
+    }, 1000); // Atraso de 1 segundo
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [numero, logradouro, cidade, uf, cep]); // Adicionado cep como dependência
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -77,10 +227,22 @@ export default function CriarServicoPage() {
       formData.append('description', description);
       if (price) formData.append('price', price);
       if (date) formData.append('date', date);
-      if (address) formData.append('address', address);
+      // Note: The API now expects 'address' to be the 'complemento'.
+      // The full address string for the legacy 'address' DB field is constructed on the server.
+      if (complemento) formData.append('address', complemento); // 'address' in formData becomes 'complemento' in DB via API
+
       if (latitude) formData.append('latitude', latitude);
       if (longitude) formData.append('longitude', longitude);
       if (professionId) formData.append('professionId', professionId);
+
+      // Add new structured address fields to FormData
+      if (cep) formData.append('cep', cep);
+      if (logradouro) formData.append('logradouro', logradouro);
+      if (numero) formData.append('numero', numero);
+      // 'complemento' is already handled by the 'address' field above for FormData
+      if (bairro) formData.append('bairro', bairro);
+      if (cidade) formData.append('cidade', cidade);
+      if (uf) formData.append('uf', uf);
       
       // Adicionar fotos
       if (photos.length > 0) {
@@ -176,46 +338,71 @@ export default function CriarServicoPage() {
             />
           </div>
         </div>
+
+        {/* CEP Input Section */}
+        <div className="mb-4">
+          <label htmlFor="cep" className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+          <input
+            type="text"
+            id="cep"
+            name="cep"
+            value={cep}
+            onChange={handleCepChange}
+            placeholder="00000-000"
+            maxLength={9}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          />
+          {isFetchingCep && <p className="mt-1 text-xs text-gray-500">Buscando endereço...</p>}
+          {cepError && <p className="mt-1 text-xs text-red-500">{cepError}</p>}
+        </div>
+
+        {/* Número Input Section */}
+        <div className="mb-4">
+          <label htmlFor="numero" className="block text-sm font-medium text-gray-700 mb-1">Número</label>
+          <input
+            type="text"
+            id="numero"
+            name="numero"
+            value={numero}
+            onChange={(e) => setNumero(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Ex: 123, S/N"
+          />
+        </div>
+
+        {/* Display for Auto-filled Address */}
+        {logradouro && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-md border border-gray-200">
+            <h3 className="text-sm font-medium text-gray-600 mb-2">Endereço encontrado:</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <p><span className="font-semibold">Logradouro:</span> {logradouro}</p>
+              <p><span className="font-semibold">Bairro:</span> {bairro}</p>
+              <p><span className="font-semibold">Cidade:</span> {cidade}</p>
+              <p><span className="font-semibold">UF:</span> {uf}</p>
+            </div>
+          </div>
+        )}
         
+        {/* Geocoding Status */}
+        <div className="mb-4">
+           {isGeocoding && <p className="mt-1 text-xs text-gray-500">Obtendo coordenadas geográficas...</p>}
+           {geocodeError && <p className="mt-1 text-xs text-red-500">{geocodeError}</p>}
+           {latitude && longitude && !isGeocoding && !geocodeError && <p className="mt-1 text-xs text-green-600">Coordenadas geográficas obtidas com sucesso!</p>}
+        </div>
+
         <div className="mb-4">
           <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-            Endereço
+            Complemento do Endereço (Ex: Apto 101, Bloco B)
           </label>
           <input
             type="text"
-            id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            id="address" // ID remains "address" for the input field
+            name="address" // Name remains "address" for FormData key
+            value={complemento} // Value bound to 'complemento' state
+            onChange={(e) => setComplemento(e.target.value)} // onChange updates 'complemento' state
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            placeholder="Opcional: Apto, Bloco, Ponto de Referência"
           />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <div>
-            <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
-              Latitude
-            </label>
-            <input
-              type="text"
-              id="latitude"
-              value={latitude}
-              onChange={(e) => setLatitude(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
-              Longitude
-            </label>
-            <input
-              type="text"
-              id="longitude"
-              value={longitude}
-              onChange={(e) => setLongitude(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
         </div>
         
         <div className="mb-4">

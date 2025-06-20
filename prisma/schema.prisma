@@ -60,7 +60,14 @@ model Service {
   price         Float?
   latitude      Float?
   longitude     Float?
-  address       String?
+  address       String? # Legacy address field, can be used for display or as a fallback
+  cep         String?   // Brazilian Zip Code
+  logradouro  String?   // Street name
+  numero      String?   // House/Building number
+  complemento String?   // Complement (e.g., Apt, Block)
+  bairro      String?   // Neighborhood
+  cidade      String?   // City
+  uf          String?   // State (2-letter code)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   creatorId     String

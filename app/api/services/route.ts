@@ -37,8 +37,18 @@ export async function POST(request: NextRequest) {
     const dateStr = formData.get("date") as string;
     const latitude = formData.get("latitude") as string;
     const longitude = formData.get("longitude") as string;
-    const address = formData.get("address") as string;
+    const address = formData.get("address") as string; // This is the 'complemento' from the form now
     const professionId = formData.get("professionId") as string;
+
+    // New structured address fields
+    const cep = formData.get('cep') as string | null;
+    const logradouro = formData.get('logradouro') as string | null;
+    const numero = formData.get('numero') as string | null;
+    // The 'address' field from form is now used as 'complemento' for the database
+    const complemento = formData.get('address') as string | null;
+    const bairro = formData.get('bairro') as string | null;
+    const cidade = formData.get('cidade') as string | null;
+    const uf = formData.get('uf') as string | null;
 
     // Validar campos obrigatórios
     if (!title || !description) {
@@ -101,7 +111,14 @@ export async function POST(request: NextRequest) {
         date,
         latitude: lat,
         longitude: lng,
-        address,
+        address: logradouro ? `${logradouro}, ${numero || 'S/N'}${bairro ? ' - ' + bairro : ''}, ${cidade || ''} - ${uf || ''}${cep ? ', CEP: ' + cep : ''}${complemento ? ' ('+complemento+')' : ''}` : null, // Construct a full address string for the legacy field if needed, or keep it as is from form. For now, it takes the 'complemento'
+        cep,
+        logradouro,
+        numero,
+        complemento, // formData.get('address') is now complemento
+        bairro,
+        cidade,
+        uf,
         status: "OPEN",
         creatorId: session.user.id,
         professionId: professionId || undefined
