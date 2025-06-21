@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react'; // Added useCallback
 import mapboxgl from 'mapbox-gl';
 
 type Service = {
@@ -17,12 +17,24 @@ type Service = {
 type Props = {
   userLocation: { lat: number; lng: number };
   services: Service[];
-  // onMarkerClick: (svc: Service) => void; // Removed
+  onMapViewChange: (bounds: mapboxgl.LngLatBounds) => void; // Added new prop
 };
 
-export default function MapClient({ userLocation, services }: Props) { // Removed onMarkerClick from params
+export default function MapClient({ userLocation, services, onMapViewChange }: Props) { // Added onMapViewChange
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const container = useRef<HTMLDivElement>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For debouncing map view changes
+
+  const debouncedUpdateBounds = useCallback((map: mapboxgl.Map) => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    debounceTimeoutRef.current = setTimeout(() => {
+      const newBounds = map.getBounds();
+      console.log('MapClient: Debounced move/zoom ended. New bounds:', newBounds);
+      onMapViewChange(newBounds);
+    }, 800); // 800ms debounce, adjust as needed
+  }, [onMapViewChange]);
 
   useEffect(() => {
     console.log('MapClient: useEffect triggered. UserLocation:', userLocation, 'Services count:', services.length);
@@ -84,6 +96,16 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
 
         mapRef.current.on('load', () => {
             console.log('MapClient: map fully loaded (style, sources etc.)');
+
+            // Initial bounds reporting after map is loaded and user marker potentially added
+            const initialBounds = mapRef.current!.getBounds(); // mapRef.current is guaranteed here
+            console.log('MapClient: Map fully loaded. Initial bounds:', initialBounds);
+            onMapViewChange(initialBounds); // Pass initial bounds up
+
+            // Listen for map movements
+            mapRef.current!.on('moveend', () => debouncedUpdateBounds(mapRef.current!));
+            mapRef.current!.on('zoomend', () => debouncedUpdateBounds(mapRef.current!));
+
             if (services.length > 0) {
                 console.log('MapClient: setTimeout - Attempting to add service markers. Count:', services.length);
                 services.forEach(svc => {
@@ -128,11 +150,14 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
     }, 100); // 100ms delay
 
     return () => {
-      clearTimeout(timerId);
+      clearTimeout(timerId); // Existing timeout for map init delay
+      if (debounceTimeoutRef.current) { // New: Clear debounce timeout
+        clearTimeout(debounceTimeoutRef.current);
+      }
       mapRef.current?.remove();
-      console.log('MapClient: useEffect cleanup - map removed, timeout cleared.');
+      console.log('MapClient: useEffect cleanup - map removed, timeouts cleared.');
     };
-  }, [userLocation, services]);
+  }, [userLocation, services, onMapViewChange, debouncedUpdateBounds]); // Added onMapViewChange and debouncedUpdateBounds to dependencies
 
   return <div ref={container} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />;
 }

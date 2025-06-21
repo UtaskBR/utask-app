@@ -5,84 +5,82 @@ import { Prisma } from '@prisma/client'; // For types if needed
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const lat = parseFloat(searchParams.get('lat') || '');
-    const lng = parseFloat(searchParams.get('lng') || '');
-    const radius = parseFloat(searchParams.get('radius') || ''); // in kilometers
+    // Bounding box parameters
+    const minLngStr = searchParams.get('minLng');
+    const minLatStr = searchParams.get('minLat');
+    const maxLngStr = searchParams.get('maxLng');
+    const maxLatStr = searchParams.get('maxLat');
+
+    // Other filters
     const professionId = searchParams.get('professionId');
     const minPriceStr = searchParams.get('minPrice');
     const maxPriceStr = searchParams.get('maxPrice');
 
-    if (isNaN(lat) || isNaN(lng) || isNaN(radius) || radius <= 0) {
-      return NextResponse.json({ error: 'Latitude, longitude, and a positive radius are required.' }, { status: 400 });
+    const minLng = parseFloat(minLngStr || '');
+    const minLat = parseFloat(minLatStr || '');
+    const maxLng = parseFloat(maxLngStr || '');
+    const maxLat = parseFloat(maxLatStr || '');
+
+    if (isNaN(minLng) || isNaN(minLat) || isNaN(maxLng) || isNaN(maxLat)) {
+      return NextResponse.json({ error: 'Valid bounding box (minLng, minLat, maxLng, maxLat) is required.' }, { status: 400 });
     }
 
-    // Earth radius in kilometers
-    const R = 6371;
+    const queryParams: any[] = [];
+    let paramIndex = 1; // To keep track of $n placeholders
 
-    // Corrected parameter setup for the query
-    const queryParams: any[] = [lat, lng]; // $1=lat, $2=lng
     let sqlConditions = [
-      "s.status = 'OPEN'",
+      "s.status = 'OPEN'", // Keep existing status filter
       "s.latitude IS NOT NULL",
       "s.longitude IS NOT NULL"
     ];
 
+    // Bounding Box conditions
+    sqlConditions.push(`s.longitude >= $${paramIndex++}`);
+    queryParams.push(minLng);
+    sqlConditions.push(`s.longitude <= $${paramIndex++}`);
+    queryParams.push(maxLng);
+    sqlConditions.push(`s.latitude >= $${paramIndex++}`);
+    queryParams.push(minLat);
+    sqlConditions.push(`s.latitude <= $${paramIndex++}`);
+    queryParams.push(maxLat);
+
+    // Other existing filters
     if (professionId) {
-      sqlConditions.push(`s."professionId" = $${queryParams.length + 1}`);
+      sqlConditions.push(`s."professionId" = $${paramIndex++}`);
       queryParams.push(professionId);
     }
     if (minPriceStr) {
       const minPrice = parseFloat(minPriceStr);
       if (!isNaN(minPrice)) {
-        sqlConditions.push(`s.price >= $${queryParams.length + 1}`);
+        sqlConditions.push(`s.price >= $${paramIndex++}`);
         queryParams.push(minPrice);
       }
     }
     if (maxPriceStr) {
       const maxPrice = parseFloat(maxPriceStr);
       if (!isNaN(maxPrice)) {
-        sqlConditions.push(`s.price <= $${queryParams.length + 1}`);
+        sqlConditions.push(`s.price <= $${paramIndex++}`);
         queryParams.push(maxPrice);
       }
     }
 
-    // Add radius to queryParams for the HAVING clause comparison
-    // This will be the last parameter.
-    queryParams.push(radius);
-    const radiusParamIndex = queryParams.length;
-
     const finalWhereClause = sqlConditions.length > 0 ? `WHERE ${sqlConditions.join(' AND ')}` : '';
 
-    // Using s.latitude and s.longitude which are expected to be in degrees.
-    // radians() function converts degrees to radians.
-    // $1 is user's latitude, $2 is user's longitude.
-    // $${radiusParamIndex} is the search radius.
     const finalQuery = `
-      SELECT * FROM (
-        SELECT
-          s.id, s.title, s.description, s.price, s.date, s.status,
-          s.latitude, s.longitude, s.address, s."professionId",
-          s.cep, s.logradouro, s.numero, s.complemento, s.bairro, s.cidade, s.uf, -- Added new structured address fields
-          p.name as "professionName",
-          (SELECT ph.url FROM "Photo" ph WHERE ph."serviceId" = s.id ORDER BY ph."createdAt" ASC LIMIT 1) as "photoUrl",
-          (
-            ${R} * acos(
-              GREATEST(-1.0, LEAST(1.0,
-                cos(radians($1)) * cos(radians(s.latitude)) *
-                cos(radians(s.longitude) - radians($2)) +
-                sin(radians($1)) * sin(radians(s.latitude))
-              ))
-            )
-          ) AS distance
-        FROM "Service" s
-        LEFT JOIN "Profession" p ON s."professionId" = p.id
-        ${finalWhereClause} -- This is the original WHERE clause for profession, price, status, NOT NULL coords etc.
-      ) AS services_with_distance
-      WHERE services_with_distance.distance <= $${radiusParamIndex} -- Radius filter moved to outer query's WHERE clause
-      ORDER BY services_with_distance.distance ASC;
+      SELECT
+        s.id, s.title, s.description, s.price, s.date, s.status,
+        s.latitude, s.longitude, s.address, s."professionId",
+        s.cep, s.logradouro, s.numero, s.complemento, s.bairro, s.cidade, s.uf,
+        p.name as "professionName",
+        (SELECT ph.url FROM "Photo" ph WHERE ph."serviceId" = s.id ORDER BY ph."createdAt" ASC LIMIT 1) as "photoUrl"
+        -- Removed distance calculation
+      FROM "Service" s
+      LEFT JOIN "Profession" p ON s."professionId" = p.id
+      ${finalWhereClause}
+      ORDER BY s."createdAt" DESC; -- Example: order by creation date
     `;
 
-    // console.log("Executing nearby query:", finalQuery);
+    // console.log("Executing bounds query:", finalQuery);
     // console.log("With parameters:", queryParams);
 
     const services = await prisma.$queryRawUnsafe(finalQuery, ...queryParams);
