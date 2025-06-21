@@ -25,6 +25,7 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
   const container = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log('MapClient: useEffect triggered. UserLocation:', userLocation, 'Services count:', services.length);
     if (!container.current) return;
 
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
@@ -42,24 +43,33 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
       if (container.current && container.current.firstChild?.nodeName === 'P') {
         container.current.innerHTML = '';
       }
+      console.log('MapClient: Initializing map. Container offsetWidth:', container.current?.offsetWidth, 'offsetHeight:', container.current?.offsetHeight);
       mapRef.current = new mapboxgl.Map({
         container: container.current,
         style: 'mapbox://styles/mapbox/streets-v11',
-        center: [userLocation.lng, userLocation.lat],
-        zoom: 12,
+        // center: [userLocation.lng, userLocation.lat],
+        // zoom: 12,
+        center: [-46.6333, -23.5505], // São Paulo coordinates
+        zoom: 9, // A slightly wider zoom
       });
+      console.log('MapClient: Map initialized successfully.');
 
       mapRef.current.addControl(new mapboxgl.NavigationControl());
 
       // marcador do usuário
+      console.log('MapClient: Adding user marker at', [userLocation.lng, userLocation.lat]);
       new mapboxgl.Marker({ color: '#0ea5e9' })
         .setLngLat([userLocation.lng, userLocation.lat])
         .setPopup(new mapboxgl.Popup().setText('Você está aqui'))
         .addTo(mapRef.current);
 
       mapRef.current.on('load', () => {
+        if (services && services.length > 0) {
+          console.log('MapClient: Attempting to add service markers. Count:', services.length);
+        }
         services.forEach(svc => {
           if (svc.latitude == null || svc.longitude == null) return;
+          console.log('MapClient: Adding service marker for', svc.title, 'at', [svc.longitude, svc.latitude]);
           const el = document.createElement('div');
           el.className = 'service-marker';
           el.style.cssText = `
@@ -93,6 +103,7 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
       });
     } catch (err) {
       console.warn('Mapbox GL não pôde inicializar (WebGL):', err);
+      console.error('MapClient: MAPBOX INITIALIZATION FAILED:', err);
     }
 
     return () => {
@@ -100,5 +111,5 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
     };
   }, [userLocation, services]); // Removed onMarkerClick from dependency array
 
-  return <div ref={container} className="h-full w-full" />;
+  return <div ref={container} className="h-full w-full" style={{ backgroundColor: 'lime', border: '2px solid red' }} />;
 }
