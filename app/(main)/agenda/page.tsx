@@ -15,9 +15,33 @@ const CurrencyIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" v
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg>;
 const ArrowRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>;
 
+interface AgendaService {
+  id: string;
+  title: string;
+  date: string | null; // Assuming date is a string from API, might need conversion
+  address: string | null;
+  price: number | null;
+  status: string;
+  creator: {
+    id: string;
+    name: string | null;
+    image: string | null;
+  };
+  provider: { // This was previously nested in bids, now directly available
+    id: string;
+    name: string | null;
+    image: string | null;
+  } | null;
+  formattedDate: string | null; // As returned by API
+  formattedPrice: string | null; // As returned by API
+  userRole?: 'creator' | 'provider' | 'unknown'; // Added userRole
+  // Add other fields from 'service' object if used directly in render
+  profession?: { id: string; name: string; } | null;
+}
+
 export default function AgendaPage() {
   const { data: session } = useSession();
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<AgendaService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('todos');
@@ -290,17 +314,41 @@ export default function AgendaPage() {
               value={selectedDate}
               locale="pt-BR"
               className="w-full border-0"
-              tileClassName={({ date }) => {
-                // Destacar datas com serviços
-                const hasService = services.some(service => {
-                  if (!service.date) return false;
-                  try {
-                    return isSameDay(new Date(service.date), date);
-                  } catch (error) {
-                    return false;
+              tileClassName={({ date, view }) => {
+                if (view === 'month') {
+                  const servicesOnDate = services.filter(service => {
+                    if (!service.date) return false;
+                    try { return isSameDay(new Date(service.date), date); } catch { return false; }
+                  });
+                  if (servicesOnDate.length > 0) {
+                    return 'relative font-semibold'; // Ensure relative for dot positioning & bold text
                   }
-                });
-                return hasService ? 'bg-blue-100 text-blue-800 rounded-full' : null;
+                  return 'relative'; // Ensure all month view tiles are relative
+                }
+                return null;
+              }}
+              tileContent={({ date, view }) => {
+                if (view === 'month') {
+                  const servicesOnDate = services.filter(service => {
+                    if (!service.date) return false;
+                    try {
+                      return isSameDay(new Date(service.date), date);
+                    } catch { return false; }
+                  });
+
+                  if (servicesOnDate.length > 0) {
+                    const hasCreatorService = servicesOnDate.some(s => s.userRole === 'creator');
+                    const hasProviderService = servicesOnDate.some(s => s.userRole === 'provider');
+
+                    return (
+                      <div className="flex justify-center items-center pt-1 absolute bottom-1 left-0 right-0">
+                        {hasCreatorService && <div className="w-1.5 h-1.5 bg-sky-500 rounded-full mx-px"></div>}
+                        {hasProviderService && <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mx-px"></div>}
+                      </div>
+                    );
+                  }
+                }
+                return null;
               }}
             />
             
@@ -317,6 +365,23 @@ export default function AgendaPage() {
                 </button>
               </div>
             )}
+          </div>
+          {/* Legend for Calendar Indicators */}
+          <div className="mt-6 pt-4 border-t border-secondary-200">
+            <h4 className="text-sm font-semibold text-secondary-800 mb-2">Legenda do Calendário:</h4>
+            <ul className="space-y-1 text-xs text-secondary-700">
+              <li className="flex items-center">
+                <span className="font-bold mr-2 text-center inline-block w-4">Ex: 15</span> Data com serviço(s)
+              </li>
+              <li className="flex items-center mt-1">
+                <span className="w-2.5 h-2.5 bg-sky-500 rounded-full inline-block mr-2"></span>
+                Serviços que você contratou
+              </li>
+              <li className="flex items-center mt-1">
+                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block mr-2"></span>
+                Serviços que você fornecerá
+              </li>
+            </ul>
           </div>
         </div>
         

@@ -112,12 +112,23 @@ export async function GET(request: NextRequest) {
         ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)
         : null;
 
+      let userRole: 'creator' | 'provider' | 'unknown' = 'unknown';
+      if (service.creatorId === userId) {
+        userRole = 'creator';
+      } else if (provider && provider.id === userId) {
+        userRole = 'provider';
+      }
+      // If userRole remains 'unknown', it implies the base query might be too broad
+      // or there's a data state not perfectly covered by creator/accepted provider check.
+      // However, the OR condition in baseQuery should prevent this for valid session userId.
+
       return {
-        ...service,
-        provider,
+        ...service, // Spread existing service properties (after Prisma's include)
+        provider,   // The embedded provider object
         formattedDate,
         formattedPrice,
-        bids: undefined // Remover bids para simplificar a resposta
+        userRole,   // Add the new userRole field
+        bids: undefined // Explicitly remove bids array from the final returned object
       };
     });
 
