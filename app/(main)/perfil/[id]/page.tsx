@@ -276,20 +276,22 @@ export default function ProfilePage() {
                 </Link>
               )}
               {!isOwnProfile && session?.user && (
-                <button
-                  onClick={handleToggleFavorite}
-                  disabled={favoriteLoading || !userId || isLoading}
-                  className={`btn-outline py-2 px-4 ${isFavorite ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-primary-500 hover:bg-primary-600 text-white'} mr-2`}
-                >
-                  {favoriteLoading ? 'Carregando...' : (isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos')}
-                </button>
-                <button
-                  onClick={() => setShowSendServiceModal(true)}
-                  disabled={isLoading} // Disable if page is still loading user data
-                  className="btn-secondary py-2 px-4" // Example class, adjust as needed
-                >
-                  Enviar Serviço Diretamente
-                </button>
+                <> {/* Add React.Fragment wrapper */}
+                  <button
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteLoading || !userId || isLoading}
+                    className={`btn-outline py-2 px-4 ${isFavorite ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-primary-500 hover:bg-primary-600 text-white'} mr-2`}
+                  >
+                    {favoriteLoading ? 'Carregando...' : (isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos')}
+                  </button>
+                  <button
+                    onClick={() => setShowSendServiceModal(true)}
+                    disabled={isLoading} // Disable if page is still loading user data
+                    className="btn-secondary py-2 px-4" // Example class, adjust as needed
+                  >
+                    Enviar Serviço Diretamente
+                  </button>
+                </> {/* Close React.Fragment wrapper */}
               )}
             </div>
             
