@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { targetUserId: string } }
+  { params }: { params: { id: string } } // Changed targetUserId to id
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,7 +13,7 @@ export async function POST(
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    const { targetUserId } = params;
+    const targetUserIdFromPath = params.id; // Renamed for clarity, using params.id
     const body = await request.json();
     const { serviceId } = body;
 
@@ -24,7 +24,7 @@ export async function POST(
       );
     }
 
-    if (targetUserId === session.user.id) {
+    if (targetUserIdFromPath === session.user.id) { // Use targetUserIdFromPath
       return NextResponse.json(
         { error: "Não é possível enviar um serviço para si mesmo" },
         { status: 400 }
@@ -49,7 +49,7 @@ export async function POST(
 
     // Verify the targetUser exists
     const targetUser = await prisma.user.findUnique({
-      where: { id: targetUserId },
+      where: { id: targetUserIdFromPath }, // Use targetUserIdFromPath
     });
 
     if (!targetUser) {
@@ -66,7 +66,7 @@ export async function POST(
         title: 'Oferta de Serviço Direta',
         message: `O usuário ${session.user.name || 'Alguém'} enviou um serviço diretamente para você. Você tem interesse em realizar este serviço?`,
         senderId: session.user.id,
-        receiverId: targetUserId,
+        receiverId: targetUserIdFromPath, // Use targetUserIdFromPath
         serviceId: serviceId,
         read: false, // Default is false, but explicit for clarity
       },
