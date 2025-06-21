@@ -58,33 +58,28 @@ export async function GET(request: NextRequest) {
     // $1 is user's latitude, $2 is user's longitude.
     // $${radiusParamIndex} is the search radius.
     const finalQuery = `
-      SELECT
-        s.id, s.title, s.description, s.price, s.date, s.status,
-        s.latitude, s.longitude, s.address, s."professionId",
-        p.name as "professionName",
-        (SELECT ph.url FROM "Photo" ph WHERE ph."serviceId" = s.id ORDER BY ph."createdAt" ASC LIMIT 1) as "photoUrl",
-        (
-          ${R} * acos(
-            GREATEST(-1.0, LEAST(1.0,
-              cos(radians($1)) * cos(radians(s.latitude)) *
-              cos(radians(s.longitude) - radians($2)) +
-              sin(radians($1)) * sin(radians(s.latitude))
-            ))
-          )
-        ) AS distance
-      FROM "Service" s
-      LEFT JOIN "Profession" p ON s."professionId" = p.id
-      ${finalWhereClause}
-      HAVING (
-        ${R} * acos(
-          GREATEST(-1.0, LEAST(1.0,
-            cos(radians($1)) * cos(radians(s.latitude)) *
-            cos(radians(s.longitude) - radians($2)) +
-            sin(radians($1)) * sin(radians(s.latitude))
-          ))
-        )
-      ) <= $${radiusParamIndex}
-      ORDER BY distance ASC;
+      SELECT * FROM (
+        SELECT
+          s.id, s.title, s.description, s.price, s.date, s.status,
+          s.latitude, s.longitude, s.address, s."professionId",
+          s.cep, s.logradouro, s.numero, s.complemento, s.bairro, s.cidade, s.uf, -- Added new structured address fields
+          p.name as "professionName",
+          (SELECT ph.url FROM "Photo" ph WHERE ph."serviceId" = s.id ORDER BY ph."createdAt" ASC LIMIT 1) as "photoUrl",
+          (
+            ${R} * acos(
+              GREATEST(-1.0, LEAST(1.0,
+                cos(radians($1)) * cos(radians(s.latitude)) *
+                cos(radians(s.longitude) - radians($2)) +
+                sin(radians($1)) * sin(radians(s.latitude))
+              ))
+            )
+          ) AS distance
+        FROM "Service" s
+        LEFT JOIN "Profession" p ON s."professionId" = p.id
+        ${finalWhereClause} -- This is the original WHERE clause for profession, price, status, NOT NULL coords etc.
+      ) AS services_with_distance
+      WHERE services_with_distance.distance <= $${radiusParamIndex} -- Radius filter moved to outer query's WHERE clause
+      ORDER BY services_with_distance.distance ASC;
     `;
 
     // console.log("Executing nearby query:", finalQuery);
