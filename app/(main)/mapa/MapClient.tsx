@@ -20,144 +20,192 @@ type Props = {
   onMapViewChange: (bounds: mapboxgl.LngLatBounds) => void; // Added new prop
 };
 
-export default function MapClient({ userLocation, services, onMapViewChange }: Props) { // Added onMapViewChange
+export default function MapClient({ userLocation, services, onMapViewChange }: Props) {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const container = useRef<HTMLDivElement>(null);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // For debouncing map view changes
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const serviceMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const debouncedUpdateBounds = useCallback((map: mapboxgl.Map) => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
     debounceTimeoutRef.current = setTimeout(() => {
-      const newBounds = map.getBounds();
-      console.log('MapClient: Debounced move/zoom ended. New bounds:', newBounds);
-      onMapViewChange(newBounds);
-    }, 800); // 800ms debounce, adjust as needed
+      if (map.isStyleLoaded() && map.getCanvas()) { // Ensure map is still valid
+          const newBounds = map.getBounds();
+          console.log('MapClient: Debounced move/zoom. New bounds:', newBounds);
+          onMapViewChange(newBounds);
+      } else {
+          console.log('MapClient: Debounced move/zoom - map style or canvas not ready.');
+      }
+    }, 800); // 800ms debounce
   }, [onMapViewChange]);
 
+  // Effect 1: Map Initialization and Core Event Listeners/Cleanup
   useEffect(() => {
-    console.log('MapClient: useEffect triggered. UserLocation:', userLocation, 'Services count:', services.length);
-
+    console.log('MapClient: Main Map Effect triggered. UserLocation for init:', userLocation);
     if (!userLocation || typeof userLocation.lat !== 'number' || typeof userLocation.lng !== 'number') {
-      console.error('MapClient: userLocation is invalid or not yet available for map init.', userLocation);
+      console.error('MapClient: UserLocation is invalid for map initialization.', userLocation);
       if (container.current) {
-        // Display error message only if not already displaying a different map-related error
-        if (!container.current.innerHTML.includes('Map container not properly sized')) {
-             container.current.innerHTML = '<p style="color: red; text-align: center; padding-top: 20px;">Localização do usuário inválida para carregar o mapa.</p>';
-        }
+        container.current.innerHTML = '<p style="color: red; text-align: center; padding-top: 20px;">Localização do usuário inválida.</p>';
       }
       return;
     }
-
-    // Clear any previous user location error message if location becomes valid
     if (container.current && container.current.firstChild?.nodeName === 'P' && container.current.firstChild.textContent?.includes('Localização do usuário inválida')) {
-       container.current.innerHTML = '';
+       container.current.innerHTML = ''; // Clear error message
     }
 
-    const timerId = setTimeout(() => {
-      if (!container.current) {
-        console.log('MapClient: setTimeout - Container became null, exiting.');
-        return;
-      }
-      console.log('MapClient: setTimeout - Initializing map. Container offsetWidth:', container.current.offsetWidth, 'offsetHeight:', container.current.offsetHeight);
+    if (mapRef.current) { // Map already initialized
+      console.log('MapClient: Map already initialized, not re-initializing.');
+      return;
+    }
 
-      if (container.current.offsetHeight < 50) { // Example threshold for minimum height
-         console.error('MapClient: setTimeout - Container height is still too small:', container.current.offsetHeight, 'Skipping map initialization.');
-         // Display error message only if not already displaying a user location error
-         if (!container.current.innerHTML.includes('Localização do usuário inválida')) {
+    if (!container.current) {
+      console.error('MapClient: Container ref is null. Cannot initialize map.');
+      return;
+    }
+
+    if (container.current.offsetHeight < 50) { // Example threshold
+       console.error('MapClient: Container height too small for map init:', container.current.offsetHeight);
+       if (!container.current.innerHTML.includes('Localização do usuário inválida')) {
             container.current.innerHTML = '<p style="color: orange; text-align: center; padding-top: 20px;">Map container not properly sized.</p>';
-         }
-         return;
-      }
-      // Clear any previous container size error if it's now okay
-      if (container.current.firstChild?.nodeName === 'P' && container.current.firstChild.textContent?.includes('Map container not properly sized')) {
+       }
+       return;
+    }
+     if (container.current.firstChild?.nodeName === 'P' && container.current.firstChild.textContent?.includes('Map container not properly sized')) {
         container.current.innerHTML = '';
+     }
+
+    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
+    let map: mapboxgl.Map | null = null; // Temporary map variable for setup
+    try {
+      map = new mapboxgl.Map({
+        container: container.current!,
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [userLocation.lng, userLocation.lat],
+        zoom: 12,
+      });
+      mapRef.current = map;
+      console.log('MapClient: Map initialized successfully.');
+
+      map.addControl(new mapboxgl.NavigationControl());
+
+      map.on('load', () => {
+        console.log('MapClient: Map "load" event fired.');
+        if (map && map.isStyleLoaded() && map.getCanvas()){
+          const initialBounds = map.getBounds();
+          console.log('MapClient: Reporting initial bounds:', initialBounds);
+          onMapViewChange(initialBounds);
+        }
+      });
+
+      map.on('moveend', () => debouncedUpdateBounds(map!)); // map should be valid here
+      map.on('zoomend', () => debouncedUpdateBounds(map!)); // map should be valid here
+
+    } catch (err) {
+      console.error('MapClient: MAPBOX INITIALIZATION FAILED:', err);
+      if (container.current) {
+        container.current.innerHTML = '<p style="color: fuchsia; text-align: center; padding-top: 20px;">Falha ao inicializar o mapa.</p>';
       }
-
-
-      mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
-      try {
-        mapRef.current = new mapboxgl.Map({
-          container: container.current,
-          style: 'mapbox://styles/mapbox/streets-v11',
-          center: [userLocation.lng, userLocation.lat], // Use actual userLocation
-          zoom: 12,                                   // Restore original zoom
-        });
-        console.log('MapClient: setTimeout - Map initialized successfully.');
-
-        mapRef.current.addControl(new mapboxgl.NavigationControl());
-
-        console.log('MapClient: setTimeout - Adding user marker at', [userLocation.lng, userLocation.lat]);
-        new mapboxgl.Marker({ color: '#0ea5e9' })
-          .setLngLat([userLocation.lng, userLocation.lat])
-          .setPopup(new mapboxgl.Popup().setText('Você está aqui'))
-          .addTo(mapRef.current);
-
-        mapRef.current.on('load', () => {
-            console.log('MapClient: map fully loaded (style, sources etc.)');
-
-            // Initial bounds reporting after map is loaded and user marker potentially added
-            const initialBounds = mapRef.current!.getBounds(); // mapRef.current is guaranteed here
-            console.log('MapClient: Map fully loaded. Initial bounds:', initialBounds);
-            onMapViewChange(initialBounds); // Pass initial bounds up
-
-            // Listen for map movements
-            mapRef.current!.on('moveend', () => debouncedUpdateBounds(mapRef.current!));
-            mapRef.current!.on('zoomend', () => debouncedUpdateBounds(mapRef.current!));
-
-            if (services.length > 0) {
-                console.log('MapClient: setTimeout - Attempting to add service markers. Count:', services.length);
-                services.forEach(svc => {
-                    if (svc.latitude == null || svc.longitude == null) return;
-                    console.log('MapClient: setTimeout - Adding service marker for', svc.title, 'at', [svc.longitude, svc.latitude]);
-                     const el = document.createElement('div');
-                     el.className = 'service-marker';
-                      el.style.cssText = `
-                        width:24px;height:24px;
-                        border-radius:50%;
-                        background:#0ea5e9;
-                        display:flex;align-items:center;
-                        justify-content:center;
-                        color:#fff;font-size:12px;
-                        cursor:pointer;
-                      `;
-                      el.innerText = 'S';
-
-                      const formattedPrice = svc.price != null ? `R$ ${svc.price.toFixed(2)}` : 'A combinar';
-                      const popupHTML = `
-                        <div style="font-family: Arial, sans-serif; font-size: 14px; min-width: 150px;">
-                          <h3 style="font-size: 16px; margin: 0 0 5px 0; font-weight: bold; color: #333;">${svc.title}</h3>
-                          <p style="margin: 0 0 8px 0; color: #555;">Preço: ${formattedPrice}</p>
-                          <a href="/servicos/${svc.id}" target="_blank" rel="noopener noreferrer" style="background-color: #007bff; color: white; padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;">Ver Detalhes</a>
-                        </div>
-                      `;
-                      const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(popupHTML);
-                      new mapboxgl.Marker(el)
-                        .setLngLat([svc.longitude, svc.latitude])
-                        .setPopup(popup)
-                        .addTo(mapRef.current!);
-                });
-            }
-        });
-
-      } catch (err) {
-        console.error('MapClient: setTimeout - MAPBOX INITIALIZATION FAILED:', err);
-         if (container.current) { // Display error in container
-            container.current.innerHTML = '<p style="color: fuchsia; text-align: center; padding-top: 20px;">Falha ao inicializar o mapa.</p>';
-         }
-      }
-    }, 100); // 100ms delay
+    }
 
     return () => {
-      clearTimeout(timerId); // Existing timeout for map init delay
-      if (debounceTimeoutRef.current) { // New: Clear debounce timeout
+      console.log('MapClient: Main Map Effect cleanup - Removing map.');
+      if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
-      mapRef.current?.remove();
-      console.log('MapClient: useEffect cleanup - map removed, timeouts cleared.');
+      if (map) { // Use the local map variable for cleanup
+        try {
+          if (map.isStyleLoaded() && map.getCanvas()) {
+              map.remove();
+          } else {
+              console.warn("MapClient cleanup: Map not loaded or canvas gone, skipping remove().");
+          }
+        } catch (removeError) {
+          console.error("MapClient: Error during map.remove() in cleanup:", removeError);
+        }
+      }
+      mapRef.current = null; // Ensure mapRef is cleared
     };
-  }, [userLocation, services, onMapViewChange, debouncedUpdateBounds]); // Added onMapViewChange and debouncedUpdateBounds to dependencies
+  }, [userLocation, onMapViewChange, debouncedUpdateBounds]);
+
+
+  // Effect 2: User Marker Management
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.isStyleLoaded() || !userLocation || typeof userLocation.lat !== 'number' || typeof userLocation.lng !== 'number') {
+      if (userMarkerRef.current) {
+          userMarkerRef.current.remove();
+          userMarkerRef.current = null;
+          console.log('MapClient: User marker removed due to invalid location or map not ready.');
+      }
+      return;
+    }
+    console.log('MapClient: User Marker Effect. Location:', userLocation);
+
+    if (userMarkerRef.current) { // Remove old if exists
+      userMarkerRef.current.remove();
+    }
+
+    userMarkerRef.current = new mapboxgl.Marker({ color: '#0ea5e9' })
+      .setLngLat([userLocation.lng, userLocation.lat])
+      .setPopup(new mapboxgl.Popup().setText('Você está aqui'))
+      .addTo(mapRef.current);
+    console.log('MapClient: User marker updated/added at', [userLocation.lng, userLocation.lat]);
+  }, [userLocation]); // Depends on userLocation and map instance (implicitly via mapRef.current check)
+
+  // Effect 3: Service Markers Management
+  useEffect(() => {
+    if (!mapRef.current || !mapRef.current.isStyleLoaded()) {
+      // Clear markers if map becomes unavailable
+      serviceMarkersRef.current.forEach(marker => marker.remove());
+      serviceMarkersRef.current = [];
+      return;
+    }
+    console.log('MapClient: Service Marker Effect. Services count:', services.length);
+
+    // Clear existing service markers
+    serviceMarkersRef.current.forEach(marker => marker.remove());
+    serviceMarkersRef.current = [];
+
+    if (services.length > 0) {
+      console.log('MapClient: Adding service markers. Count:', services.length);
+      services.forEach(svc => {
+        if (svc.latitude == null || svc.longitude == null) return;
+
+        const el = document.createElement('div');
+        el.className = 'service-marker';
+        el.style.cssText = `
+          width:24px;height:24px;
+          border-radius:50%;
+          background:#FF5733; /* Different color for service markers */
+          display:flex;align-items:center;
+          justify-content:center;
+          color:#fff;font-size:12px;
+          cursor:pointer;
+          border: 1px solid #fff;
+        `;
+        el.innerText = 'S'; // Or profession initial, etc.
+
+        const formattedPrice = svc.price != null ? `R$ ${svc.price.toFixed(2)}` : 'A combinar';
+        const popupHTML = `
+          <div style="font-family: Arial, sans-serif; font-size: 14px; min-width: 150px;">
+            <h3 style="font-size: 16px; margin: 0 0 5px 0; font-weight: bold; color: #333;">${svc.title}</h3>
+            <p style="margin: 0 0 8px 0; color: #555;">Preço: ${formattedPrice}</p>
+            <a href="/servicos/${svc.id}" target="_blank" rel="noopener noreferrer" style="background-color: #007bff; color: white; padding: 5px 10px; text-decoration: none; border-radius: 4px; font-size: 12px; display: inline-block;">Ver Detalhes</a>
+          </div>
+        `;
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(popupHTML);
+
+        const newMarker = new mapboxgl.Marker(el)
+          .setLngLat([svc.longitude, svc.latitude])
+          .setPopup(popup)
+          .addTo(mapRef.current!);
+        serviceMarkersRef.current.push(newMarker);
+        // console.log('MapClient: Added service marker for', svc.title); // Can be too verbose
+      });
+    }
+  }, [services]); // Depends on services and map instance (implicitly via mapRef.current check)
 
   return <div ref={container} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />;
 }
