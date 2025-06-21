@@ -157,11 +157,6 @@ export default function EditarPerfilPage() {
   };
 
   const handleProfessionToggle = (professionId: string) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleProfessionToggle = (professionId: string) => {
     setSelectedProfessions(prev =>
       prev.includes(professionId)
         ? prev.filter(id => id !== professionId)
