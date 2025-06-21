@@ -236,12 +236,11 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Cabeçalho do Perfil */}
+      {/* Cabeçalho do Perfil - Commented out for debugging
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <div className="h-48 bg-primary-600"></div>
         <div className="px-6 py-4 relative">
           <div className="absolute -top-16 left-6">
-            {/* CORREÇÃO: Exibir imagem do avatar se disponível */}
             {user.image ? (
               <img 
                 src={user.image} 
@@ -276,7 +275,7 @@ export default function ProfilePage() {
                 </Link>
               )}
               {!isOwnProfile && session?.user && (
-                <> {/* Add React.Fragment wrapper */}
+                <>
                   <button
                     onClick={handleToggleFavorite}
                     disabled={favoriteLoading || !userId || isLoading}
@@ -286,12 +285,12 @@ export default function ProfilePage() {
                   </button>
                   <button
                     onClick={() => setShowSendServiceModal(true)}
-                    disabled={isLoading} // Disable if page is still loading user data
-                    className="btn-secondary py-2 px-4" // Example class, adjust as needed
+                    disabled={isLoading}
+                    className="btn-secondary py-2 px-4"
                   >
                     Enviar Serviço Diretamente
                   </button>
-                </> {/* Close React.Fragment wrapper */}
+                </>
               )}
             </div>
             
@@ -355,6 +354,7 @@ export default function ProfilePage() {
       </div>
       */}
       </div>
+      */}
       
       {/* Conteúdo da Tab - Commented out for debugging
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
