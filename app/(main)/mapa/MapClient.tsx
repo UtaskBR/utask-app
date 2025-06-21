@@ -134,5 +134,5 @@ export default function MapClient({ userLocation, services }: Props) { // Remove
     };
   }, [userLocation, services]);
 
-  return <div ref={container} className="h-full w-full" />;
+  return <div ref={container} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }} />;
 }
