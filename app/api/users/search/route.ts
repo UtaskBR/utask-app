@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const professionId = searchParams.get('professionId');
     const nameQuery = searchParams.get('name'); // Use 'name' as query param for consistency
+    const state = searchParams.get('state'); // UF Sigla, e.g., "SP"
+    const city = searchParams.get('city');   // City name
 
     let whereClause: Prisma.UserWhereInput = {};
 
@@ -32,10 +34,20 @@ export async function GET(request: NextRequest) {
       // For this iteration, if professionId is null/empty, all users matching other criteria (like name) are returned.
     }
 
-    // If both professionId and nameQuery are empty, this will return all users.
-    // If the intent is to always return "professionals", consider adding a default
-    // filter like `whereClause.professions = { some: {} };` when other filters are absent.
-    // For now, adhering to the provided logic.
+    if (state) {
+      whereClause.state = state; // Assuming User.state stores the UF sigla
+    }
+    if (city) {
+      whereClause.city = city;   // Assuming User.city stores the city name
+    }
+
+    // If all filters (professionId, nameQuery, state, city) are empty, this will return all users.
+    // Consider if this is the desired default behavior or if it should require at least one filter,
+    // or default to returning only users with professions, e.g., by adding:
+    // if (!professionId && !nameQuery && !state && !city) {
+    //   whereClause.professions = { some: {} }; // Example: only return users who are professionals
+    // }
+    // For now, adhering to the incremental addition of filters.
 
     const users = await prisma.user.findMany({
       where: whereClause,
