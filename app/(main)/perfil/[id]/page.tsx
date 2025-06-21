@@ -45,152 +45,157 @@ export default function ProfilePage() {
   }
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch(`/api/users/${userId}`);
+    // Content commented out for debugging
+    // const fetchUser = async () => {
+    //   try {
+    //     const response = await fetch(`/api/users/${userId}`);
         
-        if (!response.ok) {
-          throw new Error('Usuário não encontrado');
-        }
+    //     if (!response.ok) {
+    //       throw new Error('Usuário não encontrado');
+    //     }
         
-        const data = await response.json();
-        console.log("Dados do usuário carregados:", data); // Log para depuração
-        setUser(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    //     const data = await response.json();
+    //     console.log("Dados do usuário carregados:", data); // Log para depuração
+    //     setUser(data);
+    //   } catch (err) {
+    //     setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
+    //   } finally {
+    //     setIsLoading(false);
+    //   }
+    // };
     
-    if (userId) {
-      fetchUser();
-    }
+    // if (userId) {
+    //   fetchUser();
+    // }
   }, [userId]);
 
   useEffect(() => {
-    if (userId && session?.user?.id && userId !== session.user.id) {
-      const fetchFavoriteStatus = async () => {
-        setFavoriteLoading(true);
-        try {
-          const response = await fetch(`/api/user-favorites/${userId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setIsFavorite(data.isFavorite);
-          } else {
-            // Don't toast error here, as it might be common if user is not favorited yet (404)
-            console.error('Erro ao buscar status de favorito:', response.statusText);
-          }
-        } catch (err) {
-          console.error('Erro ao buscar status de favorito:', err);
-          // toast.error('Não foi possível verificar o status de favorito.');
-        } finally {
-          setFavoriteLoading(false);
-        }
-      };
-      fetchFavoriteStatus();
-    }
+    // Content commented out for debugging
+    // if (userId && session?.user?.id && userId !== session.user.id) {
+    //   const fetchFavoriteStatus = async () => {
+    //     setFavoriteLoading(true);
+    //     try {
+    //       const response = await fetch(`/api/user-favorites/${userId}`);
+    //       if (response.ok) {
+    //         const data = await response.json();
+    //         setIsFavorite(data.isFavorite);
+    //       } else {
+    //         // Don't toast error here, as it might be common if user is not favorited yet (404)
+    //         console.error('Erro ao buscar status de favorito:', response.statusText);
+    //       }
+    //     } catch (err) {
+    //       console.error('Erro ao buscar status de favorito:', err);
+    //       // toast.error('Não foi possível verificar o status de favorito.');
+    //     } finally {
+    //       setFavoriteLoading(false);
+    //     }
+    //   };
+    //   fetchFavoriteStatus();
+    // }
   }, [userId, session?.user?.id]);
 
   const handleToggleFavorite = async () => {
-    if (!userId || !session?.user?.id) return;
+    // Content commented out for debugging
+    // if (!userId || !session?.user?.id) return;
 
-    setFavoriteLoading(true);
-    const targetUserId = userId; // ID of the user whose profile is being viewed
+    // setFavoriteLoading(true);
+    // const targetUserId = userId; // ID of the user whose profile is being viewed
 
-    try {
-      if (isFavorite) {
-        // Remove from favorites
-        const response = await fetch(`/api/user-favorites/${targetUserId}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          setIsFavorite(false);
-          toast.success('Removido dos favoritos!');
-        } else {
-          const errorData = await response.json().catch(() => ({ message: 'Erro ao remover dos favoritos.' }));
-          toast.error(errorData.message || 'Erro ao remover dos favoritos.');
-        }
-      } else {
-        // Add to favorites
-        const response = await fetch('/api/user-favorites', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ favoriteUserId: targetUserId }),
-        });
-        if (response.ok) {
-          setIsFavorite(true);
-          toast.success('Adicionado aos favoritos!');
-        } else {
-          const errorData = await response.json().catch(() => ({ message: 'Erro ao adicionar aos favoritos.' }));
-          toast.error(errorData.message || 'Erro ao adicionar aos favoritos.');
-        }
-      }
-    } catch (err) {
-      console.error('Erro ao atualizar favoritos:', err);
-      toast.error('Ocorreu um erro ao atualizar os favoritos.');
-    } finally {
-      setFavoriteLoading(false);
-    }
+    // try {
+    //   if (isFavorite) {
+    //     // Remove from favorites
+    //     const response = await fetch(`/api/user-favorites/${targetUserId}`, {
+    //       method: 'DELETE',
+    //     });
+    //     if (response.ok) {
+    //       setIsFavorite(false);
+    //       toast.success('Removido dos favoritos!');
+    //     } else {
+    //       const errorData = await response.json().catch(() => ({ message: 'Erro ao remover dos favoritos.' }));
+    //       toast.error(errorData.message || 'Erro ao remover dos favoritos.');
+    //     }
+    //   } else {
+    //     // Add to favorites
+    //     const response = await fetch('/api/user-favorites', {
+    //       method: 'POST',
+    //       headers: { 'Content-Type': 'application/json' },
+    //       body: JSON.stringify({ favoriteUserId: targetUserId }),
+    //     });
+    //     if (response.ok) {
+    //       setIsFavorite(true);
+    //       toast.success('Adicionado aos favoritos!');
+    //     } else {
+    //       const errorData = await response.json().catch(() => ({ message: 'Erro ao adicionar aos favoritos.' }));
+    //       toast.error(errorData.message || 'Erro ao adicionar aos favoritos.');
+    //     }
+    //   }
+    // } catch (err) {
+    //   console.error('Erro ao atualizar favoritos:', err);
+    //   toast.error('Ocorreu um erro ao atualizar os favoritos.');
+    // } finally {
+    //   setFavoriteLoading(false);
+    // }
   };
 
   useEffect(() => {
-    if (showSendServiceModal && session?.user?.id) {
-      const fetchUserServices = async () => {
-        setSendServiceLoading(true); // Use sendServiceLoading for modal's service list loading
-        try {
-          // TODO: Define a proper type for Service (can reuse from other parts of the app or define inline)
-          const response = await fetch(`/api/services?creatorId=${session.user.id}&status=OPEN&limit=100`);
-          if (response.ok) {
-            const data = await response.json();
-            setUserServices(data);
-          } else {
-            toast.error('Erro ao buscar seus serviços.');
-            setUserServices([]);
-          }
-        } catch (err) {
-          console.error('Erro ao buscar serviços:', err);
-          toast.error('Não foi possível carregar seus serviços.');
-          setUserServices([]);
-        } finally {
-          setSendServiceLoading(false);
-        }
-      };
-      fetchUserServices();
-    }
+    // Content commented out for debugging
+    // if (showSendServiceModal && session?.user?.id) {
+    //   const fetchUserServices = async () => {
+    //     setSendServiceLoading(true); // Use sendServiceLoading for modal's service list loading
+    //     try {
+    //       // TODO: Define a proper type for Service (can reuse from other parts of the app or define inline)
+    //       const response = await fetch(`/api/services?creatorId=${session.user.id}&status=OPEN&limit=100`);
+    //       if (response.ok) {
+    //         const data = await response.json();
+    //         setUserServices(data);
+    //       } else {
+    //         toast.error('Erro ao buscar seus serviços.');
+    //         setUserServices([]);
+    //       }
+    //     } catch (err) {
+    //       console.error('Erro ao buscar serviços:', err);
+    //       toast.error('Não foi possível carregar seus serviços.');
+    //       setUserServices([]);
+    //     } finally {
+    //       setSendServiceLoading(false);
+    //     }
+    //   };
+    //   fetchUserServices();
+    // }
   }, [showSendServiceModal, session?.user?.id]);
 
   const handleSendService = async () => {
-    if (!selectedServiceId || !userId || !session?.user?.id) {
-      toast.error('Selecione um serviço para enviar.');
-      return;
-    }
+    // Content commented out for debugging
+    // if (!selectedServiceId || !userId || !session?.user?.id) {
+    //   toast.error('Selecione um serviço para enviar.');
+    //   return;
+    // }
 
-    setSendServiceLoading(true);
-    const profileOwnerUserId = userId; // ID of the user whose profile is being viewed
+    // setSendServiceLoading(true);
+    // const profileOwnerUserId = userId; // ID of the user whose profile is being viewed
 
-    try {
-      const response = await fetch(`/api/users/${profileOwnerUserId}/send-service`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId: selectedServiceId }),
-      });
+    // try {
+    //   const response = await fetch(`/api/users/${profileOwnerUserId}/send-service`, {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify({ serviceId: selectedServiceId }),
+    //   });
 
-      if (response.ok) {
-        toast.success('Serviço enviado com sucesso!');
-        setShowSendServiceModal(false);
-        setSelectedServiceId(null);
-        setUserServices([]); // Clear services list
-      } else {
-        const errorData = await response.json().catch(() => ({ message: 'Erro ao enviar o serviço.' }));
-        toast.error(errorData.message || 'Erro ao enviar o serviço.');
-      }
-    } catch (err) {
-      console.error('Erro ao enviar serviço:', err);
-      toast.error('Ocorreu um erro ao enviar o serviço.');
-    } finally {
-      setSendServiceLoading(false);
-    }
+    //   if (response.ok) {
+    //     toast.success('Serviço enviado com sucesso!');
+    //     setShowSendServiceModal(false);
+    //     setSelectedServiceId(null);
+    //     setUserServices([]); // Clear services list
+    //   } else {
+    //     const errorData = await response.json().catch(() => ({ message: 'Erro ao enviar o serviço.' }));
+    //     toast.error(errorData.message || 'Erro ao enviar o serviço.');
+    //   }
+    // } catch (err) {
+    //   console.error('Erro ao enviar serviço:', err);
+    //   toast.error('Ocorreu um erro ao enviar o serviço.');
+    // } finally {
+    //   setSendServiceLoading(false);
+    // }
   };
 
   if (isLoading) {
