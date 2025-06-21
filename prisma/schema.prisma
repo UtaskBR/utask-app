@@ -225,6 +225,8 @@ model User {
   wallet                Wallet?
   professions           Profession[]   @relation("ProfessionToUser")
   completionConfirmations CompletionConfirmation[] // Added relation
+  favoritedBy     UserFavorite[] @relation("FavoritedUser") // Users who favorited this user
+  favoritedUsers  UserFavorite[] @relation("FavoritedBy")   // Users this user has favorited
 }
 
 // New model for Completion Confirmations
@@ -248,4 +250,20 @@ model Platform {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   wallet      Wallet?
+}
+
+model UserFavorite {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  favoritedById String
+  favoritedBy   User     @relation("FavoritedBy", fields: [favoritedById], references: [id], onDelete: Cascade)
+
+  favoritedUserId String
+  favoritedUser   User     @relation("FavoritedUser", fields: [favoritedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([favoritedById, favoritedUserId], name: "unique_user_favorite")
+  @@index([favoritedById])
+  @@index([favoritedUserId])
 }
