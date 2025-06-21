@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar se o request é multipart/form-data
     const contentType = request.headers.get("content-type") || "";
-    
+
     if (!contentType.includes("multipart/form-data")) {
       return NextResponse.json(
         { error: "O formato da requisição deve ser multipart/form-data" },
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     // Processar o formulário multipart
     const formData = await request.formData();
-    
+
     // Extrair dados do serviço
     const title = formData.get("title") as string;
     const description = formData.get("description") as string;
@@ -37,9 +37,19 @@ export async function POST(request: NextRequest) {
     const dateStr = formData.get("date") as string;
     const latitude = formData.get("latitude") as string;
     const longitude = formData.get("longitude") as string;
-    const address = formData.get("address") as string;
+    const address = formData.get("address") as string; // This is the 'complemento' from the form now
     const professionId = formData.get("professionId") as string;
-    
+
+    // New structured address fields
+    const cep = formData.get('cep') as string | null;
+    const logradouro = formData.get('logradouro') as string | null;
+    const numero = formData.get('numero') as string | null;
+    // The 'address' field from form is now used as 'complemento' for the database
+    const complemento = formData.get('address') as string | null; 
+    const bairro = formData.get('bairro') as string | null;
+    const cidade = formData.get('cidade') as string | null;
+    const uf = formData.get('uf') as string | null;
+
     // Validar campos obrigatórios
     if (!title || !description) {
       return NextResponse.json(
@@ -75,11 +85,11 @@ export async function POST(request: NextRequest) {
     // Converter coordenadas
     let lat: number | null = null;
     let lng: number | null = null;
-    
+
     if (latitude && longitude) {
       lat = parseFloat(latitude);
       lng = parseFloat(longitude);
-      
+
       if (isNaN(lat) || isNaN(lng)) {
         return NextResponse.json(
           { error: "Coordenadas inválidas" },
@@ -101,7 +111,14 @@ export async function POST(request: NextRequest) {
         date,
         latitude: lat,
         longitude: lng,
-        address,
+        address: logradouro ? `${logradouro}, ${numero || 'S/N'}${bairro ? ' - ' + bairro : ''}, ${cidade || ''} - ${uf || ''}${cep ? ', CEP: ' + cep : ''}${complemento ? ' ('+complemento+')' : ''}` : null, // Construct a full address string for the legacy field if needed, or keep it as is from form. For now, it takes the 'complemento'
+        cep,
+        logradouro,
+        numero,
+        complemento, // formData.get('address') is now complemento
+        bairro,
+        cidade,
+        uf,
         status: "OPEN",
         creatorId: session.user.id,
         professionId: professionId || undefined
@@ -116,7 +133,7 @@ export async function POST(request: NextRequest) {
       for (const photo of photos) {
         if (!photo.name || !photo.type.startsWith("image/")) {
           console.warn(`[Service ID: ${service.id}] Skipping non-image file: ${photo.name}`);
-          continue; 
+          continue;
         }
 
         try {
@@ -193,7 +210,7 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     // Parâmetros de consulta
     const url = new URL(request.url);
     const status = url.searchParams.get("status");
@@ -201,18 +218,18 @@ export async function GET(request: NextRequest) {
     const providerId = url.searchParams.get("providerId");
     const limit = parseInt(url.searchParams.get("limit") || "20");
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    
+
     // Construir filtros
     const filters: any = {};
-    
+
     if (status) {
       filters.status = status;
     }
-    
+
     if (creatorId) {
       filters.creatorId = creatorId;
     }
-    
+
     if (providerId) {
       filters.bids = {
         some: {
@@ -221,7 +238,7 @@ export async function GET(request: NextRequest) {
         }
       };
     }
-    
+
     // Buscar serviços com paginação
     const services = await prisma.service.findMany({
       where: filters,
@@ -256,12 +273,12 @@ export async function GET(request: NextRequest) {
       skip: offset,
       take: limit
     });
-    
+
     // Contar total de serviços para paginação
     const total = await prisma.service.count({
       where: filters
     });
-    
+
     return NextResponse.json({
       services,
       pagination: {

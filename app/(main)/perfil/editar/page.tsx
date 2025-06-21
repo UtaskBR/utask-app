@@ -4,6 +4,18 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+// Define interfaces for State and City, assuming they are not globally available or easily importable
+// If these are exported from their respective API routes, importing is cleaner.
+interface AppEstado {
+  sigla: string;
+  nome: string;
+}
+
+interface AppMunicipio {
+  id: number; // Or string, depending on what IBGE API returns and how it's used
+  nome: string;
+}
+
 interface Profession {
   id: string;
   name: string;
@@ -21,27 +33,43 @@ export default function EditarPerfilPage() {
   const [gallery, setGallery] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
+
   const [professions, setProfessions] = useState<Profession[]>([]);
   const [selectedProfessions, setSelectedProfessions] = useState<string[]>([]);
   const [isLoadingProfessions, setIsLoadingProfessions] = useState(true);
 
+  const [statesList, setStatesList] = useState<AppEstado[]>([]);
+  const [citiesList, setCitiesList] = useState<AppMunicipio[]>([]);
+  const [isLoadingStates, setIsLoadingStates] = useState(true);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  // const [statesError, setStatesError] = useState<string | null>(null);
+  // const [citiesError, setCitiesError] = useState<string | null>(null);
+
+  // Fetch user data and pre-fill states/cities
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.id) {
       fetch(`/api/users/${session.user.id}`)
         .then(res => res.json())
-        .then(data => {
-          if (data.error) setError(data.error);
-          else {
+        .then(userData => {
+          if (userData.error) {
+            setError(userData.error);
+          } else {
+            const userState = userData.state || '';
+            const userCity = userData.city || '';
             setFormData({
-              name: data.name || '',
-              about: data.about || '',
-              city: data.city || '',
-              state: data.state || '',
+              name: userData.name || '',
+              about: userData.about || '',
+              city: userCity, // Set city initially
+              state: userState,
             });
-            setAvatarUrl(data.image || '');
-            setGallery(data.photos || []);
-            if (data.professions) {
-              setSelectedProfessions(data.professions.map((p: any) => p.id));
+            setAvatarUrl(userData.image || '');
+            setGallery(userData.photos || []);
+            if (userData.professions) {
+              setSelectedProfessions(userData.professions.map((p: any) => p.id));
+            }
+            // If a state was loaded for the user, fetch its cities
+            if (userState) {
+              fetchCitiesForState(userState, userCity); // Pass userCity to potentially pre-select it
             }
           }
         })
@@ -49,6 +77,24 @@ export default function EditarPerfilPage() {
     }
   }, [status, session]);
 
+  // Fetch list of all states
+  useEffect(() => {
+    setIsLoadingStates(true);
+    fetch('/api/localidades/estados')
+      .then(res => res.json())
+      .then((data: AppEstado[]) => {
+        setStatesList(data);
+        // Initial city fetch if a state is already selected (e.g. from loaded user data)
+        // This is now handled in the user data fetching useEffect to ensure formData.state is set.
+      })
+      .catch(err => {
+        console.error("Failed to fetch states", err);
+        // setStatesError("Falha ao carregar estados.");
+      })
+      .finally(() => setIsLoadingStates(false));
+  }, []);
+
+  // Fetch professions
   useEffect(() => {
     fetch('/api/professions')
       .then(res => res.json())
@@ -59,9 +105,55 @@ export default function EditarPerfilPage() {
       .catch(() => setIsLoadingProfessions(false));
   }, []);
 
-  const handleChange = (e: any) => {
+  const fetchCitiesForState = async (uf: string, preSelectedCity?: string) => {
+    if (!uf) {
+      setCitiesList([]);
+      setFormData(prev => ({ ...prev, city: '' })); // Clear city if UF is cleared
+      return;
+    }
+    setIsLoadingCities(true);
+    // setCitiesError(null);
+    try {
+      const res = await fetch(`/api/localidades/estados/${uf}/municipios`);
+      if (!res.ok) throw new Error('Falha ao buscar cidades');
+      const data: AppMunicipio[] = await res.json();
+      setCitiesList(data);
+      // If a preSelectedCity is passed and it exists in the fetched list, ensure it's set in formData
+      // Otherwise, the existing logic for setting formData.city on state change or initial load should handle it.
+      if (preSelectedCity && data.some(c => c.nome === preSelectedCity)) {
+        setFormData(prev => ({ ...prev, city: preSelectedCity }));
+      } else if (!preSelectedCity && data.length > 0) {
+         // If no city was pre-selected (e.g. user just changed state), clear city
+         // Or, could auto-select first city: setFormData(prev => ({ ...prev, city: data[0].nome }));
+         setFormData(prev => ({ ...prev, city: '' }));
+      } else {
+        // If preSelectedCity is not in the new list (e.g. state changed, old city invalid)
+        setFormData(prev => ({ ...prev, city: '' }));
+      }
+    } catch (err) {
+      console.error(`Failed to fetch cities for ${uf}`, err);
+      // setCitiesError("Falha ao carregar cidades.");
+      setCitiesList([]);
+      setFormData(prev => ({ ...prev, city: '' })); // Clear city on error
+    } finally {
+      setIsLoadingCities(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newState = e.target.value;
+    // Update state in formData, and clear city as it's dependent on state
+    setFormData(prev => ({ ...prev, state: newState, city: '' }));
+    if (newState) {
+      fetchCitiesForState(newState);
+    } else {
+      setCitiesList([]); // Clear cities list if no state is selected
+    }
   };
 
   const handleProfessionToggle = (professionId: string) => {
@@ -190,14 +282,40 @@ export default function EditarPerfilPage() {
         <textarea name="about" value={formData.about} onChange={handleChange} className="input-field" />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium">Cidade</label>
-          <input name="city" value={formData.city} onChange={handleChange} className="input-field" />
+          <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+          <select
+            id="state"
+            name="state"
+            value={formData.state}
+            onChange={handleStateChange}
+            className="input-field w-full"
+            disabled={isLoadingStates}
+          >
+            <option value="">{isLoadingStates ? 'Carregando...' : 'Selecione um estado'}</option>
+            {statesList.map(s => (
+              <option key={s.sigla} value={s.sigla}>{s.nome}</option>
+            ))}
+          </select>
         </div>
         <div>
-          <label className="block text-sm font-medium">Estado</label>
-          <input name="state" value={formData.state} onChange={handleChange} className="input-field" />
+          <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+          <select
+            id="city"
+            name="city"
+            value={formData.city}
+            onChange={handleChange}
+            className="input-field w-full"
+            disabled={!formData.state || isLoadingCities || citiesList.length === 0}
+          >
+            <option value="">
+              {isLoadingCities ? 'Carregando cidades...' : (!formData.state ? 'Selecione um estado primeiro' : (citiesList.length === 0 ? 'Nenhuma cidade encontrada' : 'Selecione uma cidade'))}
+            </option>
+            {citiesList.map(c => (
+              <option key={c.id} value={c.nome}>{c.nome}</option>
+            ))}
+          </select>
         </div>
       </div>
 

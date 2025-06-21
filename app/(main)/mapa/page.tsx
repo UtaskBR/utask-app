@@ -1,18 +1,19 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // Added useCallback
 import Link from 'next/link'; // Import Link
+import { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 
 type Service = {
   id: string;
   title: string;
-  price?: number | null; 
-  description?: string; 
-  latitude?: number | null; 
+  price?: number | null;
+  description?: string;
+  latitude?: number | null;
   longitude?: number | null;
-  address?: string | null; 
-  photoUrl?: string | null; 
+  address?: string | null;
+  photoUrl?: string | null;
   professionName?: string | null;
   date?: string | null; // Added date
 };
@@ -36,11 +37,12 @@ export default function MapaPage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [useGL, setUseGL] = useState(false);
-  const [isLoadingServices, setIsLoadingServices] = useState(true); 
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
 
   const [professions, setProfessions] = useState<{ id: string; name: string }[]>([]);
+  const [mapBounds, setMapBounds] = useState<LngLatBounds | null>(null); // State for map bounds
   const [filters, setFilters] = useState({
-    radius: '10', // Default radius in km
+    // radius: '10', // Default radius in km - REMOVED
     professionId: '',
     minPrice: '',
     maxPrice: '',
@@ -55,13 +57,6 @@ export default function MapaPage() {
   }, []);
 
   // 2) detecta WebGL
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUseGL(hasWebGL());
-    }
-  }, []);
-
-  // 2) detecta WebGL (no change)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUseGL(hasWebGL());
@@ -83,23 +78,48 @@ export default function MapaPage() {
     fetchProfessions();
   }, []);
 
-  // 3) carrega serviços (now depends on userLocation and filters)
+  // 3) carrega serviços (now depends on mapBounds and filters)
   useEffect(() => {
-    if (!userLocation) return;
+    if (!mapBounds) {
+      // Optional: Fetch services for userLocation on initial load before map interaction
+      // For now, we wait for mapBounds to be set by MapClient's onMapViewChange
+      console.log("Map bounds not yet available, skipping service fetch.");
+      // Set some initial state if desired, or just wait for map interaction
+      // setIsLoadingServices(false); // Could set to false if not fetching initially
+      // setServices([]);
+      return;
+    }
+
+    setIsLoadingServices(true);
     
-    setIsLoadingServices(true); 
-    
-    let apiUrl = `/api/services/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=${filters.radius || '10'}`;
+    const boundsObj = {
+      minLng: mapBounds.getWest(),
+      minLat: mapBounds.getSouth(),
+      maxLng: mapBounds.getEast(),
+      maxLat: mapBounds.getNorth(),
+    };
+
+    const params = new URLSearchParams({
+      minLng: boundsObj.minLng.toString(),
+      minLat: boundsObj.minLat.toString(),
+      maxLng: boundsObj.maxLng.toString(),
+      maxLat: boundsObj.maxLat.toString(),
+    });
+
     if (filters.professionId) {
-      apiUrl += `&professionId=${filters.professionId}`;
+      params.append('professionId', filters.professionId);
     }
     if (filters.minPrice) {
-      apiUrl += `&minPrice=${filters.minPrice}`;
+      params.append('minPrice', filters.minPrice);
     }
     if (filters.maxPrice) {
-      apiUrl += `&maxPrice=${filters.maxPrice}`;
+      params.append('maxPrice', filters.maxPrice);
     }
-    
+
+    const apiUrl = `/api/services/nearby?${params.toString()}`;
+
+    console.log("Fetching services with URL:", apiUrl);
+
     fetch(apiUrl)
       .then(res => {
         if (!res.ok) {
@@ -114,69 +134,67 @@ export default function MapaPage() {
       })
       .catch(err => {
         console.error("Error fetching nearby services:", err);
-        setServices([]); 
+        setServices([]);
       })
       .finally(() => {
-        setIsLoadingServices(false); 
+        setIsLoadingServices(false);
       });
-  }, [userLocation, filters]); // Add filters to dependency array
+  }, [mapBounds, filters.professionId, filters.minPrice, filters.maxPrice]); // Updated dependencies
 
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleMapViewChange = useCallback((newBounds: LngLatBounds) => {
+    setMapBounds(newBounds);
+    console.log('MapaPage: (useCallback) handleMapViewChange called with new bounds:', newBounds);
+  }, []); // Empty dependency array because setMapBounds from useState is stable.
+
   if (!userLocation) {
     return <p className="text-center mt-10">Obtendo sua localização…</p>;
   }
 
   return (
-    // Add a parent div or fragment to hold filters + map/cards section
-    <div className="h-full flex flex-col"> 
-      <div className="p-4 bg-gray-50 border-b">
-        <h2 className="text-lg font-semibold mb-3 text-gray-800">Filtrar Serviços no Mapa</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+    // Original comment: Add a parent div or fragment to hold filters + map/cards section
+    <div className="h-full flex flex-col"> {/* This was the problematic line 135 */}
+      <div className="bg-white shadow-md rounded-lg p-4"> {/* This was original line 136 */}
+        <h2 className="text-lg font-medium mb-3 text-secondary-900">Filtrar Serviços no Mapa</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end"> {/* Adjusted grid-cols from 4 to 3 */}
           <div>
-            <label htmlFor="radius" className="block text-sm font-medium text-gray-700">Raio (km)</label>
-            <input type="number" name="radius" id="radius" value={filters.radius} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 10" />
-          </div>
-          <div>
-            <label htmlFor="professionId" className="block text-sm font-medium text-gray-700">Profissão</label>
+            <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">Profissão</label>
             <select name="professionId" id="professionId" value={filters.professionId} onChange={handleFilterChange} className="input-field mt-1 w-full">
               <option value="">Todas</option>
               {professions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="minPrice" className="block text-sm font-medium text-gray-700">Preço Mín.</label>
+            <label htmlFor="minPrice" className="block text-sm font-medium text-secondary-700">Preço Mín.</label>
             <input type="number" name="minPrice" id="minPrice" value={filters.minPrice} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 50" step="0.01"/>
           </div>
           <div>
-            <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700">Preço Máx.</label>
+            <label htmlFor="maxPrice" className="block text-sm font-medium text-secondary-700">Preço Máx.</label>
             <input type="number" name="maxPrice" id="maxPrice" value={filters.maxPrice} onChange={handleFilterChange} className="input-field mt-1 w-full" placeholder="Ex: 300" step="0.01"/>
           </div>
-          {/* An apply button could be added here if auto-triggering useEffect is not desired
-          <button onClick={() => { / * explicitly trigger fetch * / }} className="btn-primary mt-1 w-full md:col-span-4 lg:col-span-1">Aplicar Filtros</button> 
-          */}
         </div>
       </div>
 
-      <div className="flex flex-col flex-grow overflow-hidden"> {/* Adjusted: flex-grow and overflow-hidden for this container */}
-        <div className="h-3/5 md:h-2/3 relative"> {/* Map container */}
-          {useGL ? (
-            <MapClient
-            userLocation={userLocation}
-            services={services}
-            // onMarkerClick prop removed
-          />
-        ) : (
-          <StaticMap userLocation={userLocation} services={services} />
-        )}
-      </div>
-      <div className="flex-grow overflow-y-auto p-2 md:p-4 bg-gray-100"> {/* Cards container */}
+      <div className="flex flex-col flex-grow overflow-hidden">
+    <div className="h-3/5 md:h-2/3 relative min-h-[400px]"> {/* Map container */}
+      {useGL ? (
+        <MapClient
+          userLocation={userLocation}
+          services={services}
+          onMapViewChange={handleMapViewChange} // Pass callback to MapClient
+        />
+      ) : (
+        <StaticMap userLocation={userLocation} services={services} /> // StaticMap might need bounds too if it's to be interactive
+      )}
+    </div>
+    {/* Placeholder for Cards container - to be restored in the next step */}
+    <div className="flex-grow overflow-y-auto p-2 md:p-4 bg-gray-100">
         {isLoadingServices && services.length === 0 && <p className="text-center text-gray-500 py-4">Carregando serviços...</p>}
         {!isLoadingServices && services.length === 0 && <p className="text-center text-gray-500 py-4">Nenhum serviço encontrado nas proximidades.</p>}
-        
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {services.map(service => (
             <Link href={`/servicos/${service.id}`} key={service.id} legacyBehavior>
@@ -193,16 +211,20 @@ export default function MapaPage() {
                   <p className="text-sm text-blue-600 font-medium mt-1">
                     {service.price != null ? `R$ ${service.price.toFixed(2)}` : 'A combinar'}
                   </p>
-                  {/* 
-                  <p className="text-xs text-gray-500 truncate mt-1">{service.professionName || ''}</p>
-                  <p className="text-xs text-gray-500 truncate">{service.address || ''}</p>
-                  */}
+                  {service.date && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {/* Consider more robust date formatting if needed, and timezone handling */}
+                      Data: {new Date(service.date).toLocaleDateString('pt-BR')}
+                    </p>
+                  )}
+                  {/* Other details like professionName or address can be added here if desired in future */}
                 </div>
               </a>
             </Link>
           ))}
         </div>
-      </div>
+    </div>
+  </div>
     </div>
   );
 }

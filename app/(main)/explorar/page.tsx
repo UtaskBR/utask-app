@@ -38,13 +38,21 @@ export default function ExplorarPage() {
   const fetchServices = async () => {
     setIsLoading(true);
     try {
-      let url = '/api/services?';
+      const params = new URLSearchParams();
+      params.append('status', 'OPEN'); // Always fetch OPEN services
+
       if (filters.profession) {
-        url += `professionId=${filters.profession}&`;
+        params.append('professionId', filters.profession);
       }
       if (filters.minValue) {
-        url += `minValue=${filters.minValue}&`;
+        params.append('minValue', filters.minValue);
       }
+      if (filters.maxValue) { // Added maxValue to the params
+        params.append('maxValue', filters.maxValue);
+      }
+      // Note: sortBy is handled client-side currently, so not added to API params.
+
+      const url = `/api/services?${params.toString()}`;
       const response = await fetch(url);
       
       if (!response.ok) {
