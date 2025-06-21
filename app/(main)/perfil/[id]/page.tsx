@@ -308,51 +308,52 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        {/* Tabs */}
-        <div className="border-t border-secondary-200">
-          <nav className="flex overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('sobre')}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
-                activeTab === 'sobre'
-                  ? 'border-b-2 border-primary-500 text-primary-600'
-                  : 'text-secondary-500 hover:text-secondary-700'
-              }`}
-            >
-              Sobre
-            </button>
-            <button
-              onClick={() => setActiveTab('avaliacoes')}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
-                activeTab === 'avaliacoes'
-                  ? 'border-b-2 border-primary-500 text-primary-600'
-                  : 'text-secondary-500 hover:text-secondary-700'
-              }`}
-            >
-              Avaliações
-            </button>
-            <button
-              onClick={() => setActiveTab('certificacoes')}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
-                activeTab === 'certificacoes'
-                  ? 'border-b-2 border-primary-500 text-primary-600'
-                  : 'text-secondary-500 hover:text-secondary-700'
-              }`}
-            >
-              Certificações
-            </button>
-            <button
-              onClick={() => setActiveTab('galeria')}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
-                activeTab === 'galeria'
-                  ? 'border-b-2 border-primary-500 text-primary-600'
-                  : 'text-secondary-500 hover:text-secondary-700'
-              }`}
-            >
-              Galeria
-            </button>
-          </nav>
-        </div>
+      {/* Tabs - Commented out for debugging
+      <div className="border-t border-secondary-200">
+        <nav className="flex overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('sobre')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+              activeTab === 'sobre'
+                ? 'border-b-2 border-primary-500 text-primary-600'
+                : 'text-secondary-500 hover:text-secondary-700'
+            }`}
+          >
+            Sobre
+          </button>
+          <button
+            onClick={() => setActiveTab('avaliacoes')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+              activeTab === 'avaliacoes'
+                ? 'border-b-2 border-primary-500 text-primary-600'
+                : 'text-secondary-500 hover:text-secondary-700'
+            }`}
+          >
+            Avaliações
+          </button>
+          <button
+            onClick={() => setActiveTab('certificacoes')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+              activeTab === 'certificacoes'
+                ? 'border-b-2 border-primary-500 text-primary-600'
+                : 'text-secondary-500 hover:text-secondary-700'
+            }`}
+          >
+            Certificações
+          </button>
+          <button
+            onClick={() => setActiveTab('galeria')}
+            className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+              activeTab === 'galeria'
+                ? 'border-b-2 border-primary-500 text-primary-600'
+                : 'text-secondary-500 hover:text-secondary-700'
+            }`}
+          >
+            Galeria
+          </button>
+        </nav>
+      </div>
+      */}
       </div>
       
       {/* Conteúdo da Tab - Commented out for debugging
