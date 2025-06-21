@@ -355,7 +355,7 @@ export default function ProfilePage() {
         </div>
       </div>
       
-      {/* Conteúdo da Tab */}
+      {/* Conteúdo da Tab - Commented out for debugging
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
         {activeTab === 'sobre' && (
           <div>
@@ -465,8 +465,9 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+      */}
 
-      {/* Send Service Modal */}
+      {/* Send Service Modal - Commented out for debugging
       {showSendServiceModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
@@ -490,8 +491,6 @@ export default function ProfilePage() {
                     />
                     <div className="ml-3">
                       <span className="block text-sm font-medium text-secondary-800">{service.title}</span>
-                      {/* Optionally display more service details here */}
-                      {/* <span className="block text-xs text-secondary-500">{service.description.substring(0,50)}...</span> */}
                     </div>
                   </label>
                 ))}
@@ -503,10 +502,10 @@ export default function ProfilePage() {
                 onClick={() => {
                   setShowSendServiceModal(false);
                   setSelectedServiceId(null);
-                  setUserServices([]); // Clear services list
+                  setUserServices([]);
                 }}
                 className="btn-outline py-2 px-4"
-                disabled={sendServiceLoading && userServices.length > 0} // Disable cancel if actively sending
+                disabled={sendServiceLoading && userServices.length > 0}
               >
                 Cancelar
               </button>
@@ -521,6 +520,7 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+      */}
     </div>
   );
 }
