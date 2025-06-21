@@ -19,6 +19,7 @@ export default function Navbar() {
     { name: 'Início', href: '/' },
     { name: 'Explorar', href: '/explorar' },
     { name: 'Mapa', href: '/mapa' },
+    { name: 'Encontrar Profissionais', href: '/buscar-profissionais' },
     { name: 'Como Funciona', href: '/como-funciona' },
   ];
 
