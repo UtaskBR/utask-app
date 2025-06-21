@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // Added useCallback
 import Link from 'next/link'; // Import Link
 import { LngLatBounds } from 'mapbox-gl'; // Import LngLatBounds
 
@@ -146,10 +146,10 @@ export default function MapaPage() {
     setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleMapViewChange = (newBounds: LngLatBounds) => {
-    console.log("MapaPage: handleMapViewChange called with new bounds", newBounds);
+  const handleMapViewChange = useCallback((newBounds: LngLatBounds) => {
     setMapBounds(newBounds);
-  };
+    console.log('MapaPage: (useCallback) handleMapViewChange called with new bounds:', newBounds);
+  }, []); // Empty dependency array because setMapBounds from useState is stable.
 
   if (!userLocation) {
     return <p className="text-center mt-10">Obtendo sua localização…</p>;
