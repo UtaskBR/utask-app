@@ -119,16 +119,15 @@ export default function ProfilePage() {
     }
   }, [showSendServiceModal, session?.user?.id]);
 
-  // Restore logic for handleToggleFavorite function
+  // Logic for handleToggleFavorite function - already restored
   const handleToggleFavorite = async () => {
     if (!userId || !session?.user?.id) return;
 
     setFavoriteLoading(true);
-    const targetUserId = userId; // ID of the user whose profile is being viewed
+    const targetUserId = userId;
 
     try {
       if (isFavorite) {
-        // Remove from favorites
         const response = await fetch(`/api/user-favorites/${targetUserId}`, {
           method: 'DELETE',
         });
@@ -140,7 +139,6 @@ export default function ProfilePage() {
           toast.error(errorData.message || 'Erro ao remover dos favoritos.');
         }
       } else {
-        // Add to favorites
         const response = await fetch('/api/user-favorites', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -162,9 +160,38 @@ export default function ProfilePage() {
     }
   };
 
-  // handleSendService function remains empty
+  // Restore logic for handleSendService function
   const handleSendService = async () => {
-    // Content intentionally left empty for this iteration
+    if (!selectedServiceId || !userId || !session?.user?.id) {
+      toast.error('Selecione um serviço para enviar.');
+      return;
+    }
+
+    setSendServiceLoading(true);
+    const profileOwnerUserId = userId; // ID of the user whose profile is being viewed
+
+    try {
+      const response = await fetch(`/api/users/${profileOwnerUserId}/send-service`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: selectedServiceId }),
+      });
+
+      if (response.ok) {
+        toast.success('Serviço enviado com sucesso!');
+        setShowSendServiceModal(false);
+        setSelectedServiceId(null);
+        setUserServices([]); // Clear services list
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Erro ao enviar o serviço.' }));
+        toast.error(errorData.message || 'Erro ao enviar o serviço.');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar serviço:', err);
+      toast.error('Ocorreu um erro ao enviar o serviço.');
+    } finally {
+      setSendServiceLoading(false);
+    }
   };
 
   // Original early returns
@@ -211,7 +238,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Minimal Profile Page (Restored handleToggleFavorite)</h1>
+      <h1>Minimal Profile Page (All JS logic restored)</h1>
       <p>User ID: {userId}</p>
       <p>Is Own Profile: {isOwnProfile.toString()}</p>
       {user && <p>User Name: {user.name || 'N/A'}</p>}
