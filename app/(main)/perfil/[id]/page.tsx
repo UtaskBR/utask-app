@@ -1,16 +1,32 @@
 'use client';
 
+// Original imports
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import toast from 'react-hot-toast';
+import React from 'react';
 
 export default function ProfilePage() {
-  const { data: session } = useSession();
   const params = useParams();
   const userId = params.id;
-  
+
+  // Original state variables
+  const { data: session } = useSession();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('sobre');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [showSendServiceModal, setShowSendServiceModal] = useState(false);
+  const [userServices, setUserServices] = useState<Service[]>([]); // Changed any[] to Service[]
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [sendServiceLoading, setSendServiceLoading] = useState(false);
+
+  // Original interface definitions
   interface User {
     id: string;
     name?: string;
@@ -25,22 +41,24 @@ export default function ProfilePage() {
     photos?: { id: string; url: string }[];
   }
 
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('sobre');
+  interface Service {
+    id: string;
+    title: string;
+    description: string; // Kept for consistency, though not used in map
+  }
 
+  // Logic for useEffect hooks
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const response = await fetch(`/api/users/${userId}`);
-        
+
         if (!response.ok) {
           throw new Error('Usuário não encontrado');
         }
-        
+
         const data = await response.json();
-        console.log("Dados do usuário carregados:", data); // Log para depuração
+        console.log("Dados do usuário carregados:", data);
         setUser(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
@@ -48,12 +66,135 @@ export default function ProfilePage() {
         setIsLoading(false);
       }
     };
-    
+
     if (userId) {
       fetchUser();
     }
   }, [userId]);
 
+  useEffect(() => {
+    if (userId && session?.user?.id && userId !== session.user.id) {
+      const fetchFavoriteStatus = async () => {
+        setFavoriteLoading(true);
+        try {
+          const response = await fetch(`/api/user-favorites/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setIsFavorite(data.isFavorite);
+          } else {
+            console.error('Erro ao buscar status de favorito:', response.statusText);
+          }
+        } catch (err) {
+          console.error('Erro ao buscar status de favorito:', err);
+        } finally {
+          setFavoriteLoading(false);
+        }
+      };
+      fetchFavoriteStatus();
+    }
+  }, [userId, session?.user?.id]);
+
+  useEffect(() => {
+    if (showSendServiceModal && session?.user?.id) {
+      const fetchUserServices = async () => {
+        setSendServiceLoading(true);
+        try {
+          const response = await fetch(`/api/services?creatorId=${session.user.id}&status=OPEN&limit=100`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserServices(data.services || []);
+          } else {
+            toast.error('Erro ao buscar seus serviços.');
+            setUserServices([]);
+          }
+        } catch (err) {
+          console.error('Erro ao buscar serviços:', err);
+          toast.error('Não foi possível carregar seus serviços.');
+          setUserServices([]);
+        } finally {
+          setSendServiceLoading(false);
+        }
+      };
+      fetchUserServices();
+    }
+  }, [showSendServiceModal, session?.user?.id]);
+
+  // Logic for handleToggleFavorite function
+  const handleToggleFavorite = async () => {
+    if (!userId || !session?.user?.id) return;
+
+    setFavoriteLoading(true);
+    const targetUserId = userId;
+
+    try {
+      if (isFavorite) {
+        const response = await fetch(`/api/user-favorites/${targetUserId}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          setIsFavorite(false);
+          toast.success('Removido dos favoritos!');
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao remover dos favoritos.' }));
+          toast.error(errorData.message || 'Erro ao remover dos favoritos.');
+        }
+      } else {
+        const response = await fetch('/api/user-favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ favoriteUserId: targetUserId }),
+        });
+        if (response.ok) {
+          setIsFavorite(true);
+          toast.success('Adicionado aos favoritos!');
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao adicionar aos favoritos.' }));
+          toast.error(errorData.message || 'Erro ao adicionar aos favoritos.');
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar favoritos:', err);
+      toast.error('Ocorreu um erro ao atualizar os favoritos.');
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  // Logic for handleSendService function
+  const handleSendService = async () => {
+    if (!selectedServiceId || !userId || !session?.user?.id) {
+      toast.error('Selecione um serviço para enviar.');
+      return;
+    }
+
+    setSendServiceLoading(true);
+    const profileOwnerUserId = userId;
+
+    try {
+      const response = await fetch(`/api/users/${profileOwnerUserId}/send-service`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: selectedServiceId }),
+      });
+
+      if (response.ok) {
+        toast.success('Serviço enviado com sucesso!');
+        setShowSendServiceModal(false);
+        setSelectedServiceId(null);
+        setUserServices([]);
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Erro ao enviar o serviço.' }));
+        toast.error(errorData.message || 'Erro ao enviar o serviço.');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar serviço:', err);
+      toast.error('Ocorreu um erro ao enviar o serviço.');
+    } finally {
+      setSendServiceLoading(false);
+    }
+  };
+
+  // Original early returns
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -97,16 +238,15 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Cabeçalho do Perfil */}
+      {/* Cabeçalho do Perfil - JSX Reintroduced */}
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <div className="h-48 bg-primary-600"></div>
         <div className="px-6 py-4 relative">
           <div className="absolute -top-16 left-6">
-            {/* CORREÇÃO: Exibir imagem do avatar se disponível */}
             {user.image ? (
-              <img 
-                src={user.image} 
-                alt={user.name || 'Avatar'} 
+              <img
+                src={user.image}
+                alt={user.name || 'Avatar'}
                 className="h-32 w-32 rounded-full border-4 border-white object-cover"
               />
             ) : (
@@ -117,7 +257,7 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-          
+
           <div className="ml-36">
             <div className="flex justify-between items-start">
               <div>
@@ -130,18 +270,32 @@ export default function ProfilePage() {
                   {user.city && user.state ? `${user.city}, ${user.state}` : 'Localização não informada'}
                 </p>
               </div>
-              
-              {isOwnProfile ? (
+
+              {isOwnProfile && (
                 <Link href="/perfil/editar" className="btn-outline py-2 px-4">
                   Editar Perfil
                 </Link>
-              ) : (
-                <button className="btn-primary py-2 px-4">
-                  Enviar Mensagem
-                </button>
+              )}
+              {!isOwnProfile && session?.user && (
+                <>
+                  <button
+                    onClick={handleToggleFavorite}
+                    disabled={favoriteLoading || !userId || isLoading}
+                    className={`btn-outline py-2 px-4 ${isFavorite ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-primary-500 hover:bg-primary-600 text-white'} mr-2`}
+                  >
+                    {favoriteLoading ? 'Carregando...' : (isFavorite ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos')}
+                  </button>
+                  <button
+                    onClick={() => setShowSendServiceModal(true)}
+                    disabled={isLoading}
+                    className="btn-secondary py-2 px-4"
+                  >
+                    Enviar Serviço Diretamente
+                  </button>
+                </>
               )}
             </div>
-            
+
             <div className="mt-4 flex flex-wrap gap-2">
               {user.professions && user.professions.map((profession) => (
                 <span key={profession.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
@@ -154,8 +308,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-        
-        {/* Tabs */}
+
+        {/* Tabs - JSX Reintroduced */}
         <div className="border-t border-secondary-200">
           <nav className="flex overflow-x-auto">
             <button
@@ -200,9 +354,9 @@ export default function ProfilePage() {
             </button>
           </nav>
         </div>
-      </div>
-      
-      {/* Conteúdo da Tab */}
+      </div> {/* This closes the "bg-white shadow-md rounded-lg overflow-hidden" div for Profile Header + Tabs */}
+
+      {/* Conteúdo da Tab - JSX Reintroduced */}
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
         {activeTab === 'sobre' && (
           <div>
@@ -214,7 +368,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'avaliacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
@@ -253,7 +407,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'certificacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
@@ -284,18 +438,17 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'galeria' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
             {user.photos && user.photos.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* CORREÇÃO: Exibir imagens reais da galeria */}
                 {user.photos.map((photo) => (
                   <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                    <img 
-                      src={photo.url} 
-                      alt="Trabalho" 
+                    <img
+                      src={photo.url}
+                      alt="Trabalho"
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         console.error("Erro ao carregar imagem:", photo.url);
@@ -312,6 +465,60 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* Send Service Modal - JSX Reintroduced */}
+      {showSendServiceModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Enviar Serviço Diretamente</h2>
+
+            {sendServiceLoading && !userServices.length ? (
+              <p>Carregando seus serviços...</p>
+            ) : userServices.length === 0 ? (
+              <p className="text-secondary-600 mb-4">Você não possui serviços abertos para enviar.</p>
+            ) : (
+              <div className="space-y-4 max-h-60 overflow-y-auto mb-6">
+                {userServices.map((service: Service) => (
+                  <label key={service.id} className="flex items-center p-3 rounded-md hover:bg-gray-100 cursor-pointer border border-gray-200">
+                    <input
+                      type="radio"
+                      name="selectedService"
+                      value={service.id}
+                      checked={selectedServiceId === service.id}
+                      onChange={() => setSelectedServiceId(service.id)}
+                      className="form-radio h-5 w-5 text-primary-600"
+                    />
+                    <div className="ml-3">
+                      <span className="block text-sm font-medium text-secondary-800">{service.title}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowSendServiceModal(false);
+                  setSelectedServiceId(null);
+                  setUserServices([]);
+                }}
+                className="btn-outline py-2 px-4"
+                disabled={sendServiceLoading && userServices.length > 0}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendService}
+                disabled={!selectedServiceId || (sendServiceLoading && userServices.length > 0) || userServices.length === 0}
+                className="btn-primary py-2 px-4"
+              >
+                {sendServiceLoading && userServices.length > 0 ? 'Enviando...' : 'Confirmar e Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

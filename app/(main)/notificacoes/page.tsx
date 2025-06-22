@@ -80,6 +80,28 @@ export default function NotificacoesPage() {
     }
   };
 
+  const handleDeleteNotification = async (id: string) => {
+    if (confirm('Tem certeza que deseja excluir esta notificação?')) {
+      try {
+        const response = await fetch(`/api/notifications/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          setNotifications(prev => prev.filter(n => n.id !== id));
+          toast.success('Notificação excluída');
+        } else {
+          // Tratar erros da API, e.g., notificação não encontrada ou não autorizada
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao excluir notificação' }));
+          toast.error(errorData.message || 'Erro ao excluir notificação');
+        }
+      } catch (error) {
+        console.error('Erro ao excluir notificação:', error);
+        toast.error('Não foi possível conectar ao servidor para excluir a notificação.');
+      }
+    }
+  };
+
   const markAllAsRead = async () => {
     try {
       const response = await fetch('/api/notifications', {
@@ -88,7 +110,7 @@ export default function NotificacoesPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ids: []
+          all: true
         })
       });
       
@@ -179,6 +201,15 @@ export default function NotificacoesPage() {
           <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        );
+      case 'DIRECT_SERVICE_OFFER':
+        return (
+          <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center">
+            {/* Example: Paper Airplane icon */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </div>
         );
@@ -283,6 +314,96 @@ export default function NotificacoesPage() {
                     <p className="text-secondary-500 text-xs mt-1">
                       {formatDate(notification.createdAt)}
                     </p>
+                    <div className="mt-2 flex items-center">
+                      {!notification.read && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            markAsRead(notification.id);
+                          }}
+                          className="text-primary-600 hover:text-primary-700 text-xs font-medium mr-4"
+                        >
+                          Marcar como lida
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeleteNotification(notification.id);
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs font-medium"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+
+              // Remove the markAsRead button from its original position
+              const notificationCardContent = (
+                <div className="flex items-start w-full">
+                  {/* Sender Avatar */}
+                  {notification.sender?.image ? (
+                    <img
+                      src={notification.sender.image}
+                      alt={notification.sender.name || 'Avatar do remetente'}
+                      className="h-10 w-10 rounded-full mr-3"
+                    />
+                  ) : notification.sender ? (
+                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center mr-3 text-gray-500 font-semibold">
+                      {notification.sender.name?.charAt(0)?.toUpperCase() || 'S'}
+                    </div>
+                  ) : (
+                    getNotificationIcon(notification.type)
+                  )}
+
+                  <div className="flex-grow">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        {notification.sender && (
+                          <p className={`text-sm font-medium text-secondary-700 ${!notification.read ? 'font-semibold' : ''}`}>
+                            {notification.sender.name || 'Sistema'}
+                          </p>
+                        )}
+                        <p className={`text-lg font-semibold text-secondary-900 ${!notification.read ? 'font-bold' : ''}`}>
+                          {notification.title}
+                        </p>
+                      </div>
+                      {/* The markAsRead button was here, it's now moved under the message */}
+                    </div>
+                    <p className={`text-secondary-800 text-sm mt-1 ${!notification.read ? '' : 'text-gray-600'}`}>
+                      {notification.message}
+                    </p>
+                    <p className="text-secondary-500 text-xs mt-1">
+                      {formatDate(notification.createdAt)}
+                    </p>
+                     <div className="mt-2 flex items-center">
+                        {!notification.read && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              markAsRead(notification.id);
+                            }}
+                            className="text-primary-600 hover:text-primary-700 text-xs font-medium mr-4"
+                          >
+                            Marcar como lida
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteNotification(notification.id);
+                          }}
+                          className="text-red-500 hover:text-red-700 text-xs font-medium"
+                        >
+                          Excluir
+                        </button>
+                      </div>
                   </div>
                 </div>
               );
@@ -296,11 +417,10 @@ export default function NotificacoesPage() {
                 >
                   {notification.serviceId ? (
                     <Link href={`/servicos/${notification.serviceId}`} className="block w-full">
-                      {notificationContent}
+                      {notificationCardContent}
                     </Link>
                   ) : (
-                    // Render content without Link if no serviceId
-                    notificationContent
+                    notificationCardContent
                   )}
                 </div>
               );
