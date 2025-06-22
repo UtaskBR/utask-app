@@ -272,7 +272,7 @@ export default function HomePage() {
           )}
 
           <div className="mt-12 text-center">
-            <Link href="/profissionais" className="btn-outline">
+            <Link href="/buscar-profissionais" className="btn-outline">
               Ver Mais Profissionais
             </Link>
           </div>
