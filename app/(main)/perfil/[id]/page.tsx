@@ -47,7 +47,7 @@ export default function ProfilePage() {
     description: string;
   }
 
-  // Restore logic for the first useEffect
+  // Logic for the first useEffect (fetchUser) - already restored
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -72,11 +72,32 @@ export default function ProfilePage() {
     }
   }, [userId]);
 
-  // Other useEffects remain empty
+  // Restore logic for the second useEffect (fetchFavoriteStatus)
   useEffect(() => {
-    // Content intentionally left empty for this iteration
+    if (userId && session?.user?.id && userId !== session.user.id) {
+      const fetchFavoriteStatus = async () => {
+        setFavoriteLoading(true);
+        try {
+          const response = await fetch(`/api/user-favorites/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setIsFavorite(data.isFavorite);
+          } else {
+            // Don't toast error here, as it might be common if user is not favorited yet (404)
+            console.error('Erro ao buscar status de favorito:', response.statusText);
+          }
+        } catch (err) {
+          console.error('Erro ao buscar status de favorito:', err);
+          // toast.error('Não foi possível verificar o status de favorito.');
+        } finally {
+          setFavoriteLoading(false);
+        }
+      };
+      fetchFavoriteStatus();
+    }
   }, [userId, session?.user?.id]);
 
+  // Third useEffect remains empty
   useEffect(() => {
     // Content intentionally left empty for this iteration
   }, [showSendServiceModal, session?.user?.id]);
@@ -134,12 +155,11 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Minimal Profile Page (with Early Returns & First useEffect Logic)</h1>
+      <h1>Minimal Profile Page (with Early Returns & First/Second useEffect Logic)</h1>
       <p>User ID: {userId}</p>
       <p>Is Own Profile: {isOwnProfile.toString()}</p>
-      {/* Display user name if available to show fetchUser worked */}
       {user && <p>User Name: {user.name || 'N/A'}</p>}
-      {/* All original complex JSX is still commented out from previous debugging steps */}
+      <p>Is Favorite: {isFavorite.toString()}</p>
     </div>
   );
 }
