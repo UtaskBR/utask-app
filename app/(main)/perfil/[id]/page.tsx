@@ -466,7 +466,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Send Service Modal - Commented out for debugging
+      {/* Send Service Modal - JSX Reintroduced */}
       {showSendServiceModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
@@ -519,7 +519,6 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-      */}
     </div>
   );
 }
