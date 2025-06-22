@@ -22,7 +22,7 @@ export default function ProfilePage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [showSendServiceModal, setShowSendServiceModal] = useState(false);
-  const [userServices, setUserServices] = useState<any[]>([]);
+  const [userServices, setUserServices] = useState<Service[]>([]); // Changed any[] to Service[]
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [sendServiceLoading, setSendServiceLoading] = useState(false);
 
@@ -44,10 +44,10 @@ export default function ProfilePage() {
   interface Service {
     id: string;
     title: string;
-    description: string;
+    description: string; // Kept for consistency, though not used in map
   }
 
-  // Logic for useEffect hooks - already restored
+  // Logic for useEffect hooks
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -58,7 +58,7 @@ export default function ProfilePage() {
         }
 
         const data = await response.json();
-        console.log("Dados do usuário carregados:", data); // Log for debugging
+        console.log("Dados do usuário carregados:", data);
         setUser(data);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
@@ -102,7 +102,7 @@ export default function ProfilePage() {
           const response = await fetch(`/api/services?creatorId=${session.user.id}&status=OPEN&limit=100`);
           if (response.ok) {
             const data = await response.json();
-            setUserServices(data);
+            setUserServices(data.services || []);
           } else {
             toast.error('Erro ao buscar seus serviços.');
             setUserServices([]);
@@ -119,7 +119,7 @@ export default function ProfilePage() {
     }
   }, [showSendServiceModal, session?.user?.id]);
 
-  // Logic for handleToggleFavorite function - already restored
+  // Logic for handleToggleFavorite function
   const handleToggleFavorite = async () => {
     if (!userId || !session?.user?.id) return;
 
@@ -160,7 +160,7 @@ export default function ProfilePage() {
     }
   };
 
-  // Logic for handleSendService function - already restored
+  // Logic for handleSendService function
   const handleSendService = async () => {
     if (!selectedServiceId || !userId || !session?.user?.id) {
       toast.error('Selecione um serviço para enviar.');
