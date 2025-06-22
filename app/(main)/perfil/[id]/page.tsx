@@ -1,6 +1,6 @@
 'use client';
 
-// Original imports (already present)
+// Original imports
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams } from 'next/navigation';
@@ -13,7 +13,7 @@ export default function ProfilePage() {
   const params = useParams();
   const userId = params.id;
 
-  // Original state variables (already present)
+  // Original state variables
   const { data: session } = useSession();
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [sendServiceLoading, setSendServiceLoading] = useState(false);
 
-  // Original interface definitions (already present)
+  // Original interface definitions
   interface User {
     id: string;
     name?: string;
@@ -47,14 +47,32 @@ export default function ProfilePage() {
     description: string;
   }
 
-  // Reintroduce empty useEffect shells
+  // Restore logic for the first useEffect
   useEffect(() => {
-    // Content intentionally left empty for this iteration
-    // setIsLoading(false); // Simulate loading completion for testing early returns
-    // setError('Simulated error for testing'); // Simulate error for testing
-    // setUser(null); // Simulate no user for testing
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(`/api/users/${userId}`);
+
+        if (!response.ok) {
+          throw new Error('Usuário não encontrado');
+        }
+
+        const data = await response.json();
+        console.log("Dados do usuário carregados:", data); // Log for debugging
+        setUser(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchUser();
+    }
   }, [userId]);
 
+  // Other useEffects remain empty
   useEffect(() => {
     // Content intentionally left empty for this iteration
   }, [userId, session?.user?.id]);
@@ -63,7 +81,7 @@ export default function ProfilePage() {
     // Content intentionally left empty for this iteration
   }, [showSendServiceModal, session?.user?.id]);
 
-  // Reintroduce empty handler function shells
+  // Handler functions remain empty
   const handleToggleFavorite = async () => {
     // Content intentionally left empty for this iteration
   };
@@ -72,7 +90,7 @@ export default function ProfilePage() {
     // Content intentionally left empty for this iteration
   };
 
-  // Reintroduce original early returns
+  // Original early returns
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -96,11 +114,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!user) { // This will likely hit since fetchUser is empty and isLoading is true by default.
-               // For testing, setIsLoading(false) would need to be called in the first useEffect.
-               // Defaulting isLoading to false for this test to bypass the first early return.
-               // Let's adjust isLoading initial state for this test to false.
-               // No, let's keep isLoading true initially. The !user block should be hit if fetchUser remains empty.
+  if (!user) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-white shadow-md rounded-lg p-8 text-center">
@@ -120,17 +134,12 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Minimal Profile Page (with Early Returns & Empty Functions/Hooks)</h1>
+      <h1>Minimal Profile Page (with Early Returns & First useEffect Logic)</h1>
       <p>User ID: {userId}</p>
       <p>Is Own Profile: {isOwnProfile.toString()}</p>
+      {/* Display user name if available to show fetchUser worked */}
+      {user && <p>User Name: {user.name || 'N/A'}</p>}
       {/* All original complex JSX is still commented out from previous debugging steps */}
-      {/* These were the main structural divs from original file, now empty due to comments */}
-      {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"> */}
-        {/* Cabeçalho do Perfil - Commented out for debugging */}
-        {/* Tabs - Commented out for debugging */}
-        {/* Conteúdo da Tab - Commented out for debugging */}
-        {/* Send Service Modal - Commented out for debugging */}
-      {/* </div> */}
     </div>
   );
 }
