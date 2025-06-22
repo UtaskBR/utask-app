@@ -72,7 +72,7 @@ export default function ProfilePage() {
     }
   }, [userId]);
 
-  // Restore logic for the second useEffect (fetchFavoriteStatus)
+  // Logic for the second useEffect (fetchFavoriteStatus) - already restored
   useEffect(() => {
     if (userId && session?.user?.id && userId !== session.user.id) {
       const fetchFavoriteStatus = async () => {
@@ -83,12 +83,10 @@ export default function ProfilePage() {
             const data = await response.json();
             setIsFavorite(data.isFavorite);
           } else {
-            // Don't toast error here, as it might be common if user is not favorited yet (404)
             console.error('Erro ao buscar status de favorito:', response.statusText);
           }
         } catch (err) {
           console.error('Erro ao buscar status de favorito:', err);
-          // toast.error('Não foi possível verificar o status de favorito.');
         } finally {
           setFavoriteLoading(false);
         }
@@ -97,9 +95,30 @@ export default function ProfilePage() {
     }
   }, [userId, session?.user?.id]);
 
-  // Third useEffect remains empty
+  // Restore logic for the third useEffect (fetchUserServices)
   useEffect(() => {
-    // Content intentionally left empty for this iteration
+    if (showSendServiceModal && session?.user?.id) {
+      const fetchUserServices = async () => {
+        setSendServiceLoading(true);
+        try {
+          const response = await fetch(`/api/services?creatorId=${session.user.id}&status=OPEN&limit=100`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserServices(data);
+          } else {
+            toast.error('Erro ao buscar seus serviços.');
+            setUserServices([]);
+          }
+        } catch (err) {
+          console.error('Erro ao buscar serviços:', err);
+          toast.error('Não foi possível carregar seus serviços.');
+          setUserServices([]);
+        } finally {
+          setSendServiceLoading(false);
+        }
+      };
+      fetchUserServices();
+    }
   }, [showSendServiceModal, session?.user?.id]);
 
   // Handler functions remain empty
@@ -155,11 +174,13 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Minimal Profile Page (with Early Returns & First/Second useEffect Logic)</h1>
+      <h1>Minimal Profile Page (All useEffect logic restored)</h1>
       <p>User ID: {userId}</p>
       <p>Is Own Profile: {isOwnProfile.toString()}</p>
       {user && <p>User Name: {user.name || 'N/A'}</p>}
       <p>Is Favorite: {isFavorite.toString()}</p>
+      {/* Minimal display for userServices to confirm fetch */}
+      <p>Number of user services loaded: {userServices.length}</p>
     </div>
   );
 }
