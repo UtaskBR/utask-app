@@ -1,8 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react'; // Added ChangeEvent, FormEvent
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+
+// Define interfaces for IBGE data
+interface AppEstado {
+  sigla: string;
+  nome: string;
+}
+
+interface AppMunicipio {
+  id: number; 
+  nome: string;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -12,22 +23,82 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     about: '',
-    city: '',
-    state: ''
+    city: '', // Will be populated by select
+    state: ''  // Will be populated by select
   });
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // For form submission
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // State for location dropdowns
+  const [statesList, setStatesList] = useState<AppEstado[]>([]);
+  const [citiesList, setCitiesList] = useState<AppMunicipio[]>([]);
+  const [isLoadingStates, setIsLoadingStates] = useState(true);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+
+  // Fetch states on component mount
+  useEffect(() => {
+    setIsLoadingStates(true);
+    fetch('/api/localidades/estados')
+      .then(res => {
+        if (!res.ok) throw new Error('Falha ao carregar estados');
+        return res.json();
+      })
+      .then((data: AppEstado[]) => {
+        setStatesList(data);
+      })
+      .catch(err => {
+        console.error("Failed to fetch states for registration form:", err);
+        setError('Não foi possível carregar a lista de estados. Tente novamente mais tarde.');
+      })
+      .finally(() => setIsLoadingStates(false));
+  }, []);
+
+  // Fetch cities when state (UF) changes
+  const fetchCitiesForState = async (uf: string) => {
+    if (!uf) {
+      setCitiesList([]);
+      // Do not clear formData.city here, handleStateChange does it.
+      return;
+    }
+    setIsLoadingCities(true);
+    try {
+      // The API route app/api/localidades/estados/[uf]/route.ts directly returns municipalities for the given UF.
+      const res = await fetch(`/api/localidades/estados/${uf}`); 
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || 'Falha ao buscar cidades');
+      }
+      const data: AppMunicipio[] = await res.json();
+      setCitiesList(data);
+    } catch (err: any) {
+      console.error(`Failed to fetch cities for ${uf} in registration form:`, err);
+      setError(err.message || 'Não foi possível carregar a lista de cidades para o estado selecionado.');
+      setCitiesList([]);
+    } finally {
+      setIsLoadingCities(false);
+    }
+  };
+  
+  // Handle input changes for text, textarea, and city select
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle state dropdown change specifically
+  const handleStateChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const newState = e.target.value;
+    setFormData(prev => ({ ...prev, state: newState, city: '' })); // Update state, clear city
+    setCitiesList([]); // Clear cities list immediately
+    if (newState) {
+      fetchCitiesForState(newState);
+    }
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     
-    // Validação básica
     if (!formData.name || !formData.email || !formData.password) {
       setError('Nome, email e senha são obrigatórios');
       return;
@@ -38,6 +109,12 @@ export default function RegisterPage() {
       return;
     }
     
+    // Optional: Add validation for state and city if they are considered mandatory
+    if (!formData.state || !formData.city) {
+      setError('Estado e cidade são obrigatórios.');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
@@ -62,7 +139,6 @@ export default function RegisterPage() {
         throw new Error(data.error || 'Erro ao registrar usuário');
       }
       
-      // Redirecionar para a página de login após registro bem-sucedido
       router.push('/auth/login?registered=true');
     } catch (err: any) {
       setError(err.message);
@@ -87,7 +163,7 @@ export default function RegisterPage() {
         </div>
         
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 my-4"> {/* Added my-4 for spacing */}
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
@@ -161,6 +237,46 @@ export default function RegisterPage() {
               />
             </div>
             
+            {/* State and City Dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="stateReg" className="block text-sm font-medium text-secondary-700">Estado *</label>
+                <select
+                  id="stateReg"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleStateChange}
+                  className="input-field mt-1 w-full"
+                  disabled={isLoadingStates}
+                  required // Added required
+                >
+                  <option value="">{isLoadingStates ? 'Carregando...' : 'Selecione um estado'}</option>
+                  {statesList.map(s => (
+                    <option key={s.sigla} value={s.sigla}>{s.nome}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="cityReg" className="block text-sm font-medium text-secondary-700">Cidade *</label>
+                <select
+                  id="cityReg"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange} 
+                  className="input-field mt-1 w-full"
+                  disabled={!formData.state || isLoadingCities || citiesList.length === 0}
+                  required // Added required
+                >
+                  <option value="">
+                    {isLoadingCities ? 'Carregando...' : (!formData.state ? 'Selecione um estado primeiro' : (citiesList.length === 0 && !isLoadingCities ? 'Nenhuma cidade' : 'Selecione uma cidade'))}
+                  </option>
+                  {citiesList.map(c => (
+                    <option key={c.id} value={c.nome}>{c.nome}</option> 
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="about" className="block text-sm font-medium text-secondary-700">
                 Sobre mim
@@ -174,38 +290,6 @@ export default function RegisterPage() {
                 value={formData.about}
                 onChange={handleChange}
               />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="city" className="block text-sm font-medium text-secondary-700">
-                  Cidade
-                </label>
-                <input
-                  id="city"
-                  name="city"
-                  type="text"
-                  className="input-field mt-1"
-                  placeholder="Sua cidade"
-                  value={formData.city}
-                  onChange={handleChange}
-                />
-              </div>
-              
-              <div>
-                <label htmlFor="state" className="block text-sm font-medium text-secondary-700">
-                  Estado
-                </label>
-                <input
-                  id="state"
-                  name="state"
-                  type="text"
-                  className="input-field mt-1"
-                  placeholder="Seu estado"
-                  value={formData.state}
-                  onChange={handleChange}
-                />
-              </div>
             </div>
           </div>
 
