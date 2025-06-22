@@ -47,7 +47,7 @@ export default function ProfilePage() {
     description: string;
   }
 
-  // Logic for the first useEffect (fetchUser) - already restored
+  // Logic for useEffect hooks - already restored
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -72,7 +72,6 @@ export default function ProfilePage() {
     }
   }, [userId]);
 
-  // Logic for the second useEffect (fetchFavoriteStatus) - already restored
   useEffect(() => {
     if (userId && session?.user?.id && userId !== session.user.id) {
       const fetchFavoriteStatus = async () => {
@@ -95,7 +94,6 @@ export default function ProfilePage() {
     }
   }, [userId, session?.user?.id]);
 
-  // Restore logic for the third useEffect (fetchUserServices)
   useEffect(() => {
     if (showSendServiceModal && session?.user?.id) {
       const fetchUserServices = async () => {
@@ -121,11 +119,50 @@ export default function ProfilePage() {
     }
   }, [showSendServiceModal, session?.user?.id]);
 
-  // Handler functions remain empty
+  // Restore logic for handleToggleFavorite function
   const handleToggleFavorite = async () => {
-    // Content intentionally left empty for this iteration
+    if (!userId || !session?.user?.id) return;
+
+    setFavoriteLoading(true);
+    const targetUserId = userId; // ID of the user whose profile is being viewed
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        const response = await fetch(`/api/user-favorites/${targetUserId}`, {
+          method: 'DELETE',
+        });
+        if (response.ok) {
+          setIsFavorite(false);
+          toast.success('Removido dos favoritos!');
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao remover dos favoritos.' }));
+          toast.error(errorData.message || 'Erro ao remover dos favoritos.');
+        }
+      } else {
+        // Add to favorites
+        const response = await fetch('/api/user-favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ favoriteUserId: targetUserId }),
+        });
+        if (response.ok) {
+          setIsFavorite(true);
+          toast.success('Adicionado aos favoritos!');
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao adicionar aos favoritos.' }));
+          toast.error(errorData.message || 'Erro ao adicionar aos favoritos.');
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar favoritos:', err);
+      toast.error('Ocorreu um erro ao atualizar os favoritos.');
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
+  // handleSendService function remains empty
   const handleSendService = async () => {
     // Content intentionally left empty for this iteration
   };
@@ -174,12 +211,11 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Minimal Profile Page (All useEffect logic restored)</h1>
+      <h1>Minimal Profile Page (Restored handleToggleFavorite)</h1>
       <p>User ID: {userId}</p>
       <p>Is Own Profile: {isOwnProfile.toString()}</p>
       {user && <p>User Name: {user.name || 'N/A'}</p>}
       <p>Is Favorite: {isFavorite.toString()}</p>
-      {/* Minimal display for userServices to confirm fetch */}
       <p>Number of user services loaded: {userServices.length}</p>
     </div>
   );
