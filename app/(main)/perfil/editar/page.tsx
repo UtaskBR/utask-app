@@ -4,15 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
-// Define interfaces for State and City, assuming they are not globally available or easily importable
-// If these are exported from their respective API routes, importing is cleaner.
 interface AppEstado {
   sigla: string;
   nome: string;
 }
 
 interface AppMunicipio {
-  id: number; // Or string, depending on what IBGE API returns and how it's used
+  id: number;
   nome: string;
 }
 
@@ -43,7 +41,6 @@ export default function EditarPerfilPage() {
   const [isLoadingStates, setIsLoadingStates] = useState(true);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
 
-  // Fetch user data and pre-fill states/cities
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.id) {
       fetch(`/api/users/${session.user.id}`)
@@ -66,7 +63,7 @@ export default function EditarPerfilPage() {
               setSelectedProfessions(userData.professions.map((p: any) => p.id));
             }
             if (userState) {
-              console.log('[EditProfile] Initial load - Calling fetchCitiesForState with userState:', userState, 'userCity:', userCity);
+              // Removed: console.log('[EditProfile] Initial load ...');
               fetchCitiesForState(userState, userCity); 
             }
           }
@@ -75,7 +72,6 @@ export default function EditarPerfilPage() {
     }
   }, [status, session]);
 
-  // Fetch list of all states
   useEffect(() => {
     setIsLoadingStates(true);
     fetch('/api/localidades/estados')
@@ -89,7 +85,6 @@ export default function EditarPerfilPage() {
       .finally(() => setIsLoadingStates(false));
   }, []);
 
-  // Fetch professions
   useEffect(() => {
     fetch('/api/professions')
       .then(res => res.json())
@@ -101,27 +96,27 @@ export default function EditarPerfilPage() {
   }, []);
 
   const fetchCitiesForState = async (uf: string, preSelectedCity?: string) => {
-    console.log('[EditProfile] fetchCitiesForState - UF received:', uf, 'PreSelectedCity:', preSelectedCity);
+    // Removed: console.log('[EditProfile] fetchCitiesForState - UF received ...');
     if (!uf) {
-      console.log('[EditProfile] fetchCitiesForState - UF is empty, clearing citiesList.');
+      // Removed: console.log('[EditProfile] fetchCitiesForState - UF is empty ...');
       setCitiesList([]);
       setFormData(prev => ({ ...prev, city: '' })); 
       return;
     }
     setIsLoadingCities(true);
     try {
-      const res = await fetch(`/api/localidades/estados/${uf}`); // Corrected API path
-      console.log('[EditProfile] fetchCitiesForState - API Response Status:', res.status, 'OK:', res.ok);
+      const res = await fetch(`/api/localidades/estados/${uf}`); 
+      // Removed: console.log('[EditProfile] fetchCitiesForState - API Response Status ...');
       const rawResponseText = await res.text();
-      console.log('[EditProfile] fetchCitiesForState - API Raw Response Text:', rawResponseText);
+      // Removed: console.log('[EditProfile] fetchCitiesForState - API Raw Response Text ...');
 
       let data: AppMunicipio[] = [];
       if (res.ok) {
         try {
           data = JSON.parse(rawResponseText); 
-          console.log('[EditProfile] fetchCitiesForState - Parsed API Data:', data);
+          // Removed: console.log('[EditProfile] fetchCitiesForState - Parsed API Data ...');
         } catch (parseError) {
-          console.error('[EditProfile] fetchCitiesForState - JSON Parse Error:', parseError);
+          console.error('[EditProfile] fetchCitiesForState - JSON Parse Error:', parseError); // Kept this specific error log
           throw new Error('Falha ao processar resposta das cidades (JSON inválido)');
         }
       } else {
@@ -130,10 +125,12 @@ export default function EditarPerfilPage() {
            const errorJson = JSON.parse(rawResponseText);
            errorDetail = errorJson.error || rawResponseText;
         } catch (e) { /* ignore, use raw text */ }
+        // Kept console.error for API failure, but removed the generic ones
+        console.error(`[EditProfile] API error fetching cities for ${uf}: ${res.status} - ${errorDetail}`);
         throw new Error(`Falha ao buscar cidades: ${res.status} - ${errorDetail}`);
       }
       
-      console.log('[EditProfile] fetchCitiesForState - Attempting to set citiesList with:', data);
+      // Removed: console.log('[EditProfile] fetchCitiesForState - Attempting to set citiesList ...');
       setCitiesList(data); 
 
       if (preSelectedCity && data.some(c => c.nome === preSelectedCity)) {
@@ -144,7 +141,7 @@ export default function EditarPerfilPage() {
         setFormData(prev => ({ ...prev, city: '' }));
       }
     } catch (err: any) { 
-      console.error(`[EditProfile] Failed to fetch cities for ${uf}:`, err);
+      console.error(`[EditProfile] Failed to fetch cities for ${uf}:`, err); // Kept this specific error log
       setCitiesList([]);
       setFormData(prev => ({ ...prev, city: '' })); 
     } finally {
@@ -159,7 +156,7 @@ export default function EditarPerfilPage() {
 
   const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newState = e.target.value;
-    console.log('[EditProfile] handleStateChange - newState:', newState);
+    // Removed: console.log('[EditProfile] handleStateChange - newState: ...');
     setFormData(prev => ({ ...prev, state: newState, city: '' }));
     if (newState) {
       fetchCitiesForState(newState);
@@ -184,14 +181,14 @@ export default function EditarPerfilPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
-      if (!profileRes.ok) throw new Error(`Erro ao atualizar perfil: ${profileRes.status}`);
+      if (!profileRes.ok) throw new Error(`Erro ao atualizar perfil: ${profileRes.statusText}`); // Use statusText
 
       const professionsRes = await fetch(`/api/users/${session.user.id}/professions`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ professionIds: selectedProfessions }),
       });
-      if (!professionsRes.ok) throw new Error(`Erro ao atualizar profissões: ${professionsRes.status}`);
+      if (!professionsRes.ok) throw new Error(`Erro ao atualizar profissões: ${professionsRes.statusText}`); // Use statusText
 
       alert('Perfil atualizado com sucesso!');
       router.push(`/perfil/${session.user.id}`);
@@ -215,6 +212,8 @@ export default function EditarPerfilPage() {
         body: formDataUpload,
       });
       const cloudinaryData = await cloudinaryRes.json();
+      if (!cloudinaryRes.ok) throw new Error(cloudinaryData.error?.message || 'Cloudinary upload failed');
+
 
       await fetch('/api/upload/avatar', {
         method: 'POST',
@@ -229,8 +228,8 @@ export default function EditarPerfilPage() {
       setAvatarUrl(cloudinaryData.secure_url);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
       alert('Foto de perfil atualizada com sucesso!');
-    } catch (error) {
-      alert('Erro ao atualizar foto de perfil.');
+    } catch (error: any) { // Type error for alert
+      alert(`Erro ao atualizar foto de perfil: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -255,6 +254,7 @@ export default function EditarPerfilPage() {
         body: formDataUpload,
       });
       const cloudinaryData = await cloudinaryRes.json();
+      if (!cloudinaryRes.ok) throw new Error(cloudinaryData.error?.message || 'Cloudinary upload failed');
 
       const res = await fetch('/api/upload/gallery', {
         method: 'POST',
@@ -266,11 +266,13 @@ export default function EditarPerfilPage() {
         }),
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gallery update failed');
+
       setGallery(prev => prev.filter(p => p.id !== tempPhoto.id).concat(data.photo));
       if (galleryInputRef.current) galleryInputRef.current.value = '';
       alert('Foto adicionada à galeria com sucesso!');
-    } catch (error) {
-      alert('Erro ao adicionar à galeria.');
+    } catch (error: any) { // Type error for alert
+      alert(`Erro ao adicionar à galeria: ${error.message}`);
       setGallery(prev => prev.filter(p => !p.isTemp)); 
     } finally {
       setIsUploading(false);
@@ -287,8 +289,6 @@ export default function EditarPerfilPage() {
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">
-      {/* TEMPORARY DEBUG DISPLAY REMOVED */}
-
       <h1 className="text-xl font-bold">Editar Perfil</h1>
 
       <div>

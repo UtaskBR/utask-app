@@ -1,31 +1,29 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link'; // Added Link import
+import Link from 'next/link'; 
 
 interface Profession {
   id: string;
   name: string;
 }
 
-// Define interfaces for State and City locally
 interface AppEstado {
   sigla: string;
   nome: string;
 }
 
 interface AppMunicipio {
-  id: number; // Or string, if IBGE ID is treated as string
+  id: number; 
   nome: string;
 }
 
 interface UserProfile {
   id: string;
-  name?: string | null; // name can be null
+  name?: string | null; 
   image?: string | null;
   professions: string[];
   averageRating: number | null;
-  // Add other fields if they are returned by the API and needed for display
 }
 
 export default function BuscarProfissionaisPage() {
@@ -57,7 +55,6 @@ export default function BuscarProfissionaisPage() {
         setProfessions(data);
       } catch (error) {
         console.error(error);
-        // Consider setting an error state here to display to the user
       } finally {
         setIsLoadingProfessions(false);
       }
@@ -65,7 +62,6 @@ export default function BuscarProfissionaisPage() {
     fetchProfessionsData();
   }, []);
 
-  // Fetch States on Mount
   useEffect(() => {
     setIsLoadingStates(true);
     fetch('/api/localidades/estados')
@@ -75,7 +71,6 @@ export default function BuscarProfissionaisPage() {
       })
       .catch(err => {
         console.error("Failed to fetch states for filters", err);
-        // setStatesError("Falha ao carregar estados.");
       })
       .finally(() => setIsLoadingStates(false));
   }, []);
@@ -86,15 +81,18 @@ export default function BuscarProfissionaisPage() {
       return;
     }
     setIsLoadingCities(true);
-    // setCitiesError(null);
     try {
-      const res = await fetch(`/api/localidades/estados/${uf}/municipios`);
+      const res = await fetch(`/api/localidades/estados/${uf}`); // Corrected API path
+      if (!res.ok) {
+        const errorText = await res.text(); 
+        console.error(`[BuscarProfissionais] API error fetching cities for ${uf}: ${res.status} - ${errorText}`);
+        throw new Error(`Falha ao buscar cidades: ${res.status}`);
+      }
       const data: AppMunicipio[] = await res.json();
-      setCitiesList(data);
+      setCitiesList(Array.isArray(data) ? data : []); 
     } catch (err) {
-      console.error(`Failed to fetch cities for filter for ${uf}`, err);
-      // setCitiesError("Falha ao carregar cidades.");
-      setCitiesList([]);
+      console.error(`[BuscarProfissionais] Failed to fetch cities for filter for ${uf}:`, err);
+      setCitiesList([]); 
     } finally {
       setIsLoadingCities(false);
     }
@@ -103,7 +101,7 @@ export default function BuscarProfissionaisPage() {
   const handleStateFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newState = e.target.value;
     setSelectedState(newState);
-    setSelectedCity(''); // Clear city when state changes
+    setSelectedCity(''); 
     if (newState) {
       fetchCitiesForFilter(newState);
     } else {
@@ -114,12 +112,11 @@ export default function BuscarProfissionaisPage() {
   const fetchProfessionals = async (
     currentProfessionId: string,
     currentNameQuery: string,
-    currentState: string, // Added currentState
-    currentCity: string    // Added currentCity
+    currentState: string, 
+    currentCity: string    
   ) => {
     setIsSearching(true);
     setSearchError(null);
-    // setSearchResults([]); // Optionally clear previous results immediately
 
     const params = new URLSearchParams();
     if (currentProfessionId) {
@@ -128,10 +125,10 @@ export default function BuscarProfissionaisPage() {
     if (currentNameQuery) {
       params.append('name', currentNameQuery);
     }
-    if (currentState) { // Add state to params if selected
+    if (currentState) { 
       params.append('state', currentState);
     }
-    if (currentCity) { // Add city to params if selected
+    if (currentCity) { 
       params.append('city', currentCity);
     }
 
@@ -146,25 +143,21 @@ export default function BuscarProfissionaisPage() {
     } catch (error: any) {
       console.error('Erro ao buscar profissionais:', error);
       setSearchError(error.message || 'Ocorreu um erro desconhecido.');
-      setSearchResults([]); // Clear results on error
+      setSearchResults([]); 
     } finally {
       setIsSearching(false);
     }
   };
 
   useEffect(() => {
-    // Debounce mechanism
     const handler = setTimeout(() => {
-      // Only search if not loading professions and at least one filter has a value,
-      // or if both filters are empty (to show all or an initial set, if desired by API).
-      // For now, let's trigger search even if filters are empty to let API decide initial state.
-      if (!isLoadingProfessions && !isLoadingStates) { // Ensure states are loaded before first auto-search
+      if (!isLoadingProfessions && !isLoadingStates) { 
          fetchProfessionals(selectedProfessionId, nameQuery, selectedState, selectedCity);
       }
-    }, 500); // 500ms delay
+    }, 500); 
 
     return () => {
-      clearTimeout(handler); // Cleanup timeout on effect re-run or unmount
+      clearTimeout(handler); 
     };
   }, [selectedProfessionId, nameQuery, selectedState, selectedCity, isLoadingProfessions, isLoadingStates]);
 
@@ -175,8 +168,8 @@ export default function BuscarProfissionaisPage() {
         Encontrar Profissionais
       </h1>
 
-      <div className="mb-8 bg-white shadow-md rounded-lg p-6"> {/* Filter container */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"> {/* Adjusted grid for more filters */}
+      <div className="mb-8 bg-white shadow-md rounded-lg p-6"> 
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"> 
           <div>
             <label htmlFor="professionId" className="block text-sm font-medium text-secondary-700">
               Profissão
@@ -294,7 +287,6 @@ export default function BuscarProfissionaisPage() {
                     <div className="text-sm text-amber-500 flex items-center">
                       {user.averageRating !== null ? (
                         <>
-                          {/* Simple star display, can be replaced with star icons */}
                           <span className="font-bold mr-1">{user.averageRating.toFixed(1)}</span>
                           <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 .5l2.939 5.455 6.572.955-4.756 4.635 1.123 6.545z"/></svg>
                         </>
