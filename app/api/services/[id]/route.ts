@@ -80,12 +80,41 @@ WHERE "receiverId" IN (SELECT "providerId" FROM "Bid" WHERE "serviceId" = ${serv
 GROUP BY "receiverId"
 `;
 
+    let evaluation = null;
+    const acceptedBid = (bids as any[]).find(bid => bid.status === 'ACCEPTED');
+    if (acceptedBid) {
+      const acceptedBidProviderId = acceptedBid.providerId;
+      // Fetch the specific evaluation
+      const reviewDataRaw = await prisma.$queryRaw<any[]>`
+        SELECT r.rating, r.comment, r."createdAt" as "reviewCreatedAt",
+               ug.id as "giverId", ug.name as "giverName", ug.image as "giverImage"
+        FROM "Review" r
+        JOIN "User" ug ON r."giverId" = ug.id
+        WHERE r."serviceId" = ${serviceId}
+          AND r."giverId" = ${service.creatorId} 
+          AND r."receiverId" = ${acceptedBidProviderId}
+        LIMIT 1;
+      `;
+      if (reviewDataRaw && reviewDataRaw.length > 0) {
+        const reviewData = reviewDataRaw[0];
+        evaluation = {
+          rating: reviewData.rating,
+          comment: reviewData.comment,
+          createdAt: reviewData.reviewCreatedAt,
+          giver: {
+            id: reviewData.giverId,
+            name: reviewData.giverName,
+            image: reviewData.giverImage
+          }
+        };
+      }
+    }
 
-let creatorRating = null;
-if (reviews && (reviews as any[]).length > 0) {
-  const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
-  creatorRating = totalRating / (reviews as any[]).length;
-}
+    let creatorRating = null;
+    if (reviews && (reviews as any[]).length > 0) {
+      const totalRating = (reviews as any[]).reduce((sum, review) => sum + review.rating, 0);
+      creatorRating = totalRating / (reviews as any[]).length;
+    }
 
     
     // Formatar a resposta
@@ -128,7 +157,8 @@ if (reviews && (reviews as any[]).length > 0) {
             return found ? Number(found.avg_rating) : null;
           })()
         }
-      }))
+      })),
+      evaluation: evaluation // Add evaluation here
     };    
     console.log(`[Service ID: ${serviceId}] Formatted photos being sent to client:`, JSON.stringify(formattedService.photos, null, 2));
     

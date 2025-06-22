@@ -131,6 +131,12 @@ export async function GET(
             name: true,
             image: true
           }
+        },
+        service: { // Add this section
+          select: {
+            id: true,
+            title: true
+          }
         }
       },
       orderBy: {

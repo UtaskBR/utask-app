@@ -56,7 +56,12 @@ export async function GET(request: NextRequest) {
         receivedReviews: { // To calculate average rating
           select: {
             rating: true,
+            comment: true,    // Add this
+            createdAt: true   // Add this
           },
+          orderBy: {
+            createdAt: 'desc' // Add this
+          }
         },
         // image is a direct field on User model, so it's included by default
         // No need to select other fields like 'id', 'name', 'email', 'city', 'state', 'about' as they are returned by default
@@ -76,6 +81,17 @@ export async function GET(request: NextRequest) {
       }
       const professionNames = user.professions.map(p => p.name);
 
+      // Add this logic for recentTestimonials:
+      const recentTestimonials = user.receivedReviews
+        .filter(review => review.comment && review.comment.trim() !== '') // Filter for reviews with actual comments
+        // Reviews are already sorted by createdAt: 'desc' from the query
+        .slice(0, 2) // Take the top 2
+        .map(review => ({
+          comment: review.comment,
+          rating: review.rating,
+          createdAt: review.createdAt
+        }));
+
       // Explicitly select or omit fields for the final response
       // Omitting sensitive data like password, emailVerified, accounts, sessions
       const { receivedReviews, password, emailVerified, accounts, sessions, ...userWithoutSensitiveData } = user;
@@ -84,6 +100,7 @@ export async function GET(request: NextRequest) {
         ...userWithoutSensitiveData, // id, name, email, image, about, city, state, createdAt, updatedAt
         professions: professionNames, // Return array of names
         averageRating,
+        recentTestimonials, // Add this field
       };
     });
 

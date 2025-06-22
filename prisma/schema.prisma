@@ -85,6 +85,7 @@ model Service {
   creator       User           @relation("ServiceCreator", fields: [creatorId], references: [id])
   profession    Profession?    @relation(fields: [professionId], references: [id])
   completionConfirmations CompletionConfirmation[] // Added relation
+  reviews       Review[]
 }
 
 model Bid {
@@ -193,9 +194,10 @@ model Review {
   updatedAt  DateTime @updatedAt
   receiverId String   // User being reviewed
   giverId    String   // User giving the review
-  serviceId  String?  // Optional: link review to a specific service
+  serviceId  String?
   giver      User     @relation("ReviewGiver", fields: [giverId], references: [id], onDelete: Cascade)
   receiver   User     @relation("ReviewReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  service    Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
 
 model User {
