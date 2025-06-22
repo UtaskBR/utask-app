@@ -110,7 +110,7 @@ export default function EditarPerfilPage() {
     }
     setIsLoadingCities(true);
     try {
-      const res = await fetch(`/api/localidades/estados/${uf}/municipios`); 
+      const res = await fetch(`/api/localidades/estados/${uf}`); // Corrected API path
       console.log('[EditProfile] fetchCitiesForState - API Response Status:', res.status, 'OK:', res.ok);
       const rawResponseText = await res.text();
       console.log('[EditProfile] fetchCitiesForState - API Raw Response Text:', rawResponseText);
@@ -143,7 +143,7 @@ export default function EditarPerfilPage() {
       } else {
         setFormData(prev => ({ ...prev, city: '' }));
       }
-    } catch (err: any) { // Added : any for err type
+    } catch (err: any) { 
       console.error(`[EditProfile] Failed to fetch cities for ${uf}:`, err);
       setCitiesList([]);
       setFormData(prev => ({ ...prev, city: '' })); 
@@ -271,33 +271,23 @@ export default function EditarPerfilPage() {
       alert('Foto adicionada à galeria com sucesso!');
     } catch (error) {
       alert('Erro ao adicionar à galeria.');
-      setGallery(prev => prev.filter(p => !p.isTemp)); // Make sure to remove temp photo on error
+      setGallery(prev => prev.filter(p => !p.isTemp)); 
     } finally {
       setIsUploading(false);
     }
   };
 
-  if (status === 'loading' || isLoadingProfessions || isLoadingStates) return <p>Carregando...</p>; // Combined initial loading
+  if (status === 'loading' || isLoadingProfessions || isLoadingStates) return <p>Carregando...</p>; 
   if (error) return <p className="text-red-500">{error}</p>;
-  if (status === 'unauthenticated') { // Redirect if not authenticated
+  if (status === 'unauthenticated') { 
       router.push('/auth/login');
       return <p>Redirecionando...</p>;
   }
-  if (!session?.user) return <p>Usuário não encontrado na sessão.</p>; // Should be handled by AuthGuard or similar in layout
+  if (!session?.user) return <p>Usuário não encontrado na sessão.</p>; 
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-4">
-      {/* TEMPORARY DEBUG DISPLAY START */}
-      <div style={{ backgroundColor: '#f0f0f0', padding: '10px', marginBottom: '20px', border: '1px solid #ccc', fontSize: '12px' }}>
-        <h3 style={{ fontWeight: 'bold' }}>Debug Info (Edit Profile):</h3>
-        <p>Current formData.state: {formData.state || 'empty'}</p>
-        <p>Current formData.city: {formData.city || 'empty'}</p>
-        <p>isLoadingCities: {isLoadingCities.toString()}</p>
-        <p>citiesList length: {citiesList?.length ?? 'undefined'}</p>
-        <p>First 3 cities: {citiesList?.slice(0,3).map(c=>c.nome).join(', ') || 'none'}</p>
-        <p>Selected Professions: {JSON.stringify(selectedProfessions)}</p>
-      </div>
-      {/* TEMPORARY DEBUG DISPLAY END */}
+      {/* TEMPORARY DEBUG DISPLAY REMOVED */}
 
       <h1 className="text-xl font-bold">Editar Perfil</h1>
 
