@@ -356,7 +356,7 @@ export default function ProfilePage() {
         </div>
       </div> {/* This closes the "bg-white shadow-md rounded-lg overflow-hidden" div for Profile Header + Tabs */}
 
-      {/* Conteúdo da Tab - Commented out for debugging
+      {/* Conteúdo da Tab - JSX Reintroduced */}
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
         {activeTab === 'sobre' && (
           <div>
@@ -465,7 +465,6 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-      */}
 
       {/* Send Service Modal - Commented out for debugging
       {showSendServiceModal && (
