@@ -63,7 +63,17 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(user);
+    // Calculate average rating
+    let averageRating: number | null = null;
+    if (user.receivedReviews && user.receivedReviews.length > 0) {
+      const totalRating = user.receivedReviews.reduce((sum, review) => sum + review.rating, 0);
+      averageRating = totalRating / user.receivedReviews.length;
+    }
+
+    // Add averageRating to the user object to be returned
+    const userWithRating = { ...user, averageRating };
+
+    return NextResponse.json(userWithRating);
   } catch (error: any) {
     console.error("[USER_GET_ERROR]", error);
     return NextResponse.json(

@@ -31,7 +31,7 @@ export default function ProfilePage() {
     id: string;
     name?: string;
     image?: string;
-    rating?: string;
+    averageRating?: number | null; // Changed from rating: string to averageRating: number | null
     city?: string;
     state?: string;
     professions?: { id: string; name: string }[];
@@ -260,8 +260,14 @@ export default function ProfilePage() {
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold text-secondary-900">{user.name}</h1>
                 <div className="flex items-center justify-center md:justify-start mt-1">
-                  <span className="text-yellow-400">★</span>
-                  <span className="ml-1 text-secondary-600">{user.rating || 'Sem avaliações'}</span>
+                  {user.averageRating !== null && typeof user.averageRating === 'number' ? (
+                    <>
+                      <span className="text-yellow-400">★</span>
+                      <span className="ml-1 text-secondary-600 font-semibold">{user.averageRating.toFixed(1)}</span>
+                    </>
+                  ) : (
+                    <span className="ml-1 text-secondary-500 text-sm">Sem avaliações</span>
+                  )}
                 </div>
                 <p className="text-secondary-600 mt-1">
                   {user.city && user.state ? `${user.city}, ${user.state}` : 'Localização não informada'}
