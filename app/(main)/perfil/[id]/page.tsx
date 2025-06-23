@@ -31,18 +31,12 @@ export default function ProfilePage() {
     id: string;
     name?: string;
     image?: string;
-    averageRating?: number | null; // Changed from rating: string to averageRating: number | null
+    rating?: string;
     city?: string;
     state?: string;
     professions?: { id: string; name: string }[];
     about?: string;
-    receivedReviews?: { // Renamed from reviews to receivedReviews
-      id: string; 
-      giver: { name: string; image?: string | null };
-      rating: number; 
-      comment?: string; 
-      createdAt: string 
-    }[];
+    reviews?: { id: string; giver: { name: string }; rating: number; comment?: string; createdAt: string }[];
     certificates?: { id: string; title: string; institution: string; issueDate: string; url?: string }[];
     photos?: { id: string; url: string }[];
   }
@@ -266,14 +260,8 @@ export default function ProfilePage() {
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold text-secondary-900">{user.name}</h1>
                 <div className="flex items-center justify-center md:justify-start mt-1">
-                  {user.averageRating !== null && typeof user.averageRating === 'number' ? (
-                    <>
-                      <span className="text-yellow-400">★</span>
-                      <span className="ml-1 text-secondary-600 font-semibold">{user.averageRating.toFixed(1)}</span>
-                    </>
-                  ) : (
-                    <span className="ml-1 text-secondary-500 text-sm">Sem avaliações</span>
-                  )}
+                  <span className="text-yellow-400">★</span>
+                  <span className="ml-1 text-secondary-600">{user.rating || 'Sem avaliações'}</span>
                 </div>
                 <p className="text-secondary-600 mt-1">
                   {user.city && user.state ? `${user.city}, ${user.state}` : 'Localização não informada'}
@@ -417,57 +405,40 @@ export default function ProfilePage() {
         {activeTab === 'avaliacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
-            {user.receivedReviews && user.receivedReviews.length > 0 ? (
+            {user.reviews && user.reviews.length > 0 ? (
               <div className="space-y-6">
-                {user.receivedReviews.map((review) => (
+                {user.reviews.map((review) => (
                   <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
-                              {review.giver.image ? (
-                                <Image
-                                  src={review.giver.image}
-                                  alt={review.giver.name || 'Reviewer'}
-                                  width={40}
-                                  height={40}
-                                  className="object-cover w-full h-full"
-                                  onError={(e) => { 
-                                    const target = e.target as HTMLImageElement;
-                                    target.onerror = null; // Prevent infinite loop if placeholder also fails
-                                    target.src = '/img/avatar_placeholder.png'; // Default placeholder
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
-                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
-                                </div>
-                              )}
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
-                              <div className="flex items-center mt-1">
-                                <div className="flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
-                                  ))}
-                                </div>
-                                <span className="ml-2 text-xs text-secondary-500">
-                                  {new Date(review.createdAt).toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                              {review.comment && (
-                                <p className="mt-2 text-secondary-600">{review.comment}</p>
-                              )}
-                            </div>
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
+                        <span className="text-primary-700 font-medium">
+                          {review.giver.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-secondary-900">{review.giver.name}</p>
+                        <div className="flex items-center mt-1">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
+                            ))}
                           </div>
+                          <span className="ml-2 text-xs text-secondary-500">
+                            {new Date(review.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
                         </div>
-                      );
-                    })}
+                        {review.comment && (
+                          <p className="mt-2 text-secondary-600">{review.comment}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
-                )}
+                ))}
               </div>
-            // Removed leftover IIFE closing: ); })() 
+            ) : (
+              <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
+            )}
+          </div>
         )}
         
         {activeTab === 'certificacoes' && (
