@@ -19,8 +19,9 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".", // Explicitly set baseUrl
     "paths": {
-    "@/*": ["./app/*"]
+      "@/*": ["./app/*"]
     }
     
   },
