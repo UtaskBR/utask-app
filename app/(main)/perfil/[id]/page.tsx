@@ -422,6 +422,7 @@ export default function ProfilePage() {
                 {user.receivedReviews.map((review) => (
                   <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
                     <div className="flex items-start">
+                      {/* Avatar section temporarily commented out for debugging
                       <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
                               {review.giver.image ? (
                                 <Image
@@ -442,7 +443,8 @@ export default function ProfilePage() {
                                 </div>
                               )}
                             </div>
-                            <div className="ml-3">
+                      */}
+                            <div className="ml-3"> {/* Ensure this div still makes sense if avatar is removed, or adjust structure */}
                               <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
                               <div className="flex items-center mt-1">
                                 <div className="flex">
