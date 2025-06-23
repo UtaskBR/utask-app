@@ -158,7 +158,7 @@ export default function CarteiraPage() {
                 
                 <button
                   onClick={() => setShowTransactionForm(!showTransactionForm)}
-                  className="btn-primary py-2 px-4"
+                  className="btn-primary py-2 px-2"
                 >
                   {showTransactionForm ? 'Cancelar' : 'Nova Transação'}
                 </button>
