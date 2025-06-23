@@ -444,8 +444,9 @@ export default function ProfilePage() {
                               )}
                             </div>
                       */}
-                            <div className="ml-3"> {/* Ensure this div still makes sense if avatar is removed, or adjust structure */}
+                            <div className="ml-3">
                               <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
+                              {/* Star rating, date, and comment temporarily commented out
                               <div className="flex items-center mt-1">
                                 <div className="flex">
                                   {[...Array(5)].map((_, i) => (
@@ -459,6 +460,7 @@ export default function ProfilePage() {
                               {review.comment && (
                                 <p className="mt-2 text-secondary-600">{review.comment}</p>
                               )}
+                              */}
                             </div>
                           </div>
                         </div>
@@ -466,7 +468,8 @@ export default function ProfilePage() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
+                  null // Temporarily render null instead of the <p> tag
+                  // <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
                 )}
               </div>
         )}
