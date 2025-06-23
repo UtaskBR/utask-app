@@ -1,698 +1,571 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+// Original imports
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import ReviewPopup from '../../../components/ReviewPopup'; // Using relative path
+import toast from 'react-hot-toast';
+import React from 'react';
 
-// Placeholder icons (Heroicons)
-const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
-const CheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>;
-const XMarkIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
-const ArrowPathIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>;
-const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const ExclamationTriangleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>;
-const ThumbUpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M6.633 10.5c.806 0 1.533-.446 2.031-1.08a9.041 9.041 0 012.861-2.4c.723-.384 1.35-.956 1.653-1.715a4.498 4.498 0 00.322-1.672V3a.75.75 0 01.75-.75A2.25 2.25 0 0116.5 4.5c0 1.152-.26 2.243-.723 3.218-.266.558.107 1.282.725 1.282h3.126c1.026 0 1.945.694 2.054 1.715.045.422.068.85.068 1.285a11.95 11.95 0 01-2.649 7.521c-.388.482-.987.729-1.605.729H13.48c-.483 0-.964-.078-1.423-.23l-3.114-1.04a4.501 4.501 0 00-1.423-.23H5.904M14.25 9h2.25M5.904 18.75c.083.205.173.405.27.602.197.4-.078.898-.523.898h-.908c-.889 0-1.713-.518-1.972-1.368a12 12 0 01-.521-3.507c0-1.553.295-3.036.831-4.398C3.387 10.203 4.167 9.75 5 9.75h1.053c.472 0 .745.556.5.96a8.958 8.958 0 00-1.302 4.665c0 1.194.232 2.333.654 3.375z" /></svg>;
-const UserIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-1"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>;
-
-export default function ServiceDetailPage() {
-  const { data: session } = useSession();
+export default function ProfilePage() {
   const params = useParams();
-  const router = useRouter();
-  const serviceId = params.id as string;
+  const userId = params.id;
 
-  type Photo = { id: string; url: string };
-  type BidUser = { id: string; name?: string | null; image?: string | null; rating?: number | null };
-  type Bid = {
+  // Original state variables
+  const { data: session } = useSession();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true); 
+  const [error, setError] = useState(''); 
+  const [activeTab, setActiveTab] = useState('sobre');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [showSendServiceModal, setShowSendServiceModal] = useState(false);
+  const [userServices, setUserServices] = useState<Service[]>([]);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [sendServiceLoading, setSendServiceLoading] = useState(false);
+
+  // Original interface definitions
+  interface User {
     id: string;
-    providerId: string;
-    provider: BidUser;
-    price?: number | null;
-    message?: string | null;
-    proposedDate?: string | null;
-    status: string;
-    createdAt: string;
-  };
-  type ServiceCreator = { id: string; name?: string | null; image?: string | null; rating?: number | null; about?: string | null };
-  type Service = {
+    name?: string;
+    image?: string;
+    averageRating?: number | null; 
+    city?: string;
+    state?: string;
+    professions?: { id: string; name: string }[];
+    about?: string;
+    receivedReviews?: { 
+      id: string; 
+      giver: { name: string; image?: string | null };
+      rating: number; 
+      comment?: string; 
+      createdAt: string 
+    }[];
+    certificates?: { id: string; title: string; institution: string; issueDate: string; url?: string }[];
+    photos?: { id: string; url: string }[];
+  }
+
+  interface Service {
     id: string;
     title: string;
     description: string;
-    price?: number | null;
-    date?: string | null;
-    timeWindow?: number | null;
-    address?: string | null;
-    profession?: { name: string };
-    status: string;
-    creatorId: string;
-    creator: ServiceCreator;
-    photos?: Photo[];
-    bids?: Bid[];
-  };
-
-  const [service, setService] = useState<Service | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [bidForm, setBidForm] = useState({
-    price: '',
-    message: '',
-    proposedDate: ''
-  });
-  const [showBidForm, setShowBidForm] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [showUserProfile, setShowUserProfile] = useState<string | null>(null);
-  const [showReviewPopup, setShowReviewPopup] = useState(false);
-  const [serviceProviderForReview, setServiceProviderForReview] = useState<{ id: string; name: string; image?: string | null; } | null>(null);
-
-  const fetchService = useCallback(async () => {
-    if (!serviceId) return;
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/services/${serviceId}`);
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: 'Serviço não encontrado ou erro na resposta.' }));
-        throw new Error(errData.error || 'Falha ao buscar o serviço');
-      }
-      const data = await response.json();
-      setService(data);
-      setError('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ocorreu um erro inesperado');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [serviceId]);
-
-  useEffect(() => {
-    fetchService();
-  }, [fetchService]);
-
-  const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setBidForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleBidSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!session || !serviceId) {
-      setError('Você precisa estar logado para fazer uma proposta.');
-      return;
-    }
-    setActionLoading('submitBid');
-    try {
-      const response = await fetch(`/api/services/${serviceId}/bids`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          price: bidForm.price ? parseFloat(bidForm.price) : null,
-          message: bidForm.message,
-          proposedDate: bidForm.proposedDate || null
-        })
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao enviar proposta');
-      setBidForm({ price: '', message: '', proposedDate: '' });
-      setShowBidForm(false);
-      fetchService();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleApplyDirectly = async () => {
-    if (!session || !serviceId) {
-      setError('Você precisa estar logado para se candidatar a este serviço.');
-      return;
-    }
-    setActionLoading('applyDirectly');
-    try {
-      const response = await fetch(`/api/services/${serviceId}/apply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao se candidatar para o serviço');
-      fetchService();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
-    setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
-    // let operationSucceeded = false; // Flag to track success - Not strictly needed if not re-throwing
-    try {
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || `Falha na operação: ${response.status} ${response.statusText}`);
-      }
-      if (successMessage) {
-        console.log(successMessage); // Or use a toast notification
-      }
-      // operationSucceeded = true; // Not strictly needed
-      return data;
-    } catch (err: any) {
-      setError(err.message);
-      // Do not re-throw if setError is the intended way to communicate failure to UI
-    } finally {
-      // Always refresh service data to get the latest state from the server
-      fetchService();
-      setActionLoading(null);
-    }
-  };
-
-  // --- Bid Actions by Service Creator ---
-  const handleAcceptBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/accept`, 'POST', { bidId }, 'Proposta aceita');
-  const handleRejectBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/reject`, 'POST', { bidId }, 'Proposta rejeitada');
-  const handleCounterOfferToProvider = (bidId: string) => {
-    const newPrice = prompt('Digite o novo valor para a contraproposta (R$):');
-    if (newPrice === null) return;
-    const priceValue = parseFloat(newPrice);
-    if (isNaN(priceValue) || priceValue <= 0) {
-      setError('Valor inválido para contraproposta.');
-      return;
-    }
-    const newMessage = prompt('Adicione uma mensagem para a contraproposta (opcional):');
-    callApi(`/api/services/${serviceId}/bids/${bidId}/counter`, 'POST', { bidId, price: priceValue, message: newMessage }, 'Contraproposta enviada');
-  };
-
-  // --- Bid Actions by Bid Provider ---
-  const handleAcceptCounterOfferByProvider = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/accept-provider`, 'POST', { bidId }, 'Contraproposta aceita pelo prestador');
-  const handleRejectCounterOfferByProvider = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/reject-provider`, 'POST', { bidId }, 'Contraproposta rejeitada pelo prestador');
-  const handleWithdrawBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}`, 'DELETE', { bidId }, 'Proposta retirada');
-
-  // --- Service Completion/Problem Actions ---
-  const handleConfirmCompletion = async () => {
-    // The actual acceptedBid details are needed to pass to the review popup
-    // This might already be available in the `service` state or might need to be part of the API response from confirm-completion
-    const currentServiceState = service; // Use the current state of service
-    if (!currentServiceState) return;
-
-    const result = await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
-
-    if (result && result.serviceStatus === 'COMPLETED') {
-      // Check if current user is the creator
-      const isCreator = session?.user?.id === currentServiceState.creatorId;
-      if (isCreator) {
-        const acceptedBid = currentServiceState.bids?.find(bid => bid.status === 'ACCEPTED');
-        if (acceptedBid && acceptedBid.provider) {
-          setServiceProviderForReview({
-            id: acceptedBid.provider.id,
-            name: acceptedBid.provider.name || 'Prestador Desconhecido',
-            image: acceptedBid.provider.image,
-          });
-          setShowReviewPopup(true);
-        }
-      }
-    }
-  };
-
-  const handleReportProblem = () => {
-    const reason = prompt('Descreva o problema ocorrido:');
-    if (reason === null || reason.trim() === '') {
-      setError('A descrição do problema é obrigatória.');
-      return;
-    }
-    callApi(`/api/services/${serviceId}/problems`, 'POST', { reason }, 'Problema reportado');
-  };
-
-  // --- User Profile Modal ---
-  const UserProfileModal = ({ userId, onClose }: { userId: string, onClose: () => void }) => {
-    const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-      const fetchUserProfile = async () => {
-        try {
-          const response = await fetch(`/api/users/${userId}/profile`);
-          if (!response.ok) throw new Error('Falha ao carregar perfil');
-          const data = await response.json();
-          setUser(data);
-        } catch (error) {
-          console.error('Erro ao carregar perfil:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchUserProfile();
-    }, [userId]);
-
-    if (loading) return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full">
-          <p className="text-center">Carregando perfil...</p>
-        </div>
-      </div>
-    );
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full">
-          <div className="flex justify-between items-start mb-4">
-            <h2 className="text-xl font-bold">Perfil do Usuário</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-              <XMarkIcon />
-            </button>
-          </div>
-          
-          {user ? (
-            <div>
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-200">
-                  {user.image ? (
-                    <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-xl font-bold">
-                      {user.name?.charAt(0) || '?'}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold">{user.name}</h3>
-                  <div className="flex items-center">
-                    <span className="text-yellow-400">★</span>
-                    <span className="ml-1 text-sm text-gray-600">{user.rating?.toFixed(1) || 'Sem avaliações'}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {user.about && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Sobre</h4>
-                  <p className="text-sm text-gray-600">{user.about}</p>
-                </div>
-              )}
-              
-              {user.professions && user.professions.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Profissões</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {user.professions.map((profession: any) => (
-                      <span key={profession.id} className="px-2 py-1 bg-primary-100 text-primary-800 text-xs rounded-full">
-                        {profession.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              
-              {user.reviews && user.reviews.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-1">Avaliações Recentes</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {user.reviews.map((review: any) => (
-                      <div key={review.id} className="border-b border-gray-100 pb-2">
-                        <div className="flex items-center">
-                          <div className="text-yellow-400 mr-1">{'★'.repeat(review.rating)}</div>
-                          <div className="text-gray-400 text-xs">{'★'.repeat(5 - review.rating)}</div>
-                        </div>
-                        <p className="text-sm text-gray-600">{review.comment}</p>
-                        <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-center text-gray-600">Não foi possível carregar o perfil.</p>
-          )}
-          
-          <div className="mt-4 space-y-2">
-            <Link href={`/perfil/${userId}`} passHref>
-              <button className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium text-center">
-                Ver Perfil Completo
-              </button>
-            </Link>
-            <button
-              onClick={onClose}
-              className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md text-sm font-medium"
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando detalhes do serviço...</p></div>;
-  if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
-
-  const isCreator = session?.user?.id === service.creatorId;
-  const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
-  const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
-  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
-  const isServiceInProgress = service.status === 'IN_PROGRESS';
-  const isServiceOpen = service.status === 'OPEN';
-  const isUserAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
-
-  let bidsToDisplay = [];
-  if (isCreator) {
-    bidsToDisplay = service.bids || [];
-  } else if (existingUserBid?.status === 'COUNTER_OFFER') {
-    bidsToDisplay = [existingUserBid];
-  } else if (acceptedBid) {
-    bidsToDisplay = [acceptedBid];
-  } else if (existingUserBid) {
-    bidsToDisplay = [existingUserBid];
   }
 
-  const getStatusClass = (status: string) => {
-    if (status === 'OPEN') return 'bg-green-100 text-green-800';
-    if (status === 'IN_PROGRESS') return 'bg-blue-100 text-blue-800';
-    if (status === 'COMPLETED') return 'bg-purple-100 text-purple-800';
-    if (status === 'CANCELLED') return 'bg-red-100 text-red-800';
-    return 'bg-gray-100 text-gray-800';
-  };
-  const getStatusText = (status: string) => {
-    if (status === 'OPEN') return 'Aberto';
-    if (status === 'IN_PROGRESS') return 'Em Andamento';
-    if (status === 'COMPLETED') return 'Concluído';
-    if (status === 'CANCELLED') return 'Cancelado';
-    return status;
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch(`/api/users/${userId}`);
+        if (!response.ok) {
+          throw new Error('Usuário não encontrado');
+        }
+        const data = await response.json();
+        setUser(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (userId) {
+      fetchUser();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId && session?.user?.id && userId !== session.user.id) {
+      const fetchFavoriteStatus = async () => {
+        setFavoriteLoading(true);
+        try {
+          const response = await fetch(`/api/user-favorites/${userId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setIsFavorite(data.isFavorite);
+          } else {
+            console.error('Erro ao buscar status de favorito:', response.statusText);
+          }
+        } catch (err) {
+          console.error('Erro ao buscar status de favorito:', err);
+        } finally {
+          setFavoriteLoading(false);
+        }
+      };
+      fetchFavoriteStatus();
+    }
+  }, [userId, session?.user?.id]);
+
+  useEffect(() => {
+    if (showSendServiceModal && session?.user?.id) {
+      const fetchUserServices = async () => {
+        setSendServiceLoading(true); 
+        try {
+          const response = await fetch(`/api/services?creatorId=${session.user.id}&status=OPEN&limit=100`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserServices(data.services || []); 
+          } else {
+            toast.error('Erro ao buscar seus serviços.');
+            setUserServices([]); 
+          }
+        } catch (err) {
+          console.error('Erro ao buscar serviços:', err);
+          toast.error('Não foi possível carregar seus serviços.');
+          setUserServices([]);
+        } finally {
+          setSendServiceLoading(false);
+        }
+      };
+      fetchUserServices();
+    }
+  }, [showSendServiceModal, session?.user?.id]);
+
+  const handleToggleFavorite = async () => {
+    if (!userId || !session?.user?.id) return;
+    setFavoriteLoading(true);
+    const targetUserId = userId; 
+    try {
+      if (isFavorite) {
+        const response = await fetch(`/api/user-favorites/${targetUserId}`, { method: 'DELETE' });
+        if (response.ok) {
+          setIsFavorite(false);
+          toast.success('Removido dos favoritos!');
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao remover dos favoritos.' }));
+          toast.error(errorData.message || 'Erro ao remover dos favoritos.');
+        }
+      } else {
+        const response = await fetch('/api/user-favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ favoriteUserId: targetUserId }),
+        });
+        if (response.ok) {
+          setIsFavorite(true);
+          toast.success('Adicionado aos favoritos!');
+        } else {
+          const errorData = await response.json().catch(() => ({ message: 'Erro ao adicionar aos favoritos.' }));
+          toast.error(errorData.message || 'Erro ao adicionar aos favoritos.');
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao atualizar favoritos:', err);
+      toast.error('Ocorreu um erro ao atualizar os favoritos.');
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
-  const getBidStatusClass = (status: string) => {
-    if (status === 'PENDING') return 'bg-yellow-100 text-yellow-800';
-    if (status === 'ACCEPTED') return 'bg-green-100 text-green-800';
-    if (status === 'REJECTED') return 'bg-red-100 text-red-800';
-    if (status === 'COUNTER_OFFER') return 'bg-blue-100 text-blue-800';
-    return 'bg-gray-100 text-gray-800';
-  };
-  const getBidStatusText = (status: string) => {
-    if (status === 'PENDING') return 'Pendente';
-    if (status === 'ACCEPTED') return 'Aceita';
-    if (status === 'REJECTED') return 'Rejeitada';
-    if (status === 'COUNTER_OFFER') return 'Contraproposta';
-    return status;
+  const handleSendService = async () => {
+    if (!selectedServiceId || !userId || !session?.user?.id) {
+      toast.error('Selecione um serviço para enviar.');
+      return;
+    }
+    setSendServiceLoading(true);
+    const profileOwnerUserId = userId; 
+    try {
+      const response = await fetch(`/api/users/${profileOwnerUserId}/send-service`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: selectedServiceId }),
+      });
+      if (response.ok) {
+        toast.success('Serviço enviado com sucesso!');
+        setShowSendServiceModal(false);
+        setSelectedServiceId(null);
+        setUserServices([]); 
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Erro ao enviar o serviço.' }));
+        toast.error(errorData.message || 'Erro ao enviar o serviço.');
+      }
+    } catch (err) {
+      console.error('Erro ao enviar serviço:', err);
+      toast.error('Ocorreu um erro ao enviar o serviço.');
+    } finally {
+      setSendServiceLoading(false);
+    }
   };
 
-  // Button Styles
-  const btnBase = "px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
-  const btnPrimary = `${btnBase} bg-blue-500 hover:bg-blue-600 text-white`;
-  const btnSecondary = `${btnBase} bg-gray-200 hover:bg-gray-300 text-gray-700`;
-  const btnSuccess = `${btnBase} bg-green-500 hover:bg-green-600 text-white`;
-  const btnWarning = `${btnBase} bg-yellow-500 hover:bg-yellow-600 text-white`;
-  const btnDanger = `${btnBase} bg-red-500 hover:bg-red-600 text-white`;
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <p className="text-red-700">{error}</p>
+        </div>
+        <div className="mt-6">
+          <Link href="/" className="btn-primary">
+            Voltar para Início
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-white shadow-md rounded-lg p-8 text-center">
+          <h3 className="text-xl font-medium text-secondary-900 mb-2">Usuário não encontrado</h3>
+          <p className="text-secondary-600 mb-6">
+            O usuário que você está procurando não existe ou foi removido.
+          </p>
+          <Link href="/" className="btn-primary py-2 px-4">
+            Voltar para Início
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  const isOwnProfile = session?.user?.id === user.id; 
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {error && <div className="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4"><p>{error}</p></div>}
-      <div className="grid lg:grid-cols-3 gap-8">
-        {/* Service Details Column */}
-        <div className="lg:col-span-2 bg-white shadow-md rounded-lg overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <Link href="/explorar" className="text-blue-600 hover:text-blue-700 flex items-center mb-4">
-              <ArrowLeftIcon /> Voltar para Explorar
-            </Link>
-            <h1 className="text-3xl font-bold text-gray-900">{service.title}</h1>
-            <div className="mt-2 flex items-center space-x-2">
-              <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(service.status)}`}>
-                {getStatusText(service.status)}
-              </span>
-              {service.profession && <span className="text-gray-600 text-sm">{service.profession.name}</span>}
-            </div>
-            {service.price ? (
-              <div className="mt-3 text-2xl font-bold text-blue-600">R$ {service.price.toFixed(2)}</div>
+      {/* Cabeçalho do Perfil com Layout Responsivo */}
+      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="h-48 bg-primary-600"></div>
+        {/* Container para avatar e texto, agora com flex responsivo */}
+        <div className="px-4 sm:px-6 py-4 relative flex flex-col items-center md:flex-row md:items-start md:px-6">
+          {/* Avatar container */}
+          <div className="relative -top-16 md:absolute md:-top-16 md:left-6 mb-4 md:mb-0">
+            {user.image ? (
+              <Image
+                src={user.image} 
+                alt={user.name || 'Avatar'} 
+                width={128} 
+                height={128}
+                className="rounded-full border-4 border-white object-cover mx-auto md:mx-0"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/img/avatar_placeholder.png'; }}
+              />
             ) : (
-              <div className="mt-3 text-gray-700">Valor a combinar (aberto a propostas)</div>
+              <div className="h-32 w-32 rounded-full border-4 border-white bg-primary-100 flex items-center justify-center mx-auto md:mx-0">
+                <span className="text-primary-700 font-bold text-4xl">
+                  {user.name?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
             )}
           </div>
-
-          {service.photos && service.photos.length > 0 && (
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-800 mb-3">Fotos do Serviço</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {service.photos.map((photo) => (
-                  <div key={photo.id} className="aspect-square overflow-hidden rounded-lg shadow">
-                    <img src={photo.url} alt={`Foto do serviço ${service.title}`} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+          
+          <div className="w-full text-center md:text-left md:ml-36">
+            <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start">
+              <div className="mb-4 md:mb-0">
+                <h1 className="text-2xl font-bold text-secondary-900">{user.name}</h1>
+                <div className="flex items-center justify-center md:justify-start mt-1">
+                  {user.averageRating !== null && typeof user.averageRating === 'number' ? (
+                    <>
+                      <span className="text-yellow-400">★</span>
+                      <span className="ml-1 text-secondary-600 font-semibold">{user.averageRating.toFixed(1)}</span>
+                    </>
+                  ) : (
+                    <span className="ml-1 text-secondary-500 text-sm">Sem avaliações</span>
+                  )}
+                </div>
+                <p className="text-secondary-600 mt-1">
+                  {user.city && user.state ? `${user.city}, ${user.state}` : 'Localização não informada'}
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                {isOwnProfile && (
+                  <Link href="/perfil/editar" className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" title="Editar Perfil">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                  </Link>
+                )}
+                {!isOwnProfile && session?.user && (
+                  <>
+                    <button
+                      onClick={handleToggleFavorite}
+                      disabled={favoriteLoading || !userId || isLoading}
+                      aria-label={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
+                      title={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
+                      className={`p-2 rounded-full transition-colors duration-150 ease-in-out 
+                                  ${isFavorite 
+                                    ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                                    : 'bg-primary-100 text-primary-600 hover:bg-primary-200'}
+                                  focus:outline-none focus:ring-2 focus:ring-offset-2 
+                                  ${isFavorite ? 'focus:ring-red-500' : 'focus:ring-primary-500'}`}
+                    >
+                      {favoriteLoading ? (
+                        <svg className="animate-spin h-5 w-5 text-currentColor" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : isFavorite ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                          <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383-.218l-.022.012-.007.004-.004.001a.752.752 0 01-.704 0l-.004-.001z" />
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                        </svg>
+                      )}
+                    </button>
+          
+                    <button
+                      onClick={() => setShowSendServiceModal(true)}
+                      disabled={isLoading} 
+                      aria-label="Enviar Serviço Diretamente"
+                      title="Enviar Serviço Diretamente" 
+                      className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                    >
+                      {sendServiceLoading ? ( 
+                        <svg className="animate-spin h-5 w-5 text-currentColor" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                        </svg>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
+              {user.professions && user.professions.map((profession) => (
+                <span key={profession.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
+                  {profession.name}
+                </span>
+              ))}
+              {(!user.professions || user.professions.length === 0) && (
+                <span className="text-secondary-500 text-sm">Nenhuma profissão cadastrada</span>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        <div className="border-t border-secondary-200">
+          <nav className="flex overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('sobre')}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                activeTab === 'sobre'
+                  ? 'border-b-2 border-primary-500 text-primary-600'
+                  : 'text-secondary-500 hover:text-secondary-700'
+              }`}
+            >
+              Sobre
+            </button>
+            <button
+              onClick={() => setActiveTab('avaliacoes')}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                activeTab === 'avaliacoes'
+                  ? 'border-b-2 border-primary-500 text-primary-600'
+                  : 'text-secondary-500 hover:text-secondary-700'
+              }`}
+            >
+              Avaliações
+            </button>
+            <button
+              onClick={() => setActiveTab('certificacoes')}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                activeTab === 'certificacoes'
+                  ? 'border-b-2 border-primary-500 text-primary-600'
+                  : 'text-secondary-500 hover:text-secondary-700'
+              }`}
+            >
+              Certificações
+            </button>
+            <button
+              onClick={() => setActiveTab('galeria')}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                activeTab === 'galeria'
+                  ? 'border-b-2 border-primary-500 text-primary-600'
+                  : 'text-secondary-500 hover:text-secondary-700'
+              }`}
+            >
+              Galeria
+            </button>
+          </nav>
+        </div>
+      </div>
+      
+      <div className="mt-6 bg-white shadow-md rounded-lg p-6">
+        {activeTab === 'sobre' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Sobre</h2>
+            {user.about ? (
+              <p className="text-secondary-600 whitespace-pre-line">{user.about}</p>
+            ) : (
+              <p className="text-secondary-500">Nenhuma informação disponível.</p>
+            )}
+          </div>
+        )}
+        
+        {activeTab === 'avaliacoes' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
+            {user.receivedReviews && user.receivedReviews.length > 0 ? (
+              <div className="space-y-6">
+                {user.receivedReviews.map((review) => (
+                  <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
+                              {review.giver.image ? (
+                                <Image
+                                  src={review.giver.image}
+                                  alt={review.giver.name || 'Reviewer'}
+                                  width={40}
+                                  height={40}
+                                  className="object-cover w-full h-full"
+                                  onError={(e) => { 
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null; 
+                                    target.src = '/img/avatar_placeholder.png'; 
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
+                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                              )}
+                            </div>
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
+                        <div className="flex items-center mt-1">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
+                            ))}
+                          </div>
+                          <span className="ml-2 text-xs text-secondary-500">
+                            {new Date(review.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        {review.comment && (
+                          <p className="mt-2 text-secondary-600">{review.comment}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          <div className="p-6 space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800">Descrição Detalhada</h2>
-              <p className="mt-2 text-gray-600 whitespace-pre-line">{service.description}</p>
-            </div>
-            {service.date && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Data e Hora Preferencial</h2>
-                <p className="mt-2 text-gray-600">
-                  {new Date(service.date).toLocaleString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  {service.timeWindow && ` (Janela de ${service.timeWindow} min aprox.)`}
-                </p>
-              </div>
-            )}
-            {service.address && (
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Localização</h2>
-                <p className="mt-2 text-gray-600">{service.address}</p>
-              </div>
+            ) : (
+              <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
             )}
           </div>
-
-          {/* Service Actions: Confirm Completion / Report Problem */}
-          {isServiceInProgress && (isCreator || isUserAcceptedProvider) && (
-            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
-              <button onClick={handleConfirmCompletion} className={`${btnSuccess} w-full sm:w-auto`} disabled={!!actionLoading}><CheckCircleIcon /> Confirmar Conclusão</button>
-              <button onClick={handleReportProblem} className={`${btnDanger} w-full sm:w-auto`} disabled={!!actionLoading}><ExclamationTriangleIcon /> Tenho um Problema</button>
-            </div>
-          )}
-        </div>
-
-        {/* Creator Info & Bid Form/List Column */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white shadow-md rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-3">Criador do Serviço</h2>
-            <div className="flex items-center space-x-3">
-              <div 
-                className="h-12 w-12 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
-                onClick={() => setShowUserProfile(service.creatorId)}
-              >
-                {service.creator.image ? (
-                  <img src={service.creator.image} alt={service.creator.name || 'Criador'} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-xl font-bold">
-                    {service.creator.name?.charAt(0) || '?'}
+        )}
+        
+        {activeTab === 'certificacoes' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
+            {user.certificates && user.certificates.length > 0 ? (
+              <div className="space-y-4">
+                {user.certificates.map((certificate) => (
+                  <div key={certificate.id} className="border border-secondary-200 rounded-lg p-4">
+                    <h3 className="font-medium text-secondary-900">{certificate.title}</h3>
+                    <p className="text-secondary-600 text-sm mt-1">{certificate.institution}</p>
+                    <p className="text-secondary-500 text-sm mt-1">
+                      Emitido em: {new Date(certificate.issueDate).toLocaleDateString('pt-BR')}
+                    </p>
+                    {certificate.url && (
+                      <a
+                        href={certificate.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-700 text-sm mt-2 inline-block"
+                      >
+                        Ver certificado
+                      </a>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-              <div>
-                <p 
-                  className="font-medium text-gray-900 cursor-pointer hover:underline"
-                  onClick={() => setShowUserProfile(service.creatorId)}
-                >
-                  {service.creator.name}
-                </p>
-                <div className="flex items-center">
-                  <span className="text-yellow-400">★</span>
-                  <span className="ml-1 text-sm text-gray-600">{service.creator.rating?.toFixed(1) || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-            {service.creator.about && <p className="mt-3 text-sm text-gray-600">{service.creator.about}</p>}
-            {isCreator && service.status === 'OPEN' && (
-                <Link href={`/editar-servico/${service.id}`} className={`mt-4 block text-center ${btnSecondary}`}>Editar Serviço</Link>
+            ) : (
+              <p className="text-secondary-500">Nenhuma certificação disponível.</p>
             )}
           </div>
-
-          {/* Botão de Candidatura Direta - Apenas para não criadores */}
-          {canCurrentUserBid && !existingUserBid && !acceptedBid && (
-            <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Candidatar-se para este Serviço</h2>
-              <div className="space-y-4">
-                <button 
-                  onClick={handleApplyDirectly} 
-                  className={`${btnSuccess} w-full`} 
-                  disabled={!!actionLoading}
-                >
-                  {actionLoading === 'applyDirectly' ? 'Enviando...' : <><ThumbUpIcon /> Aceitar Serviço</>}
-                </button>
-                <div className="text-center">
-                  <p className="text-sm text-gray-600">ou</p>
-                  <button 
-                    onClick={() => setShowBidForm(!showBidForm)} 
-                    className={`mt-2 ${btnSecondary}`}
-                  >
-                    {showBidForm ? 'Cancelar Proposta' : 'Fazer uma Proposta Personalizada'}
-                  </button>
-                </div>
+        )}
+        
+        {activeTab === 'galeria' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
+            {user.photos && user.photos.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {user.photos.map((photo) => (
+                  <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
+                    <img 
+                      src={photo.url} 
+                      alt="Trabalho" 
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        console.error("Erro ao carregar imagem:", photo.url);
+                        (e.target as HTMLImageElement).onerror = null;
+                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Imagem+não+disponível";
+                      }}
+                    />
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
-
-          {/* Bid Form */}
-          {canCurrentUserBid && !existingUserBid && !acceptedBid && showBidForm && (
-            <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Fazer uma Proposta Personalizada</h2>
-              <form onSubmit={handleBidSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700">Sua Oferta (R$)</label>
-                  <input type="number" name="price" id="price" value={bidForm.price} onChange={handleBidChange} className="input-field mt-1 w-full" placeholder="Ex: 150.00" step="0.01" />
-                </div>
-                <div>
-                  <label htmlFor="proposedDate" className="block text-sm font-medium text-gray-700">Data/Hora Proposta (Opcional)</label>
-                  <input type="datetime-local" name="proposedDate" id="proposedDate" value={bidForm.proposedDate} onChange={handleBidChange} className="input-field mt-1 w-full" />
-                </div>
-                <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700">Mensagem (Opcional)</label>
-                  <textarea name="message" id="message" value={bidForm.message} onChange={handleBidChange} rows={3} className="input-field mt-1 w-full" placeholder="Detalhes adicionais sobre sua proposta..."></textarea>
-                </div>
-                <button type="submit" className={`${btnPrimary} w-full`} disabled={!!actionLoading}>{actionLoading === 'submitBid' ? 'Enviando...' : 'Enviar Proposta'}</button>
-              </form>
-            </div>
-          )}
-          {existingUserBid &&
-           existingUserBid.status !== 'COUNTER_OFFER' &&
-           existingUserBid.status !== 'ACCEPTED' &&
-           !acceptedBid &&
-           isServiceOpen && (
-            <div className="bg-white shadow-md rounded-lg p-4 text-center">
-              <p className="text-gray-700">Você já enviou uma proposta para este serviço.</p>
-              {existingUserBid.status === 'PENDING' && ( // Keep withdraw for PENDING bids here
-                <button onClick={() => handleWithdrawBid(existingUserBid.id)} className={`mt-2 ${btnDanger}`} disabled={!!actionLoading}><XMarkIcon/> Retirar Proposta</button>
-              )}
-            </div>
-          )}
-
-          {/* Bids List */}
-          {bidsToDisplay && bidsToDisplay.length > 0 && (
-            <div className="bg-white shadow-md rounded-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                {isCreator ? `Propostas Recebidas (${bidsToDisplay.length})`
-                           : existingUserBid?.status === 'COUNTER_OFFER' ? 'Você recebeu uma Contraproposta'
-                           : acceptedBid ? 'Proposta Aceita'
-                           : 'Sua Proposta'}
-              </h2>
-              <div className="space-y-4">
-                {bidsToDisplay.map((bid) => (
-                    <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
-                            onClick={() => setShowUserProfile(bid.providerId)}
-                          >
-                            {bid.provider.image ? (
-                              <img src={bid.provider.image} alt={bid.provider.name || 'Prestador'} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-sm font-bold">
-                                {bid.provider.name?.charAt(0) || '?'}
-                              </div>
-                            )}
-                          </div>
-                          <p 
-                            className="font-semibold text-gray-800 cursor-pointer hover:underline"
-                            onClick={() => setShowUserProfile(bid.providerId)}
-                          >
-                            {isCreator || bid.providerId === session?.user?.id ? bid.provider.name : 'Prestador'} {/* Show name if creator or own bid */}
-                          </p>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid.status)}`}>
-                          {getBidStatusText(bid.status)}
-                        </span>
-                      </div>
-                      {bid.price && <p className="text-lg font-bold text-blue-600">R$ {bid.price.toFixed(2)}</p>}
-                      {bid.proposedDate && (
-                        <p className="text-sm text-gray-500">
-                          Data: {new Date(bid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(bid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                        </p>
-                      )}
-                      {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
-                      
-                      {/* Actions for Service Creator */}
-                      {isCreator && isServiceOpen && !acceptedBid && (
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
-                          {bid.status === 'PENDING' && (
-                            <>
-                              <button onClick={() => handleAcceptBid(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar</button>
-                              <button onClick={() => handleCounterOfferToProvider(bid.id)} className={btnWarning} disabled={!!actionLoading}><ArrowPathIcon /> Contraproposta</button>
-                              <button onClick={() => handleRejectBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar</button>
-                            </>
-                          )}
-                           {/* Creator can also see options if they sent a counter-offer, though they can't act on it */}
-                           {bid.status === 'COUNTER_OFFER' && (
-                            <p className="text-sm text-blue-600">Contraproposta enviada ao prestador. Aguardando resposta.</p>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Actions for Bid Provider */}
-                      {session?.user?.id === bid.providerId && isServiceOpen && !acceptedBid && (
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
-                          {bid.status === 'COUNTER_OFFER' && (
-                            <>
-                              <button onClick={() => handleAcceptCounterOfferByProvider(bid.id)} className={btnSuccess} disabled={!!actionLoading}><CheckIcon /> Aceitar Contraproposta</button>
-                              <button onClick={() => handleRejectCounterOfferByProvider(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon /> Rejeitar Contraproposta</button>
-                            </>
-                          )}
-                          {bid.status === 'PENDING' && (
-                              <button onClick={() => handleWithdrawBid(bid.id)} className={btnDanger} disabled={!!actionLoading}><XMarkIcon/> Retirar Minha Proposta</button>
-                          )}
-                        </div>
-                      )}
-                      {bid.status === 'ACCEPTED' && (
-                          <p className="text-sm text-green-600 font-semibold">
-                            {isCreator ? `Esta proposta foi aceita.` : `Sua proposta foi aceita!`}
-                          </p>
-                      )}
-                       {bid.status === 'REJECTED' && session?.user?.id === bid.providerId && (
-                          <p className="text-sm text-red-600">Sua proposta foi rejeitada.</p>
-                      )}
-                    </div>
-                  ))}
-              </div>
-            </div>
-          )}
-          {bidsToDisplay.length === 0 && isCreator && service.bids?.length === 0 && ( // Show "No bids received" only if creator and bids array is empty
-             <div className="bg-white shadow-md rounded-lg p-6 text-center">
-                <p className="text-gray-600">Nenhuma proposta recebida ainda.</p>
-             </div>
-          )}
-        </div>
+            ) : (
+              <p className="text-secondary-500">Nenhuma foto disponível.</p>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* User Profile Modal */}
-      {showUserProfile && (
-        <UserProfileModal 
-          userId={showUserProfile} 
-          onClose={() => setShowUserProfile(null)} 
-        />
-      )}
+      {showSendServiceModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Enviar Serviço Diretamente</h2>
+            
+            {sendServiceLoading && !userServices.length ? (
+              <p>Carregando seus serviços...</p>
+            ) : userServices.length === 0 ? (
+              <p className="text-secondary-600 mb-4">Você não possui serviços abertos para enviar.</p>
+            ) : (
+              <div className="space-y-4 max-h-60 overflow-y-auto mb-6">
+                {userServices.map((service: Service) => (
+                  <label key={service.id} className="flex items-center p-3 rounded-md hover:bg-gray-100 cursor-pointer border border-gray-200">
+                    <input
+                      type="radio"
+                      name="selectedService"
+                      value={service.id}
+                      checked={selectedServiceId === service.id}
+                      onChange={() => setSelectedServiceId(service.id)}
+                      className="form-radio h-5 w-5 text-primary-600"
+                    />
+                    <div className="ml-3">
+                      <span className="block text-sm font-medium text-secondary-800">{service.title}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
 
-      {serviceProviderForReview && service && (
-        <ReviewPopup
-          show={showReviewPopup}
-          onClose={() => {
-            setShowReviewPopup(false);
-            setServiceProviderForReview(null);
-            // Optionally, refresh service data again after review popup closes
-            // fetchService();
-          }}
-          serviceProvider={serviceProviderForReview}
-          serviceId={service.id}
-          onReviewSubmitted={() => {
-            // Can add a toast message here for "Review submitted successfully!"
-            console.log('Review submitted, popup will close.');
-            // fetchService(); // Refresh data to potentially show updated review info if applicable on this page
-          }}
-        />
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowSendServiceModal(false);
+                  setSelectedServiceId(null);
+                  setUserServices([]); 
+                }}
+                className="btn-outline py-2 px-4"
+                disabled={sendServiceLoading && userServices.length > 0}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendService}
+                disabled={!selectedServiceId || (sendServiceLoading && userServices.length > 0) || userServices.length === 0}
+                className="btn-primary py-2 px-4"
+              >
+                {sendServiceLoading && userServices.length > 0 ? 'Enviando...' : 'Confirmar e Enviar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
