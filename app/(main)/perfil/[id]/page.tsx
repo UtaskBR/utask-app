@@ -401,11 +401,132 @@ export default function ProfilePage() {
         </div>
       </div> {/* This closes the "bg-white shadow-md rounded-lg overflow-hidden" div for Profile Header + Tabs */}
 
-      {/* Tab Content Section - Kept Commented Out
+      {/* Conteúdo da Tab - JSX Reintroduced */}
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
-        ...
+        {activeTab === 'sobre' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Sobre</h2>
+            {user.about ? (
+              <p className="text-secondary-600 whitespace-pre-line">{user.about}</p>
+            ) : (
+              <p className="text-secondary-500">Nenhuma informação disponível.</p>
+            )}
+          </div>
+        )}
+
+        {/* Temporarily commenting out other tabs for error isolation */}
+        {/* {activeTab === 'avaliacoes' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
+            {user.receivedReviews && user.receivedReviews.length > 0 ? (
+              <div className="space-y-6">
+                {user.receivedReviews.map((review) => (
+                  <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
+                              {review.giver.image ? (
+                                <Image
+                                  src={review.giver.image}
+                                  alt={review.giver.name || 'Reviewer'}
+                                  width={40}
+                                  height={40}
+                                  className="object-cover w-full h-full"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null;
+                                    target.src = '/img/avatar_placeholder.png';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
+                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
+                              <div className="flex items-center mt-1">
+                                <div className="flex">
+                                  {[...Array(5)].map((_, i) => (
+                                    <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
+                                  ))}
+                                </div>
+                                <span className="ml-2 text-xs text-secondary-500">
+                                  {new Date(review.createdAt).toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                              {review.comment && (
+                                <p className="mt-2 text-secondary-600">{review.comment}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
+                )}
+              </div>
+        )} */}
+
+        {/* {activeTab === 'certificacoes' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
+            {user.certificates && user.certificates.length > 0 ? (
+              <div className="space-y-4">
+                {user.certificates.map((certificate) => (
+                  <div key={certificate.id} className="border border-secondary-200 rounded-lg p-4">
+                    <h3 className="font-medium text-secondary-900">{certificate.title}</h3>
+                    <p className="text-secondary-600 text-sm mt-1">{certificate.institution}</p>
+                    <p className="text-secondary-500 text-sm mt-1">
+                      Emitido em: {new Date(certificate.issueDate).toLocaleDateString('pt-BR')}
+                    </p>
+                    {certificate.url && (
+                      <a
+                        href={certificate.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary-600 hover:text-primary-700 text-sm mt-2 inline-block"
+                      >
+                        Ver certificado
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-secondary-500">Nenhuma certificação disponível.</p>
+            )}
+          </div>
+        )} */}
+
+        {/* {activeTab === 'galeria' && (
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
+            {user.photos && user.photos.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {user.photos.map((photo) => (
+                  <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
+                    <img
+                      src={photo.url}
+                      alt="Trabalho"
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        console.error("Erro ao carregar imagem:", photo.url);
+                        (e.target as HTMLImageElement).onerror = null;
+                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Imagem+não+disponível";
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-secondary-500">Nenhuma foto disponível.</p>
+            )}
+          </div>
+        )} */}
       </div>
-      */}
 
       {/* Send Service Modal - JSX Reintroduced */}
       {showSendServiceModal && (
