@@ -31,12 +31,18 @@ export default function ProfilePage() {
     id: string;
     name?: string;
     image?: string;
-    rating?: string;
+    averageRating?: number | null;
     city?: string;
     state?: string;
     professions?: { id: string; name: string }[];
     about?: string;
-    reviews?: { id: string; giver: { name: string }; rating: number; comment?: string; createdAt: string }[];
+    receivedReviews?: {
+      id: string;
+      giver: { name: string; image?: string | null };
+      rating: number;
+      comment?: string;
+      createdAt: string
+    }[];
     certificates?: { id: string; title: string; institution: string; issueDate: string; url?: string }[];
     photos?: { id: string; url: string }[];
   }
@@ -47,7 +53,6 @@ export default function ProfilePage() {
     description: string;
   }
 
-  // Logic for useEffect hooks - already restored
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -115,7 +120,6 @@ export default function ProfilePage() {
     }
   }, [showSendServiceModal, session?.user?.id]);
 
-  // Logic for handleToggleFavorite function - already restored
   const handleToggleFavorite = async () => {
     if (!userId || !session?.user?.id) return;
     setFavoriteLoading(true);
@@ -152,7 +156,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Logic for handleSendService function - already restored
   const handleSendService = async () => {
     if (!selectedServiceId || !userId || !session?.user?.id) {
       toast.error('Selecione um serviço para enviar.');
@@ -183,7 +186,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Original early returns
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -235,13 +237,13 @@ export default function ProfilePage() {
           {/* Avatar container */}
           <div className="relative -top-16 md:absolute md:-top-16 md:left-6 mb-4 md:mb-0">
             {user.image ? (
-              <Image // Using next/image
-                src={user.image} 
-                alt={user.name || 'Avatar'} 
-                width={128} // h-32 w-32 -> 8rem -> 128px
+              <Image
+                src={user.image}
+                alt={user.name || 'Avatar'}
+                width={128}
                 height={128}
                 className="rounded-full border-4 border-white object-cover mx-auto md:mx-0"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/img/avatar_placeholder.png'; }} // Fallback for next/image
+                onError={(e) => { (e.target as HTMLImageElement).src = '/img/avatar_placeholder.png'; }}
               />
             ) : (
               <div className="h-32 w-32 rounded-full border-4 border-white bg-primary-100 flex items-center justify-center mx-auto md:mx-0">
@@ -251,24 +253,26 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-          
-          {/* Text content + buttons container */}
+
           <div className="w-full text-center md:text-left md:ml-36">
-            {/* Name/details and action buttons row */}
             <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start">
-              {/* Name, rating, location block */}
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold text-secondary-900">{user.name}</h1>
                 <div className="flex items-center justify-center md:justify-start mt-1">
-                  <span className="text-yellow-400">★</span>
-                  <span className="ml-1 text-secondary-600">{user.rating || 'Sem avaliações'}</span>
+                  {user.averageRating !== null && typeof user.averageRating === 'number' ? (
+                    <>
+                      <span className="text-yellow-400">★</span>
+                      <span className="ml-1 text-secondary-600 font-semibold">{user.averageRating.toFixed(1)}</span>
+                    </>
+                  ) : (
+                    <span className="ml-1 text-secondary-500 text-sm">Sem avaliações</span>
+                  )}
                 </div>
                 <p className="text-secondary-600 mt-1">
                   {user.city && user.state ? `${user.city}, ${user.state}` : 'Localização não informada'}
                 </p>
               </div>
-              
-              {/* Action buttons container */}
+
               <div className="flex items-center space-x-2">
                 {isOwnProfile && (
                   <Link href="/perfil/editar" className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" title="Editar Perfil">
@@ -282,11 +286,11 @@ export default function ProfilePage() {
                       disabled={favoriteLoading || !userId || isLoading}
                       aria-label={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
                       title={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
-                      className={`p-2 rounded-full transition-colors duration-150 ease-in-out 
-                                  ${isFavorite 
-                                    ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                      className={`p-2 rounded-full transition-colors duration-150 ease-in-out
+                                  ${isFavorite
+                                    ? 'bg-red-100 text-red-600 hover:bg-red-200'
                                     : 'bg-primary-100 text-primary-600 hover:bg-primary-200'}
-                                  focus:outline-none focus:ring-2 focus:ring-offset-2 
+                                  focus:outline-none focus:ring-2 focus:ring-offset-2
                                   ${isFavorite ? 'focus:ring-red-500' : 'focus:ring-primary-500'}`}
                     >
                       {favoriteLoading ? (
@@ -304,15 +308,15 @@ export default function ProfilePage() {
                         </svg>
                       )}
                     </button>
-          
+
                     <button
                       onClick={() => setShowSendServiceModal(true)}
-                      disabled={isLoading} 
+                      disabled={isLoading}
                       aria-label="Enviar Serviço Diretamente"
-                      title="Enviar Serviço Diretamente" 
+                      title="Enviar Serviço Diretamente"
                       className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
-                      {sendServiceLoading ? ( 
+                      {sendServiceLoading ? (
                         <svg className="animate-spin h-5 w-5 text-currentColor" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -327,8 +331,7 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-            
-            {/* Professions container - Modified for responsive layout */}
+
             <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
               {user.professions && user.professions.map((profession) => (
                 <span key={profession.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
@@ -341,8 +344,7 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-        
-        {/* Tabs - JSX Reintroduced */}
+
         <div className="border-t border-secondary-200">
           <nav className="flex overflow-x-auto">
             <button
@@ -387,9 +389,8 @@ export default function ProfilePage() {
             </button>
           </nav>
         </div>
-      </div> {/* This closes the "bg-white shadow-md rounded-lg overflow-hidden" div for Profile Header + Tabs */}
-      
-      {/* Conteúdo da Tab - JSX Reintroduced */}
+      </div>
+
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
         {activeTab === 'sobre' && (
           <div>
@@ -401,22 +402,37 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'avaliacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
-            {user.reviews && user.reviews.length > 0 ? (
+            {user.receivedReviews && user.receivedReviews.length > 0 ? (
               <div className="space-y-6">
-                {user.reviews.map((review) => (
+                {user.receivedReviews.map((review) => (
                   <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
                     <div className="flex items-start">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-primary-700 font-medium">
-                          {review.giver.name.charAt(0)}
-                        </span>
-                      </div>
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
+                              {review.giver.image ? (
+                                <Image
+                                  src={review.giver.image}
+                                  alt={review.giver.name || 'Reviewer'}
+                                  width={40}
+                                  height={40}
+                                  className="object-cover w-full h-full"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null;
+                                    target.src = '/img/avatar_placeholder.png';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
+                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                              )}
+                            </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-secondary-900">{review.giver.name}</p>
+                        <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
                         <div className="flex items-center mt-1">
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
@@ -440,7 +456,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'certificacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
@@ -471,7 +487,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'galeria' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
@@ -479,9 +495,9 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {user.photos.map((photo) => (
                   <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                    <img 
-                      src={photo.url} 
-                      alt="Trabalho" 
+                    <img
+                      src={photo.url}
+                      alt="Trabalho"
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         console.error("Erro ao carregar imagem:", photo.url);
@@ -498,13 +514,12 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-      
-      {/* Send Service Modal - JSX Reintroduced */}
+
       {showSendServiceModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Enviar Serviço Diretamente</h2>
-            
+
             {sendServiceLoading && !userServices.length ? (
               <p>Carregando seus serviços...</p>
             ) : userServices.length === 0 ? (
@@ -534,7 +549,7 @@ export default function ProfilePage() {
                 onClick={() => {
                   setShowSendServiceModal(false);
                   setSelectedServiceId(null);
-                  setUserServices([]); 
+                  setUserServices([]);
                 }}
                 className="btn-outline py-2 px-4"
                 disabled={sendServiceLoading && userServices.length > 0}
