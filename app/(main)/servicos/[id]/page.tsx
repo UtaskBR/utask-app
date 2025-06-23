@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import ReviewPopup from '@/app/components/ReviewPopup'; // Import ReviewPopup
 
 // Placeholder icons (Heroicons)
 const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
@@ -62,6 +63,8 @@ export default function ServiceDetailPage() {
   const [showBidForm, setShowBidForm] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showUserProfile, setShowUserProfile] = useState<string | null>(null);
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
+  const [serviceProviderForReview, setServiceProviderForReview] = useState<{ id: string; name: string; image?: string | null; } | null>(null);
 
   const fetchService = useCallback(async () => {
     if (!serviceId) return;
@@ -190,8 +193,29 @@ export default function ServiceDetailPage() {
   const handleWithdrawBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}`, 'DELETE', { bidId }, 'Proposta retirada');
 
   // --- Service Completion/Problem Actions ---
-  const handleConfirmCompletion = () => {
-    callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
+  const handleConfirmCompletion = async () => {
+    // The actual acceptedBid details are needed to pass to the review popup
+    // This might already be available in the `service` state or might need to be part of the API response from confirm-completion
+    const currentServiceState = service; // Use the current state of service
+    if (!currentServiceState) return;
+
+    const result = await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
+
+    if (result && result.serviceStatus === 'COMPLETED') {
+      // Check if current user is the creator
+      const isCreator = session?.user?.id === currentServiceState.creatorId;
+      if (isCreator) {
+        const acceptedBid = currentServiceState.bids?.find(bid => bid.status === 'ACCEPTED');
+        if (acceptedBid && acceptedBid.provider) {
+          setServiceProviderForReview({
+            id: acceptedBid.provider.id,
+            name: acceptedBid.provider.name || 'Prestador Desconhecido',
+            image: acceptedBid.provider.image,
+          });
+          setShowReviewPopup(true);
+        }
+      }
+    }
   };
 
   const handleReportProblem = () => {
@@ -649,6 +673,25 @@ export default function ServiceDetailPage() {
         <UserProfileModal 
           userId={showUserProfile} 
           onClose={() => setShowUserProfile(null)} 
+        />
+      )}
+
+      {serviceProviderForReview && service && (
+        <ReviewPopup
+          show={showReviewPopup}
+          onClose={() => {
+            setShowReviewPopup(false);
+            setServiceProviderForReview(null);
+            // Optionally, refresh service data again after review popup closes
+            // fetchService(); 
+          }}
+          serviceProvider={serviceProviderForReview}
+          serviceId={service.id}
+          onReviewSubmitted={() => {
+            // Can add a toast message here for "Review submitted successfully!"
+            console.log('Review submitted, popup will close.');
+            // fetchService(); // Refresh data to potentially show updated review info if applicable on this page
+          }}
         />
       )}
     </div>
