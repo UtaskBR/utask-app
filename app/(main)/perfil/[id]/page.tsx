@@ -414,8 +414,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Temporarily commenting out other tabs for error isolation */}
-        {/* {activeTab === 'avaliacoes' && (
+        {activeTab === 'avaliacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
             {user.receivedReviews && user.receivedReviews.length > 0 ? (
@@ -468,7 +467,8 @@ export default function ProfilePage() {
                   <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
                 )}
               </div>
-        )} */}
+            // Removed leftover IIFE closing: ); })()
+        )}
 
         {/* {activeTab === 'certificacoes' && (
           <div>
