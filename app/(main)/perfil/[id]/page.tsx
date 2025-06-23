@@ -36,9 +36,9 @@ export default function ProfilePage() {
     state?: string;
     professions?: { id: string; name: string }[];
     about?: string;
-    reviews?: { 
+    receivedReviews?: { // Renamed from reviews to receivedReviews
       id: string; 
-      giver: { name: string; image?: string | null }; // Added image to giver
+      giver: { name: string; image?: string | null };
       rating: number; 
       comment?: string; 
       createdAt: string 
@@ -62,10 +62,8 @@ export default function ProfilePage() {
           throw new Error('Usuário não encontrado');
         }
         const data = await response.json();
-        console.log('Fetched user data from API:', JSON.stringify(data, null, 2)); // Log raw data
         setUser(data);
       } catch (err) {
-        console.error('Error in fetchUser:', err); // Log any error during fetch
         setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido');
       } finally {
         setIsLoading(false);
@@ -122,18 +120,6 @@ export default function ProfilePage() {
       fetchUserServices();
     }
   }, [showSendServiceModal, session?.user?.id]);
-
-  useEffect(() => {
-    if (user) {
-      console.log('User state updated:', JSON.stringify(user, null, 2));
-      if (user.reviews) {
-        console.log('User reviews in state:', JSON.stringify(user.reviews, null, 2));
-        console.log('Number of reviews in state:', user.reviews.length);
-      } else {
-        console.log('User reviews in state: undefined or null');
-      }
-    }
-  }, [user]); // Runs when user state changes
 
   // Logic for handleToggleFavorite function - already restored
   const handleToggleFavorite = async () => {
@@ -429,24 +415,14 @@ export default function ProfilePage() {
         )}
         
         {activeTab === 'avaliacoes' && (
-          (() => { // IIFE to allow logging
-            if (user && user.reviews) {
-              console.log('Rendering Avaliações tab. user.reviews:', JSON.stringify(user.reviews, null, 2));
-              console.log('Rendering Avaliações tab. user.reviews.length:', user.reviews.length);
-            } else {
-              console.log('Rendering Avaliações tab. user or user.reviews is not available.');
-            }
-            return (
-              <div>
-                <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
-                {user.reviews && user.reviews.length > 0 ? (
-                  <div className="space-y-6">
-                    {user.reviews.map((review) => {
-                      console.log('Mapping review item:', JSON.stringify(review, null, 2)); // Log each review item
-                      return (
-                        <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
-                          <div className="flex items-start">
-                            <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
+          <div>
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
+            {user.receivedReviews && user.receivedReviews.length > 0 ? (
+              <div className="space-y-6">
+                {user.receivedReviews.map((review) => (
+                  <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
                               {review.giver.image ? (
                                 <Image
                                   src={review.giver.image}
