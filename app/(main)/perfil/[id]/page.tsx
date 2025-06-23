@@ -414,7 +414,17 @@ export default function ProfilePage() {
                       {/* Avatar section will be restored later */}
                       <div className="ml-3">
                         <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
-                        {/* Star rating, date, and comment will be restored later */}
+                        <div className="flex items-center mt-1">
+                          <div className="flex">
+                            {[...Array(5)].map((_, i) => (
+                              <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
+                            ))}
+                          </div>
+                          <span className="ml-2 text-xs text-secondary-500">
+                            {new Date(review.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        {/* Comment will be restored later */}
                       </div>
                     </div>
                   </div>
