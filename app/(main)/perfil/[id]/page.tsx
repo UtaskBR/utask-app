@@ -411,7 +411,26 @@ export default function ProfilePage() {
                 {user.receivedReviews.map((review) => (
                   <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
                     <div className="flex items-start">
-                      {/* Avatar section will be restored later */}
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
+                              {review.giver.image ? (
+                                <Image
+                                  src={review.giver.image}
+                                  alt={review.giver.name || 'Reviewer'}
+                                  width={40}
+                                  height={40}
+                                  className="object-cover w-full h-full"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.onerror = null;
+                                    target.src = '/img/avatar_placeholder.png';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
+                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
+                                </div>
+                              )}
+                            </div>
                       <div className="ml-3">
                         <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
                         <div className="flex items-center mt-1">
