@@ -24,7 +24,7 @@ export async function GET(
     
     // Buscar a carteira do usuário usando SQL bruto
     const wallets = await prisma.$queryRaw`
-      SELECT id, balance, "reservedBalance", "userId", "createdAt", "updatedAt"
+      SELECT id, balance, "reserved_balance" AS "reservedBalance", "userId", "createdAt", "updatedAt"
       FROM "Wallet"
       WHERE "userId" = ${userId}
     `;
@@ -44,7 +44,7 @@ export async function GET(
       
       // Buscar a carteira recém-criada
       const newWallets = await prisma.$queryRaw`
-        SELECT id, balance, "reservedBalance", "userId", "createdAt", "updatedAt"
+        SELECT id, balance, "reserved_balance" AS "reservedBalance", "userId", "createdAt", "updatedAt"
         FROM "Wallet"
         WHERE id = ${walletId}
       `;
