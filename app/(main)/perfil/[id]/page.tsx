@@ -31,12 +31,12 @@ export default function ProfilePage() {
     id: string;
     name?: string;
     image?: string;
-    averageRating?: number | null; // Changed from rating: string to averageRating: number | null
+    averageRating?: number | null;
     city?: string;
     state?: string;
     professions?: { id: string; name: string }[];
     about?: string;
-    receivedReviews?: { // Renamed from reviews to receivedReviews
+    receivedReviews?: {
       id: string;
       giver: { name: string; image?: string | null };
       rating: number;
@@ -53,7 +53,6 @@ export default function ProfilePage() {
     description: string;
   }
 
-  // Logic for useEffect hooks - already restored
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -121,7 +120,6 @@ export default function ProfilePage() {
     }
   }, [showSendServiceModal, session?.user?.id]);
 
-  // Logic for handleToggleFavorite function - already restored
   const handleToggleFavorite = async () => {
     if (!userId || !session?.user?.id) return;
     setFavoriteLoading(true);
@@ -158,7 +156,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Logic for handleSendService function - already restored
   const handleSendService = async () => {
     if (!selectedServiceId || !userId || !session?.user?.id) {
       toast.error('Selecione um serviço para enviar.');
@@ -189,7 +186,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Original early returns
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -241,13 +237,13 @@ export default function ProfilePage() {
           {/* Avatar container */}
           <div className="relative -top-16 md:absolute md:-top-16 md:left-6 mb-4 md:mb-0">
             {user.image ? (
-              <Image // Using next/image
+              <Image
                 src={user.image}
                 alt={user.name || 'Avatar'}
-                width={128} // h-32 w-32 -> 8rem -> 128px
+                width={128}
                 height={128}
                 className="rounded-full border-4 border-white object-cover mx-auto md:mx-0"
-                onError={(e) => { (e.target as HTMLImageElement).src = '/img/avatar_placeholder.png'; }} // Fallback for next/image
+                onError={(e) => { (e.target as HTMLImageElement).src = '/img/avatar_placeholder.png'; }}
               />
             ) : (
               <div className="h-32 w-32 rounded-full border-4 border-white bg-primary-100 flex items-center justify-center mx-auto md:mx-0">
@@ -258,11 +254,8 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Text content + buttons container */}
           <div className="w-full text-center md:text-left md:ml-36">
-            {/* Name/details and action buttons row */}
             <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start">
-              {/* Name, rating, location block */}
               <div className="mb-4 md:mb-0">
                 <h1 className="text-2xl font-bold text-secondary-900">{user.name}</h1>
                 <div className="flex items-center justify-center md:justify-start mt-1">
@@ -280,7 +273,6 @@ export default function ProfilePage() {
                 </p>
               </div>
 
-              {/* Action buttons container */}
               <div className="flex items-center space-x-2">
                 {isOwnProfile && (
                   <Link href="/perfil/editar" className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" title="Editar Perfil">
@@ -340,7 +332,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Professions container - Modified for responsive layout */}
             <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
               {user.professions && user.professions.map((profession) => (
                 <span key={profession.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
@@ -354,7 +345,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Tabs - JSX Reintroduced */}
         <div className="border-t border-secondary-200">
           <nav className="flex overflow-x-auto">
             <button
@@ -399,9 +389,8 @@ export default function ProfilePage() {
             </button>
           </nav>
         </div>
-      </div> {/* This closes the "bg-white shadow-md rounded-lg overflow-hidden" div for Profile Header + Tabs */}
+      </div>
 
-      {/* Conteúdo da Tab - JSX Reintroduced */}
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
         {activeTab === 'sobre' && (
           <div>
@@ -419,59 +408,15 @@ export default function ProfilePage() {
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
             {user.receivedReviews && user.receivedReviews.length > 0 ? (
               <div className="space-y-6">
-                {user.receivedReviews.map((review) => (
-                  <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
-                    <div className="flex items-start">
-                      {/* Avatar section temporarily commented out for debugging
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
-                              {review.giver.image ? (
-                                <Image
-                                  src={review.giver.image}
-                                  alt={review.giver.name || 'Reviewer'}
-                                  width={40}
-                                  height={40}
-                                  className="object-cover w-full h-full"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.onerror = null;
-                                    target.src = '/img/avatar_placeholder.png';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
-                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
-                                </div>
-                              )}
-                            </div>
-                      */}
-                            <div className="ml-3">
-                              <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
-                              {/* Star rating, date, and comment temporarily commented out
-                              <div className="flex items-center mt-1">
-                                <div className="flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
-                                  ))}
-                                </div>
-                                <span className="ml-2 text-xs text-secondary-500">
-                                  {new Date(review.createdAt).toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                              {review.comment && (
-                                <p className="mt-2 text-secondary-600">{review.comment}</p>
-                              )}
-                              */}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  null // Temporarily render null instead of the <p> tag
-                  // <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
-                )}
+                {user.receivedReviews.map((review) => {
+                  // All complex JSX for the review item is commented out, except for key and basic structure
+                  return (<div key={review.id}>Review placeholder: {review.id}</div>);
+                })}
               </div>
+            ) : (
+              <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
+            )}
+          </div>
         )}
 
         {/* {activeTab === 'certificacoes' && (
@@ -532,7 +477,6 @@ export default function ProfilePage() {
         )} */}
       </div>
 
-      {/* Send Service Modal - JSX Reintroduced */}
       {showSendServiceModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
@@ -585,7 +529,6 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
-      {/* <div>Isolation Test Content</div> */} {/* Removed this placeholder */}
     </div>
   );
 }
