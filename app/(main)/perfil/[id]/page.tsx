@@ -431,25 +431,25 @@ export default function ProfilePage() {
                                 </div>
                               )}
                             </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
-                        <div className="flex items-center mt-1">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
-                            ))}
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
+                              <div className="flex items-center mt-1">
+                                <div className="flex">
+                                  {[...Array(5)].map((_, i) => (
+                                    <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
+                                  ))}
+                                </div>
+                                <span className="ml-2 text-xs text-secondary-500">
+                                  {new Date(review.createdAt).toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                              {review.comment && (
+                                <p className="mt-2 text-secondary-600">{review.comment}</p>
+                              )}
+                            </div>
                           </div>
-                          <span className="ml-2 text-xs text-secondary-500">
-                            {new Date(review.createdAt).toLocaleDateString('pt-BR')}
-                          </span>
                         </div>
-                        {review.comment && (
-                          <p className="mt-2 text-secondary-600">{review.comment}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                      ))}
               </div>
             ) : (
               <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
@@ -500,7 +500,6 @@ export default function ProfilePage() {
                       alt="Trabalho"
                       className="h-full w-full object-cover"
                       onError={(e) => {
-                        console.error("Erro ao carregar imagem:", photo.url);
                         (e.target as HTMLImageElement).onerror = null;
                         (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Imagem+não+disponível";
                       }}
