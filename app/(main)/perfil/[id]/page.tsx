@@ -408,10 +408,17 @@ export default function ProfilePage() {
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
             {user.receivedReviews && user.receivedReviews.length > 0 ? (
               <div className="space-y-6">
-                {user.receivedReviews.map((review) => {
-                  // All complex JSX for the review item is commented out, except for key and basic structure
-                  return (<div key={review.id}>Review placeholder: {review.id}</div>);
-                })}
+                {user.receivedReviews.map((review) => (
+                  <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
+                    <div className="flex items-start">
+                      {/* Avatar section will be restored later */}
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
+                        {/* Star rating, date, and comment will be restored later */}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
               <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
