@@ -401,141 +401,66 @@ export default function ProfilePage() {
         </div>
       </div> {/* This closes the "bg-white shadow-md rounded-lg overflow-hidden" div for Profile Header + Tabs */}
 
-      {/* Conteúdo da Tab - JSX Reintroduced */}
+      {/* Tab Content Section - Kept Commented Out
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
-        {activeTab === 'sobre' && (
-          <div>
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">Sobre</h2>
-            {user.about ? (
-              <p className="text-secondary-600 whitespace-pre-line">{user.about}</p>
-            ) : (
-              <p className="text-secondary-500">Nenhuma informação disponível.</p>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'avaliacoes' && (
-          <div>
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
-            {user.receivedReviews && user.receivedReviews.length > 0 ? (
-              <div className="space-y-6">
-                {user.receivedReviews.map((review) => (
-                  <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gray-200">
-                              {review.giver.image ? (
-                                <Image
-                                  src={review.giver.image}
-                                  alt={review.giver.name || 'Reviewer'}
-                                  width={40}
-                                  height={40}
-                                  className="object-cover w-full h-full"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.onerror = null; // Prevent infinite loop if placeholder also fails
-                                    target.src = '/img/avatar_placeholder.png'; // Default placeholder
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-primary-100 flex items-center justify-center text-primary-700 font-medium">
-                                  {review.giver.name?.charAt(0)?.toUpperCase() || '?'}
-                                ijd
-                              )}
-                            </div>
-                            <div className="ml-3">
-                              <p className="text-sm font-medium text-secondary-900">{review.giver.name || 'Avaliador Anônimo'}</p>
-                              <div className="flex items-center mt-1">
-                                <div className="flex">
-                                  {[...Array(5)].map((_, i) => (
-                                    <span key={i} className={`text-${i < review.rating ? 'yellow' : 'secondary'}-400`}>★</span>
-                                  ))}
-                                </div>
-                                <span className="ml-2 text-xs text-secondary-500">
-                                  {new Date(review.createdAt).toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                              {review.comment && (
-                                <p className="mt-2 text-secondary-600">{review.comment}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
-                )}
-              </div>
-            // Removed leftover IIFE closing: ); })()
-        )}
-
-        {activeTab === 'certificacoes' && (
-          <div>
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
-            {user.certificates && user.certificates.length > 0 ? (
-              <div className="space-y-4">
-                {user.certificates.map((certificate) => (
-                  <div key={certificate.id} className="border border-secondary-200 rounded-lg p-4">
-                    <h3 className="font-medium text-secondary-900">{certificate.title}</h3>
-                    <p className="text-secondary-600 text-sm mt-1">{certificate.institution}</p>
-                    <p className="text-secondary-500 text-sm mt-1">
-                      Emitido em: {new Date(certificate.issueDate).toLocaleDateString('pt-BR')}
-                    </p>
-                    {certificate.url && (
-                      <a
-                        href={certificate.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700 text-sm mt-2 inline-block"
-                      >
-                        Ver certificado
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-secondary-500">Nenhuma certificação disponível.</p>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'galeria' && (
-          <div>
-            <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
-            {user.photos && user.photos.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {user.photos.map((photo) => (
-                  <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                    <img
-                      src={photo.url}
-                      alt="Trabalho"
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        console.error("Erro ao carregar imagem:", photo.url);
-                        (e.target as HTMLImageElement).onerror = null;
-                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/300?text=Imagem+não+disponível";
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-secondary-500">Nenhuma foto disponível.</p>
-            )}
-          </div>
-        )}
+        ...
       </div>
+      */}
 
-      {/* Send Service Modal - Temporarily Commented Out
+      {/* Send Service Modal - JSX Reintroduced */}
       {showSendServiceModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
-          ...
+          <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-secondary-900 mb-4">Enviar Serviço Diretamente</h2>
+
+            {sendServiceLoading && !userServices.length ? (
+              <p>Carregando seus serviços...</p>
+            ) : userServices.length === 0 ? (
+              <p className="text-secondary-600 mb-4">Você não possui serviços abertos para enviar.</p>
+            ) : (
+              <div className="space-y-4 max-h-60 overflow-y-auto mb-6">
+                {userServices.map((service: Service) => (
+                  <label key={service.id} className="flex items-center p-3 rounded-md hover:bg-gray-100 cursor-pointer border border-gray-200">
+                    <input
+                      type="radio"
+                      name="selectedService"
+                      value={service.id}
+                      checked={selectedServiceId === service.id}
+                      onChange={() => setSelectedServiceId(service.id)}
+                      className="form-radio h-5 w-5 text-primary-600"
+                    />
+                    <div className="ml-3">
+                      <span className="block text-sm font-medium text-secondary-800">{service.title}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowSendServiceModal(false);
+                  setSelectedServiceId(null);
+                  setUserServices([]);
+                }}
+                className="btn-outline py-2 px-4"
+                disabled={sendServiceLoading && userServices.length > 0}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendService}
+                disabled={!selectedServiceId || (sendServiceLoading && userServices.length > 0) || userServices.length === 0}
+                className="btn-primary py-2 px-4"
+              >
+                {sendServiceLoading && userServices.length > 0 ? 'Enviando...' : 'Confirmar e Enviar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-      */}
-      <div>Isolation Test Content</div>
+      {/* <div>Isolation Test Content</div> */} {/* Removed this placeholder */}
     </div>
   );
 }
