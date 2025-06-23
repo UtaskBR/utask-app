@@ -424,7 +424,9 @@ export default function ProfilePage() {
                             {new Date(review.createdAt).toLocaleDateString('pt-BR')}
                           </span>
                         </div>
-                        {/* Comment will be restored later */}
+                        {review.comment && (
+                          <p className="mt-2 text-secondary-600">{review.comment}</p>
+                        )}
                       </div>
                     </div>
                   </div>
