@@ -457,7 +457,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* {activeTab === 'certificacoes' && (
+        {activeTab === 'certificacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
             {user.certificates && user.certificates.length > 0 ? (
@@ -486,9 +486,9 @@ export default function ProfilePage() {
               <p className="text-secondary-500">Nenhuma certificação disponível.</p>
             )}
           </div>
-        )} */}
+        )}
 
-        {/* {activeTab === 'galeria' && (
+        {activeTab === 'galeria' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
             {user.photos && user.photos.length > 0 ? (
@@ -512,7 +512,7 @@ export default function ProfilePage() {
               <p className="text-secondary-500">Nenhuma foto disponível.</p>
             )}
           </div>
-        )} */}
+        )}
       </div>
 
       {showSendServiceModal && (
