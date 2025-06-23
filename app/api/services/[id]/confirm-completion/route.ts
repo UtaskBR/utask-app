@@ -259,9 +259,13 @@ export async function POST(
       try {
         await prisma.$transaction(async (tx) => {
           // Debit from creator's wallet
+          // Now also decrement reservedBalance
           await tx.wallet.update({
             where: { id: creatorWallet.id },
-            data: { balance: { decrement: amountToPay } },
+            data: {
+              balance: { decrement: amountToPay },
+              reservedBalance: { decrement: amountToPay } // Release the reserved amount
+            },
           });
 
           // Credit to provider's wallet (menos a taxa da plataforma)

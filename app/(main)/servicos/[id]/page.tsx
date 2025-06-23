@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReviewPopup from '../../../components/ReviewPopup'; // Using relative path
+import InsufficientFundsModal from '@/app/components/InsufficientFundsModal'; // Import the new modal
 
 // Placeholder icons (Heroicons)
 const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
@@ -65,6 +66,7 @@ export default function ServiceDetailPage() {
   const [showUserProfile, setShowUserProfile] = useState<string | null>(null);
   const [showReviewPopup, setShowReviewPopup] = useState(false);
   const [serviceProviderForReview, setServiceProviderForReview] = useState<{ id: string; name: string; image?: string | null; } | null>(null);
+  const [showInsufficientFundsModal, setShowInsufficientFundsModal] = useState(false);
 
   const fetchService = useCallback(async () => {
     if (!serviceId) return;
@@ -146,7 +148,6 @@ export default function ServiceDetailPage() {
 
   const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
     setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
-    // let operationSucceeded = false; // Flag to track success - Not strictly needed if not re-throwing
     try {
       const response = await fetch(url, {
         method,
@@ -155,25 +156,38 @@ export default function ServiceDetailPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || `Falha na operação: ${response.status} ${response.statusText}`);
+        // Throw an error object that includes the structured error from API if possible
+        const errorToThrow = new Error(data.error || `Falha na operação: ${response.status} ${response.statusText}`);
+        (errorToThrow as any).isApiError = true;
+        (errorToThrow as any).apiData = data; // Attach full API error data
+        throw errorToThrow;
       }
       if (successMessage) {
         console.log(successMessage); // Or use a toast notification
       }
-      // operationSucceeded = true; // Not strictly needed
-      return data;
+      return data; // Return data on success
     } catch (err: any) {
-      setError(err.message);
-      // Do not re-throw if setError is the intended way to communicate failure to UI
+      // Re-throw the error to be caught by the caller
+      throw err;
     } finally {
-      // Always refresh service data to get the latest state from the server
-      fetchService();
+      // Removed fetchService() from here to give caller more control
       setActionLoading(null);
     }
   };
 
   // --- Bid Actions by Service Creator ---
-  const handleAcceptBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/accept`, 'POST', { bidId }, 'Proposta aceita');
+  const handleAcceptBid = async (bidId: string) => {
+    try {
+      await callApi(`/api/services/${serviceId}/bids/${bidId}/accept`, 'POST', { bidId }, 'Proposta aceita');
+      fetchService(); // Fetch service only on successful bid acceptance
+    } catch (err: any) {
+      if (err.isApiError && err.apiData && err.apiData.error === 'INSUFFICIENT_FUNDS') {
+        setShowInsufficientFundsModal(true);
+      } else {
+        setError(err.message || 'Ocorreu um erro ao aceitar a proposta.');
+      }
+    }
+  };
   const handleRejectBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/reject`, 'POST', { bidId }, 'Proposta rejeitada');
   const handleCounterOfferToProvider = (bidId: string) => {
     const newPrice = prompt('Digite o novo valor para a contraproposta (R$):');
@@ -694,6 +708,11 @@ export default function ServiceDetailPage() {
           }}
         />
       )}
+
+      <InsufficientFundsModal
+        show={showInsufficientFundsModal}
+        onClose={() => setShowInsufficientFundsModal(false)}
+      />
     </div>
   );
 }

@@ -17,6 +17,17 @@ export async function POST(
     }
 
     const { id: serviceId, bidId } = params;
+    const userId = session.user.id;
+
+    // Fetch the service creator's wallet first
+    const creatorWallet = await prisma.wallet.findUnique({
+      where: { userId: userId },
+    });
+
+    if (!creatorWallet) {
+      // This case should ideally not happen if wallets are created on user registration
+      return NextResponse.json({ error: "Carteira do criador não encontrada." }, { status: 500 });
+    }
 
     const bid = await prisma.bid.findUnique({
       where: { id: bidId },
@@ -46,6 +57,25 @@ export async function POST(
       return NextResponse.json({ error: "Apenas o criador do serviço pode aceitar propostas" }, { status: 403 });
     }
 
+    if (bid.service.status !== "OPEN") {
+      return NextResponse.json({ error: "Este serviço não está mais aberto a propostas." }, { status: 400 });
+    }
+
+    if (!bid.price || bid.price <= 0) {
+      // If bid price is zero or not set, skip funds check and reservation.
+      // This case might need specific business logic: can services be free?
+      // For now, we proceed without reservation for zero-price bids.
+      console.log(`Bid ${bidId} for service ${serviceId} has no price or zero price. Skipping funds check.`);
+    } else {
+      const availableBalance = creatorWallet.balance - creatorWallet.reservedBalance;
+      if (availableBalance < bid.price) {
+        return NextResponse.json(
+          { error: "INSUFFICIENT_FUNDS", message: "Saldo insuficiente para aceitar esta proposta." },
+          { status: 402 } // 402 Payment Required is fitting
+        );
+      }
+    }
+
     // Formatar valores para exibição
     const formattedPrice = bid.price ? `R$ ${bid.price.toFixed(2)}` : "valor não especificado";
     
@@ -62,49 +92,62 @@ export async function POST(
       });
     }
 
-    // Atualizar status da proposta aceita
-    const updatedBid = await prisma.bid.update({
-      where: { id: bidId },
-      data: { status: "ACCEPTED" }
-    });
-
-    // Atualizar o status do serviço
-    await prisma.service.update({
-      where: { id: serviceId },
-      data: { 
-        status: "IN_PROGRESS",
-        price: bid.price, // <-- valor aceito
-        date: bid.proposedDate // <-- data combinada
+    // Use Prisma transaction to ensure atomicity
+    const updatedBid = await prisma.$transaction(async (tx) => {
+      // Reserve funds if bid.price is valid
+      if (bid.price && bid.price > 0) {
+        await tx.wallet.update({
+          where: { id: creatorWallet.id },
+          data: { reservedBalance: { increment: bid.price } },
+        });
       }
-    });
 
-    // Rejeitar todas as outras propostas
-    await prisma.bid.updateMany({
-      where: {
-        serviceId,
-        id: { not: bidId }
-      },
-      data: { status: "REJECTED" }
-    });
+      // Atualizar status da proposta aceita
+      const acceptedBid = await tx.bid.update({
+        where: { id: bidId },
+        data: { status: "ACCEPTED" },
+      });
 
-    // Notificação para o prestador com detalhes completos
-    await prisma.notification.create({
-      data: {
-        id: crypto.randomUUID(),
-        type: "ACCEPTANCE",
-        title: "Proposta Aceita",
-        message: `Sua proposta para o serviço "${bid.service.title}" foi aceita! Valor: ${formattedPrice}. Data/hora: ${formattedDate}. O serviço está agora em andamento.`,
-        receiverId: bid.provider.id,
-        senderId: session.user.id,
-        bidId: bid.id,
-        serviceId: bid.service.id,
-        read: false
-      }
+      // Atualizar o status do serviço
+      await tx.service.update({
+        where: { id: serviceId },
+        data: {
+          status: "IN_PROGRESS",
+          price: bid.price, // <-- valor aceito
+          date: bid.proposedDate, // <-- data combinada
+        },
+      });
+
+      // Rejeitar todas as outras propostas
+      await tx.bid.updateMany({
+        where: {
+          serviceId,
+          id: { not: bidId },
+        },
+        data: { status: "REJECTED" },
+      });
+
+      // Notificação para o prestador com detalhes completos
+      await tx.notification.create({
+        data: {
+          id: crypto.randomUUID(),
+          type: "ACCEPTANCE",
+          title: "Proposta Aceita",
+          message: `Sua proposta para o serviço "${bid.service.title}" foi aceita! Valor: ${formattedPrice}. Data/hora: ${formattedDate}. O serviço está agora em andamento.`,
+          receiverId: bid.provider.id,
+          senderId: userId,
+          bidId: acceptedBid.id,
+          serviceId: bid.service.id,
+          read: false,
+        },
+      });
+      return acceptedBid;
     });
 
     return NextResponse.json(updatedBid);
   } catch (error) {
     console.error("Erro ao aceitar proposta:", error);
+    // Handle potential transaction rollback error if needed, though Prisma usually handles it
     return NextResponse.json(
       { error: "Erro interno: " + (error instanceof Error ? error.message : String(error)) },
       { status: 500 }

@@ -61,7 +61,8 @@ export default function CarteiraPage() {
   }
 
   interface WalletResponse {
-    balance: number;
+    balance: number; // This will represent total balance
+    reservedBalance?: number; // Optional for backward compatibility if API caches
     transactions: TransactionResponse[];
   }
 
@@ -148,12 +149,22 @@ export default function CarteiraPage() {
           <>
             {/* Saldo */}
             <div className="bg-white shadow-md rounded-lg p-6 mb-8">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-lg font-medium text-secondary-600">Saldo Disponível</h2>
-                  <p className="text-3xl font-bold text-primary-600 mt-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                <div className="md:col-span-2">
+                  <h2 className="text-lg font-medium text-secondary-600">Saldo Total</h2>
+                  <p className="text-2xl font-bold text-primary-700 mt-1">
                     {formatCurrency(wallet?.balance || 0)}
                   </p>
+                  {typeof wallet?.reservedBalance === 'number' && (
+                    <>
+                      <p className="text-sm text-secondary-500 mt-2">
+                        Reservado para serviços: {formatCurrency(wallet.reservedBalance)}
+                      </p>
+                      <p className="text-xl font-bold text-primary-600 mt-1">
+                        Saldo Disponível: {formatCurrency((wallet?.balance || 0) - wallet.reservedBalance)}
+                      </p>
+                    </>
+                  )}
                 </div>
                 
                 <button
