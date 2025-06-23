@@ -417,7 +417,7 @@ export default function ProfilePage() {
         {activeTab === 'avaliacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
-            {/* {user.receivedReviews && user.receivedReviews.length > 0 ? (
+            {user.receivedReviews && user.receivedReviews.length > 0 ? (
               <div className="space-y-6">
                 {user.receivedReviews.map((review) => (
                   <div key={review.id} className="border-b border-secondary-200 pb-6 last:border-b-0 last:pb-0">
@@ -465,8 +465,7 @@ export default function ProfilePage() {
                   </div>
                 ) : (
                   <p className="text-secondary-500">Nenhuma avaliação disponível.</p>
-                )} */}
-                <p>Avaliações content temporarily removed for testing.</p>
+                )}
               </div>
         )}
 
