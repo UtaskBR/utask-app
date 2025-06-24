@@ -136,7 +136,8 @@ model Photo {
 
 model Wallet {
   id           String        @id @default(cuid())
-  balance      Float         @default(0)
+  balance      Float         @default(0) // Represents TOTAL balance
+  reservedBalance Float      @default(0) // Funds reserved for active services
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   userId       String?       @unique
