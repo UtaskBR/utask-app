@@ -168,7 +168,7 @@ export default function ServiceDetailPage() {
       return data; // Return data on success
     } catch (err: any) {
       // Re-throw the error to be caught by the caller
-      throw err;
+      throw err; 
     } finally {
       // Removed fetchService() from here to give caller more control
       setActionLoading(null);
@@ -308,7 +308,7 @@ export default function ServiceDetailPage() {
                   <p className="text-sm text-gray-600">{user.about}</p>
                 </div>
               )}
-
+              
               {user.professions && user.professions.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-1">Profissões</h4>
@@ -321,7 +321,7 @@ export default function ServiceDetailPage() {
                   </div>
                 </div>
               )}
-
+              
               {user.reviews && user.reviews.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-1">Avaliações Recentes</h4>
@@ -343,7 +343,7 @@ export default function ServiceDetailPage() {
           ) : (
             <p className="text-center text-gray-600">Não foi possível carregar o perfil.</p>
           )}
-
+          
           <div className="mt-4 space-y-2">
             <Link href={`/perfil/${userId}`} passHref>
               <button className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium text-center">
@@ -495,7 +495,7 @@ export default function ServiceDetailPage() {
           <div className="bg-white shadow-md rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-3">Criador do Serviço</h2>
             <div className="flex items-center space-x-3">
-              <div
+              <div 
                 className="h-12 w-12 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
                 onClick={() => setShowUserProfile(service.creatorId)}
               >
@@ -508,7 +508,7 @@ export default function ServiceDetailPage() {
                 )}
               </div>
               <div>
-                <p
+                <p 
                   className="font-medium text-gray-900 cursor-pointer hover:underline"
                   onClick={() => setShowUserProfile(service.creatorId)}
                 >
@@ -531,17 +531,17 @@ export default function ServiceDetailPage() {
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Candidatar-se para este Serviço</h2>
               <div className="space-y-4">
-                <button
-                  onClick={handleApplyDirectly}
-                  className={`${btnSuccess} w-full`}
+                <button 
+                  onClick={handleApplyDirectly} 
+                  className={`${btnSuccess} w-full`} 
                   disabled={!!actionLoading}
                 >
                   {actionLoading === 'applyDirectly' ? 'Enviando...' : <><ThumbUpIcon /> Aceitar Serviço</>}
                 </button>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">ou</p>
-                  <button
-                    onClick={() => setShowBidForm(!showBidForm)}
+                  <button 
+                    onClick={() => setShowBidForm(!showBidForm)} 
                     className={`mt-2 ${btnSecondary}`}
                   >
                     {showBidForm ? 'Cancelar Proposta' : 'Fazer uma Proposta Personalizada'}
@@ -599,7 +599,7 @@ export default function ServiceDetailPage() {
                     <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
-                          <div
+                          <div 
                             className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
                             onClick={() => setShowUserProfile(bid.providerId)}
                           >
@@ -611,7 +611,7 @@ export default function ServiceDetailPage() {
                               </div>
                             )}
                           </div>
-                          <p
+                          <p 
                             className="font-semibold text-gray-800 cursor-pointer hover:underline"
                             onClick={() => setShowUserProfile(bid.providerId)}
                           >
@@ -629,7 +629,7 @@ export default function ServiceDetailPage() {
                         </p>
                       )}
                       {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
-
+                      
                       {/* Actions for Service Creator */}
                       {isCreator && isServiceOpen && !acceptedBid && (
                         <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
@@ -684,9 +684,9 @@ export default function ServiceDetailPage() {
 
       {/* User Profile Modal */}
       {showUserProfile && (
-        <UserProfileModal
-          userId={showUserProfile}
-          onClose={() => setShowUserProfile(null)}
+        <UserProfileModal 
+          userId={showUserProfile} 
+          onClose={() => setShowUserProfile(null)} 
         />
       )}
 
@@ -697,7 +697,7 @@ export default function ServiceDetailPage() {
             setShowReviewPopup(false);
             setServiceProviderForReview(null);
             // Optionally, refresh service data again after review popup closes
-            // fetchService();
+            // fetchService(); 
           }}
           serviceProvider={serviceProviderForReview}
           serviceId={service.id}
