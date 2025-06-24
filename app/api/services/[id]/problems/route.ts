@@ -88,85 +88,75 @@ export async function POST(
       });
     }
 
-    // Registrar o cancelamento usando ServiceCancelRequest em vez de ServiceProblem
-    await prisma.serviceCancelRequest.create({
-      data: {
-        service: { connect: { id } },
-        requester: { connect: { id: session.user.id } },
-        reason: body.reason || "Problema não especificado"
+    // Within a transaction to ensure atomicity
+    await prisma.$transaction(async (tx) => {
+      // 1. Record the problem
+      await tx.problem.create({
+        data: {
+          description: body.reason || "Problema não especificado",
+          reporterId: session.user.id as string,
+          serviceId: id,
+        },
+      });
+
+      // 2. Update the service status to DISPUTED
+      // IMPORTANT: Do NOT change reservedBalance or balance here. Funds remain reserved.
+      await tx.service.update({
+        where: { id },
+        data: { status: "DISPUTED", updatedAt: new Date() },
+      });
+
+      // 3. Send notifications
+      const acceptedBid = existingService.bids[0]; // Assuming there's always one for IN_PROGRESS
+      const providerId = acceptedBid?.providerId;
+      const creatorId = existingService.creatorId;
+      const reporterName = session.user.id === creatorId
+        ? existingService.creator.name || "O contratante"
+        : acceptedBid?.provider?.name || "O prestador";
+
+      const notificationMessage = `Um problema foi reportado por ${reporterName} no serviço "${existingService.title}" (${formattedPrice}, ${formattedDate}). O serviço está agora em disputa. Os fundos permanecem reservados até a resolução. Motivo: ${body.reason || "Não especificado"}`;
+
+      // Notify Creator
+      await tx.notification.create({
+        data: {
+          id: crypto.randomUUID(),
+          type: "SERVICE_DISPUTED",
+          title: "Serviço em Disputa",
+          message: notificationMessage,
+          receiverId: creatorId,
+          senderId: session.user.id,
+          serviceId: id,
+          read: false,
+        },
+      });
+
+      // Notify Provider (if provider exists)
+      if (providerId && providerId !== creatorId) { // Avoid double notification if creator is also provider (unlikely scenario but safe)
+        await tx.notification.create({
+          data: {
+            id: crypto.randomUUID(),
+            type: "SERVICE_DISPUTED",
+            title: "Serviço em Disputa",
+            message: notificationMessage,
+            receiverId: providerId,
+            senderId: session.user.id,
+            serviceId: id,
+            read: false,
+          },
+        });
       }
+      // TODO: Consider notifying admins if an admin system/role exists
     });
 
-    // Estornar o valor para o contratante
-    // Primeiro, verificar se o serviço tem um valor definido
-    const acceptedBid = existingService.bids[0];
-    const serviceValue = acceptedBid?.price ?? existingService.price;
+    // const acceptedBid = existingService.bids[0]; // This is already fetched and available as existingService.bids[0]
+    // const providerId = existingService.bids[0]?.providerId; // Use optional chaining
 
-    if (serviceValue == null) {
-      return NextResponse.json(
-        { error: "Valor do serviço não definido para estorno" },
-        { status: 400 }
-      );
-    }
-
-    // Estornar o valor para a carteira do contratante
-    await prisma.wallet.update({
-      where: { userId: existingService.creatorId },
-      data: { balance: { increment: serviceValue } }
-    });
-
-    // Registrar a transação de estorno
-    await prisma.transaction.create({
-      data: {
-        amount: serviceValue,
-        type: "REFUND",
-        description: `Estorno pelo serviço: ${existingService.title}. Motivo: ${body.reason || "Problema reportado"}`,
-        serviceId: id,
-        receiverId: existingService.creatorId
-      }
-    });
-
-    // Atualizar o status do serviço para cancelado
-    await prisma.service.update({
-      where: { id },
-      data: { status: "CANCELLED" }
-    });
-
-    // Criar notificações para ambas as partes
-    const providerId = acceptedBid.providerId;
-    const requesterName = session.user.id === existingService.creatorId 
-      ? existingService.creator.name || "O contratante" 
-      : acceptedBid.provider.name || "O prestador";
-
-    await prisma.notification.create({
-      data: {
-        id: crypto.randomUUID(),
-        type: "SERVICE_PROBLEM",
-        title: "Serviço Cancelado por Problema",
-        message: `Um problema foi reportado por ${requesterName} no serviço "${existingService.title}" (${formattedPrice}, ${formattedDate}) e ele foi cancelado. O valor foi estornado para sua carteira. Motivo: ${body.reason || "Não especificado"}`,
-        receiverId: existingService.creatorId,
-        senderId: session.user.id,
-        serviceId: id,
-        read: false
-      }
-    });
-
-    await prisma.notification.create({
-      data: {
-        id: crypto.randomUUID(),
-        type: "SERVICE_PROBLEM",
-        title: "Serviço Cancelado por Problema",
-        message: `Um problema foi reportado por ${requesterName} no serviço "${existingService.title}" (${formattedPrice}, ${formattedDate}) e ele foi cancelado. Motivo: ${body.reason || "Não especificado"}`,
-        receiverId: providerId,
-        senderId: session.user.id,
-        serviceId: id,
-        read: false
-      }
-    });
+    // Note: Notifications are now created inside the transaction.
+    // The `requesterName` logic is also inside the transaction.
 
     return NextResponse.json({
-      message: "Problema reportado com sucesso. O serviço foi cancelado e o valor estornado.",
-      status: "CANCELLED"
+      message: "Problema reportado com sucesso. O serviço está agora em disputa.",
+      serviceStatus: "DISPUTED" // Reflect the new status
     });
   } catch (error) {
     console.error("Erro ao reportar problema:", error);
