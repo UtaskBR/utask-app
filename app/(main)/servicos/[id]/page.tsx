@@ -38,6 +38,11 @@ export default function ServiceDetailPage() {
     createdAt: string;
   };
   type ServiceCreator = { id: string; name?: string | null; image?: string | null; rating?: number | null; about?: string | null };
+  type CompletionConfirmation = {
+    userId: string;
+    confirmedAt: string;
+  };
+
   type Service = {
     id: string;
     title: string;
@@ -52,6 +57,7 @@ export default function ServiceDetailPage() {
     creator: ServiceCreator;
     photos?: Photo[];
     bids?: Bid[];
+    completionConfirmations?: CompletionConfirmation[];
   };
 
   const [service, setService] = useState<Service | null>(null);
