@@ -91,6 +91,34 @@ export default function ServiceDetailPage() {
     fetchService();
   }, [fetchService]);
 
+  // Effect to check for ?promptReview=true query parameter
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const shouldPromptReview = queryParams.get('promptReview') === 'true';
+    
+    // Recalculate isCreatorReviewPending here or ensure it's up-to-date
+    // This simplified check assumes service data is loaded.
+    const currentUserId = session?.user?.id;
+    const isCreator = service?.creatorId === currentUserId;
+    // A more robust isCreatorReviewPending would check if a review actually exists.
+    // For now, if popup isn't showing, service is complete, and user is creator, prompt.
+    const localIsCreatorReviewPending = service?.status === 'COMPLETED' && isCreator && !showReviewPopup;
+
+
+    if (shouldPromptReview && localIsCreatorReviewPending && service && acceptedBid?.provider) {
+      setServiceProviderForReview({
+        id: acceptedBid.provider.id,
+        name: acceptedBid.provider.name || 'Prestador Desconhecido',
+        image: acceptedBid.provider.image,
+      });
+      setShowReviewPopup(true);
+
+      // Remove the query parameter to prevent re-triggering on refresh
+      const newPath = window.location.pathname; // Keep current path
+      router.replace(newPath, undefined); // undefined for shallow not needed here
+    }
+  }, [service, session, router, showReviewPopup, acceptedBid]); // Ensure all dependencies are listed
+
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setBidForm((prev) => ({ ...prev, [name]: value }));
@@ -371,7 +399,53 @@ export default function ServiceDetailPage() {
   const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const isServiceInProgress = service.status === 'IN_PROGRESS';
   const isServiceOpen = service.status === 'OPEN';
-  const isUserAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
+  const isUserAcceptedProvider = acceptedBid?.providerId === session?.user.id;
+
+  // --- Derived states for UI logic ---
+  let currentUserConfirmed = false;
+  let otherPartyConfirmed = false;
+  let otherPartyName = '';
+  let isCreatorReviewPending = false; // Placeholder, full logic for this will be more complex
+
+  const creatorId = service.creatorId;
+  const providerId = acceptedBid?.providerId;
+
+  if (session?.user?.id && service?.completionConfirmations && providerId) {
+    const currentUserId = session.user.id;
+    currentUserConfirmed = service.completionConfirmations.some(c => c.userId === currentUserId);
+
+    const creatorConfirmation = service.completionConfirmations.some(c => c.userId === creatorId);
+    const providerConfirmation = service.completionConfirmations.some(c => c.userId === providerId);
+
+    if (currentUserId === creatorId) {
+      otherPartyConfirmed = providerConfirmation;
+      otherPartyName = acceptedBid?.provider?.name || 'Prestador';
+    } else if (currentUserId === providerId) {
+      otherPartyConfirmed = creatorConfirmation;
+      otherPartyName = service.creator?.name || 'Criador do serviço';
+    }
+    
+    // Basic check for review pending (can be refined later if review status is directly available)
+    if (service.status === 'COMPLETED' && currentUserId === creatorId) {
+        // This would ideally check if a review from creator to provider for this service exists
+        // For now, we'll assume if popup isn't showing and service is complete, review might be pending
+        // This flag will primarily be used to show the "Avaliar" button
+        isCreatorReviewPending = !showReviewPopup; // Simplified: if popup not shown, assume pending
+    }
+
+    console.log({
+      currentUserId,
+      creatorId,
+      providerId,
+      completionConfirmations: service.completionConfirmations,
+      currentUserConfirmed,
+      otherPartyConfirmed,
+      otherPartyName,
+      serviceStatus: service.status,
+      isCreatorReviewPending
+    });
+  }
+  // --- End Derived states ---
 
   let bidsToDisplay = [];
   if (isCreator) {
@@ -481,13 +555,51 @@ export default function ServiceDetailPage() {
             )}
           </div>
 
-          {/* Service Actions: Confirm Completion / Report Problem */}
-          {isServiceInProgress && (isCreator || isUserAcceptedProvider) && (
-            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
-              <button onClick={handleConfirmCompletion} className={`${btnSuccess} w-full sm:w-auto`} disabled={!!actionLoading}><CheckCircleIcon /> Confirmar Conclusão</button>
-              <button onClick={handleReportProblem} className={`${btnDanger} w-full sm:w-auto`} disabled={!!actionLoading}><ExclamationTriangleIcon /> Tenho um Problema</button>
-            </div>
-          )}
+          {/* Service Actions Logic Updated */}
+          <div className="p-6 border-t border-gray-200">
+            {service.status === 'DISPUTED' ? (
+              <p className="text-red-600 font-semibold">Este serviço está em disputa.</p>
+            ) : service.status === 'COMPLETED' ? (
+              isCreator && isCreatorReviewPending && service.price && service.price > 0 ? ( // Only show evaluate if paid service
+                <button 
+                  onClick={() => {
+                    if (acceptedBid?.provider) {
+                      setServiceProviderForReview({
+                        id: acceptedBid.provider.id,
+                        name: acceptedBid.provider.name || 'Prestador Desconhecido',
+                        image: acceptedBid.provider.image,
+                      });
+                      setShowReviewPopup(true);
+                    }
+                  }} 
+                  className={`${btnPrimary} w-full`}
+                >
+                  Avaliar {acceptedBid?.provider?.name || 'Prestador'}
+                </button>
+              ) : (
+                <p className="text-green-600 font-semibold">Serviço concluído.</p>
+              )
+            ) : service.status === 'IN_PROGRESS' && (isCreator || isUserAcceptedProvider) ? (
+              currentUserConfirmed && !otherPartyConfirmed ? (
+                <p className="text-blue-600 font-semibold">Aguardando confirmação de {otherPartyName}.</p>
+              ) : !currentUserConfirmed ? (
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={handleConfirmCompletion} 
+                    className={`${btnSuccess} w-full sm:w-auto`} 
+                    disabled={!!actionLoading}>
+                      <CheckCircleIcon /> Confirmar Conclusão
+                  </button>
+                  <button 
+                    onClick={handleReportProblem} 
+                    className={`${btnDanger} w-full sm:w-auto`} 
+                    disabled={!!actionLoading}>
+                      <ExclamationTriangleIcon /> Tenho um Problema
+                  </button>
+                </div>
+              ) : null // Both confirmed, should move to COMPLETED (handled by above) or this state shouldn't be hit if logic is right
+            ) : null}
+          </div>
         </div>
 
         {/* Creator Info & Bid Form/List Column */}
