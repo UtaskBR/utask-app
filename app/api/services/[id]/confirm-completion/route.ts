@@ -262,7 +262,7 @@ export async function POST(
           // Now also decrement reservedBalance
           await tx.wallet.update({
             where: { id: creatorWallet.id },
-            data: {
+            data: { 
               balance: { decrement: amountToPay },
               reservedBalance: { decrement: amountToPay } // Release the reserved amount
             },
@@ -361,6 +361,22 @@ export async function POST(
             }
           ],
         });
+
+        // Add new notification for pending review to the service creator
+        if (service.price && service.price > 0) { // Only if it was a paid service
+            await prisma.notification.create({
+                data: {
+                    id: crypto.randomUUID(),
+                    type: "PENDING_REVIEW",
+                    title: "Avaliação Pendente",
+                    message: `Você precisa avaliar ${acceptedBid.provider.name || 'o prestador'} pelo serviço "${service.title}". Clique aqui para avaliar.`,
+                    receiverId: creatorId, // Notification is for the service creator
+                    senderId: providerId, // Sender can be the provider or system
+                    serviceId: serviceId,
+                    read: false,
+                }
+            });
+        }
 
         return NextResponse.json({
           message: "Serviço concluído e pagamento processado com sucesso!",
