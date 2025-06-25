@@ -93,19 +93,16 @@ export default function ServiceDetailPage() {
 
   // Effect to check for ?promptReview=true query parameter
   useEffect(() => {
+    if (!service || !session?.user || !acceptedBid) return; // Guard: ensure data is available
+
     const queryParams = new URLSearchParams(window.location.search);
     const shouldPromptReview = queryParams.get('promptReview') === 'true';
 
-    // Recalculate isCreatorReviewPending here or ensure it's up-to-date
-    // This simplified check assumes service data is loaded.
-    const currentUserId = session?.user?.id;
-    const isCreator = service?.creatorId === currentUserId;
-    // A more robust isCreatorReviewPending would check if a review actually exists.
-    // For now, if popup isn't showing, service is complete, and user is creator, prompt.
-    const localIsCreatorReviewPending = service?.status === 'COMPLETED' && isCreator && !showReviewPopup;
+    const currentUserId = session.user.id;
+    const isCreator = service.creatorId === currentUserId;
+    const localIsCreatorReviewPending = service.status === 'COMPLETED' && isCreator && !showReviewPopup;
 
-
-    if (shouldPromptReview && localIsCreatorReviewPending && service && acceptedBid?.provider) {
+    if (shouldPromptReview && localIsCreatorReviewPending && acceptedBid.provider) {
       setServiceProviderForReview({
         id: acceptedBid.provider.id,
         name: acceptedBid.provider.name || 'Prestador Desconhecido',
@@ -114,10 +111,12 @@ export default function ServiceDetailPage() {
       setShowReviewPopup(true);
 
       // Remove the query parameter to prevent re-triggering on refresh
-      const newPath = window.location.pathname; // Keep current path
-      router.replace(newPath, undefined); // undefined for shallow not needed here
+      const newPath = window.location.pathname;
+      router.replace(newPath, undefined);
     }
-  }, [service, session, router, showReviewPopup, acceptedBid]); // Ensure all dependencies are listed
+  // Ensure all dependencies that are used and could change are listed.
+  // Adding `acceptedBid` which is derived from `service.bids` but its structure is used.
+  }, [service, session, router, showReviewPopup, acceptedBid]);
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -399,40 +398,39 @@ export default function ServiceDetailPage() {
   const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const isServiceInProgress = service.status === 'IN_PROGRESS';
   const isServiceOpen = service.status === 'OPEN';
-  const isUserAcceptedProvider = acceptedBid?.providerId === session?.user.id;
+  const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
 
   // --- Derived states for UI logic ---
   let currentUserConfirmed = false;
   let otherPartyConfirmed = false;
   let otherPartyName = '';
-  let isCreatorReviewPending = false; // Placeholder, full logic for this will be more complex
+  let isCreatorReviewPending = false;
 
-  const creatorId = service.creatorId;
-  const providerId = acceptedBid?.providerId;
-
-  if (session?.user?.id && service?.completionConfirmations && providerId) {
+  // Ensure service, session, and acceptedBid (for providerId) are available before calculating
+  if (service && session?.user && acceptedBid) {
+    const creatorId = service.creatorId;
+    const providerId = acceptedBid.providerId; // acceptedBid is confirmed to exist here
     const currentUserId = session.user.id;
-    currentUserConfirmed = service.completionConfirmations.some(c => c.userId === currentUserId);
 
-    const creatorConfirmation = service.completionConfirmations.some(c => c.userId === creatorId);
-    const providerConfirmation = service.completionConfirmations.some(c => c.userId === providerId);
+    if (service.completionConfirmations) {
+        currentUserConfirmed = service.completionConfirmations.some(c => c.userId === currentUserId);
+        const creatorConfirmation = service.completionConfirmations.some(c => c.userId === creatorId);
+        const providerConfirmation = service.completionConfirmations.some(c => c.userId === providerId);
 
-    if (currentUserId === creatorId) {
-      otherPartyConfirmed = providerConfirmation;
-      otherPartyName = acceptedBid?.provider?.name || 'Prestador';
-    } else if (currentUserId === providerId) {
-      otherPartyConfirmed = creatorConfirmation;
-      otherPartyName = service.creator?.name || 'Criador do serviço';
+        if (currentUserId === creatorId) {
+          otherPartyConfirmed = providerConfirmation;
+          otherPartyName = acceptedBid.provider?.name || 'Prestador';
+        } else if (currentUserId === providerId) {
+          otherPartyConfirmed = creatorConfirmation;
+          otherPartyName = service.creator?.name || 'Criador do serviço';
+        }
     }
 
-    // Basic check for review pending (can be refined later if review status is directly available)
     if (service.status === 'COMPLETED' && currentUserId === creatorId) {
-        // This would ideally check if a review from creator to provider for this service exists
-        // For now, we'll assume if popup isn't showing and service is complete, review might be pending
-        // This flag will primarily be used to show the "Avaliar" button
-        isCreatorReviewPending = !showReviewPopup; // Simplified: if popup not shown, assume pending
+        isCreatorReviewPending = !showReviewPopup;
     }
 
+    // Console log moved inside the guard to ensure variables are defined
     console.log({
       currentUserId,
       creatorId,
