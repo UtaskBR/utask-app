@@ -97,7 +97,7 @@ export default function ServiceDetailPage() {
     if (!service || !session?.user || !acceptedBid || !searchParams) return; // Guard: ensure data & searchParams are available
 
     const shouldPromptReview = searchParams.get('promptReview') === 'true';
-    
+
     const currentUserId = session.user.id; // session.user is confirmed by the guard
     const isCreator = service.creatorId === currentUserId; // service is confirmed by the guard
     const localIsCreatorReviewPending = service.status === 'COMPLETED' && isCreator && !showReviewPopup;
@@ -111,11 +111,11 @@ export default function ServiceDetailPage() {
       setShowReviewPopup(true);
 
       // Remove the query parameter to prevent re-triggering on refresh
-      const newPath = window.location.pathname; 
-      router.replace(newPath, undefined); 
+      const newPath = window.location.pathname;
+      router.replace(newPath, undefined);
     }
   // Ensure all dependencies that are used and could change are listed.
-  }, [service, session, router, showReviewPopup, acceptedBid, searchParams]); 
+  }, [service, session, router, showReviewPopup, acceptedBid, searchParams]);
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -194,7 +194,7 @@ export default function ServiceDetailPage() {
       return data; // Return data on success
     } catch (err: any) {
       // Re-throw the error to be caught by the caller
-      throw err; 
+      throw err;
     } finally {
       // Removed fetchService() from here to give caller more control
       setActionLoading(null);
@@ -334,7 +334,7 @@ export default function ServiceDetailPage() {
                   <p className="text-sm text-gray-600">{user.about}</p>
                 </div>
               )}
-              
+
               {user.professions && user.professions.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-1">Profissões</h4>
@@ -347,7 +347,7 @@ export default function ServiceDetailPage() {
                   </div>
                 </div>
               )}
-              
+
               {user.reviews && user.reviews.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-1">Avaliações Recentes</h4>
@@ -369,7 +369,7 @@ export default function ServiceDetailPage() {
           ) : (
             <p className="text-center text-gray-600">Não foi possível carregar o perfil.</p>
           )}
-          
+
           <div className="mt-4 space-y-2">
             <Link href={`/perfil/${userId}`} passHref>
               <button className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium text-center">
@@ -399,11 +399,11 @@ export default function ServiceDetailPage() {
   const isServiceOpen = service.status === 'OPEN';
   const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
 
-  const { 
-    currentUserConfirmed, 
-    otherPartyConfirmed, 
-    otherPartyName, 
-    isCreatorReviewPending 
+  const {
+    currentUserConfirmed,
+    otherPartyConfirmed,
+    otherPartyName,
+    isCreatorReviewPending
   } = useMemo(() => {
     let CUC = false;
     let OPC = false;
@@ -428,9 +428,9 @@ export default function ServiceDetailPage() {
           OPN = service.creator?.name || 'Criador do serviço';
         }
       }
-      
+
       if (service.status === 'COMPLETED' && currentUserId === creatorId) {
-        ICRP = !showReviewPopup; 
+        ICRP = !showReviewPopup;
       }
 
       console.log({
@@ -445,22 +445,24 @@ export default function ServiceDetailPage() {
         isCreatorReviewPending_memo: ICRP
       });
     }
-    return { 
-      currentUserConfirmed: CUC, 
-      otherPartyConfirmed: OPC, 
-      otherPartyName: OPN, 
-      isCreatorReviewPending: ICRP 
+    return {
+      currentUserConfirmed: CUC,
+      otherPartyConfirmed: OPC,
+      otherPartyName: OPN,
+      isCreatorReviewPending: ICRP
     };
   }, [service, session, acceptedBid, showReviewPopup]); // Dependencies for useMemo
 
   // Early returns must come AFTER all hooks are called.
   if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando detalhes do serviço...</p></div>;
-  
+
   // Check for service after isLoading is false, because service is fetched asynchronously.
   if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
-  
-  // Constants that depend on service are defined here, AFTER service is confirmed to exist.
-  // These were the original locations, and are correct.
+
+  // Define constants that depend on 'service' and 'session' only after service is guaranteed to exist.
+  // The original declarations of these constants were higher up and could run when service was null.
+  // 'acceptedBid' is also defined here as it depends on 'service'.
+  // This is the single, correct block of these declarations.
   const isCreator = session?.user?.id === service.creatorId;
   const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
