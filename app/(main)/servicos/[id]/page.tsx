@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
 import Link from 'next/link';
 import Image from 'next/image';
 import ReviewPopup from '../../../components/ReviewPopup'; // Using relative path
@@ -22,6 +22,7 @@ export default function ServiceDetailPage() {
   const { data: session } = useSession();
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams(); // Initialize useSearchParams
   const serviceId = params.id as string;
 
   type Photo = { id: string; url: string };
@@ -93,13 +94,12 @@ export default function ServiceDetailPage() {
 
   // Effect to check for ?promptReview=true query parameter
   useEffect(() => {
-    if (!service || !session?.user || !acceptedBid) return; // Guard: ensure data is available
+    if (!service || !session?.user || !acceptedBid || !searchParams) return; // Guard: ensure data & searchParams are available
 
-    const queryParams = new URLSearchParams(window.location.search);
-    const shouldPromptReview = queryParams.get('promptReview') === 'true';
+    const shouldPromptReview = searchParams.get('promptReview') === 'true';
 
-    const currentUserId = session.user.id;
-    const isCreator = service.creatorId === currentUserId;
+    const currentUserId = session.user.id; // session.user is confirmed by the guard
+    const isCreator = service.creatorId === currentUserId; // service is confirmed by the guard
     const localIsCreatorReviewPending = service.status === 'COMPLETED' && isCreator && !showReviewPopup;
 
     if (shouldPromptReview && localIsCreatorReviewPending && acceptedBid.provider) {
@@ -115,8 +115,7 @@ export default function ServiceDetailPage() {
       router.replace(newPath, undefined);
     }
   // Ensure all dependencies that are used and could change are listed.
-  // Adding `acceptedBid` which is derived from `service.bids` but its structure is used.
-  }, [service, session, router, showReviewPopup, acceptedBid]);
+  }, [service, session, router, showReviewPopup, acceptedBid, searchParams]);
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
