@@ -459,12 +459,18 @@ export default function ServiceDetailPage() {
   // Check for service after isLoading is false, because service is fetched asynchronously.
   if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
   
-  // Now that service is guaranteed to exist, we can safely define these constants
-  // without them potentially being accessed before service is defined.
-  const isCreator = session?.user?.id === service.creatorId; 
-  // const canCurrentUserBid, existingUserBid, acceptedBid were already defined above and are safe.
-  // const isServiceInProgress, isServiceOpen were also defined above and are safe.
-
+  // Define constants that depend on 'service' and 'session' only after service is guaranteed to exist.
+  // The original declarations of these constants were higher up and could run when service was null.
+  // 'acceptedBid' is also defined here as it depends on 'service'.
+  const isCreator = session?.user?.id === service.creatorId;
+  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED'); // Moved here
+  const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
+  const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
+  const isServiceInProgress = service.status === 'IN_PROGRESS';
+  const isServiceOpen = service.status === 'OPEN';
+  // isUserAcceptedProvider is used by useMemo, ensure it's defined before or within if not dependent on other derived states.
+  // It was: const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
+  // This depends on acceptedBid, which is now defined just above.
 
   let bidsToDisplay = [];
   if (isCreator) {
