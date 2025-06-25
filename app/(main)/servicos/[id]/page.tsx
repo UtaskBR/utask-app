@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo
 import { useSession } from 'next-auth/react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation'; // Added useSearchParams
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import ReviewPopup from '../../../components/ReviewPopup'; // Using relative path
@@ -399,50 +399,59 @@ export default function ServiceDetailPage() {
   const isServiceOpen = service.status === 'OPEN';
   const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
 
-  // --- Derived states for UI logic ---
-  let currentUserConfirmed = false;
-  let otherPartyConfirmed = false;
-  let otherPartyName = '';
-  let isCreatorReviewPending = false;
+  const {
+    currentUserConfirmed,
+    otherPartyConfirmed,
+    otherPartyName,
+    isCreatorReviewPending
+  } = useMemo(() => {
+    let CUC = false;
+    let OPC = false;
+    let OPN = '';
+    let ICRP = false;
 
-  // Ensure service, session, and acceptedBid (for providerId) are available before calculating
-  if (service && session?.user && acceptedBid) {
-    const creatorId = service.creatorId;
-    const providerId = acceptedBid.providerId; // acceptedBid is confirmed to exist here
-    const currentUserId = session.user.id;
+    if (service && session?.user && acceptedBid) {
+      const creatorId = service.creatorId;
+      const providerId = acceptedBid.providerId;
+      const currentUserId = session.user.id;
 
-    if (service.completionConfirmations) {
-        currentUserConfirmed = service.completionConfirmations.some(c => c.userId === currentUserId);
+      if (service.completionConfirmations) {
+        CUC = service.completionConfirmations.some(c => c.userId === currentUserId);
         const creatorConfirmation = service.completionConfirmations.some(c => c.userId === creatorId);
         const providerConfirmation = service.completionConfirmations.some(c => c.userId === providerId);
 
         if (currentUserId === creatorId) {
-          otherPartyConfirmed = providerConfirmation;
-          otherPartyName = acceptedBid.provider?.name || 'Prestador';
+          OPC = providerConfirmation;
+          OPN = acceptedBid.provider?.name || 'Prestador';
         } else if (currentUserId === providerId) {
-          otherPartyConfirmed = creatorConfirmation;
-          otherPartyName = service.creator?.name || 'Criador do serviço';
+          OPC = creatorConfirmation;
+          OPN = service.creator?.name || 'Criador do serviço';
         }
-    }
+      }
 
-    if (service.status === 'COMPLETED' && currentUserId === creatorId) {
-        isCreatorReviewPending = !showReviewPopup;
-    }
+      if (service.status === 'COMPLETED' && currentUserId === creatorId) {
+        ICRP = !showReviewPopup;
+      }
 
-    // Console log moved inside the guard to ensure variables are defined
-    console.log({
-      currentUserId,
-      creatorId,
-      providerId,
-      completionConfirmations: service.completionConfirmations,
-      currentUserConfirmed,
-      otherPartyConfirmed,
-      otherPartyName,
-      serviceStatus: service.status,
-      isCreatorReviewPending
-    });
-  }
-  // --- End Derived states ---
+      console.log({
+        currentUserId_memo: currentUserId,
+        creatorId_memo: creatorId,
+        providerId_memo: providerId,
+        completionConfirmations_memo: service.completionConfirmations,
+        currentUserConfirmed_memo: CUC,
+        otherPartyConfirmed_memo: OPC,
+        otherPartyName_memo: OPN,
+        serviceStatus_memo: service.status,
+        isCreatorReviewPending_memo: ICRP
+      });
+    }
+    return {
+      currentUserConfirmed: CUC,
+      otherPartyConfirmed: OPC,
+      otherPartyName: OPN,
+      isCreatorReviewPending: ICRP
+    };
+  }, [service, session, acceptedBid, showReviewPopup]); // Dependencies for useMemo
 
   let bidsToDisplay = [];
   if (isCreator) {
