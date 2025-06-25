@@ -462,15 +462,15 @@ export default function ServiceDetailPage() {
   // Define constants that depend on 'service' and 'session' only after service is guaranteed to exist.
   // The original declarations of these constants were higher up and could run when service was null.
   // 'acceptedBid' is also defined here as it depends on 'service'.
+  // This is the single, correct block of these declarations.
   const isCreator = session?.user?.id === service.creatorId;
-  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED'); // Moved here
+  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
   const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
   const isServiceInProgress = service.status === 'IN_PROGRESS';
   const isServiceOpen = service.status === 'OPEN';
-  // isUserAcceptedProvider is used by useMemo, ensure it's defined before or within if not dependent on other derived states.
-  // It was: const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
-  // This depends on acceptedBid, which is now defined just above.
+  const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
+
 
   let bidsToDisplay = [];
   if (isCreator) {
