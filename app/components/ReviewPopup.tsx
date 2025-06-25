@@ -13,7 +13,7 @@ interface ReviewPopupProps {
   };
   serviceId: string;
   // Function to be called after successful submission, e.g. to update UI
-  onReviewSubmitted?: () => void;
+  onReviewSubmitted?: () => void; 
 }
 
 // Placeholder Star Icon

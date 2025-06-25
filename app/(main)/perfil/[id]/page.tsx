@@ -31,17 +31,17 @@ export default function ProfilePage() {
     id: string;
     name?: string;
     image?: string;
-    averageRating?: number | null;
+    averageRating?: number | null; 
     city?: string;
     state?: string;
     professions?: { id: string; name: string }[];
     about?: string;
-    receivedReviews?: {
-      id: string;
+    receivedReviews?: { 
+      id: string; 
       giver: { name: string; image?: string | null };
-      rating: number;
-      comment?: string;
-      createdAt: string
+      rating: number; 
+      comment?: string; 
+      createdAt: string 
     }[];
     certificates?: { id: string; title: string; institution: string; issueDate: string; url?: string }[];
     photos?: { id: string; url: string }[];
@@ -238,9 +238,9 @@ export default function ProfilePage() {
           <div className="relative -top-16 md:absolute md:-top-16 md:left-6 mb-4 md:mb-0">
             {user.image ? (
               <Image
-                src={user.image}
-                alt={user.name || 'Avatar'}
-                width={128}
+                src={user.image} 
+                alt={user.name || 'Avatar'} 
+                width={128} 
                 height={128}
                 className="rounded-full border-4 border-white object-cover mx-auto md:mx-0"
                 onError={(e) => { (e.target as HTMLImageElement).src = '/img/avatar_placeholder.png'; }}
@@ -253,7 +253,7 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-
+          
           <div className="w-full text-center md:text-left md:ml-36">
             <div className="flex flex-col items-center md:flex-row md:justify-between md:items-start">
               <div className="mb-4 md:mb-0">
@@ -272,7 +272,7 @@ export default function ProfilePage() {
                   {user.city && user.state ? `${user.city}, ${user.state}` : 'Localização não informada'}
                 </p>
               </div>
-
+              
               <div className="flex items-center space-x-2">
                 {isOwnProfile && (
                   <Link href="/perfil/editar" className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500" title="Editar Perfil">
@@ -286,11 +286,11 @@ export default function ProfilePage() {
                       disabled={favoriteLoading || !userId || isLoading}
                       aria-label={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
                       title={isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
-                      className={`p-2 rounded-full transition-colors duration-150 ease-in-out
-                                  ${isFavorite
-                                    ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                      className={`p-2 rounded-full transition-colors duration-150 ease-in-out 
+                                  ${isFavorite 
+                                    ? 'bg-red-100 text-red-600 hover:bg-red-200' 
                                     : 'bg-primary-100 text-primary-600 hover:bg-primary-200'}
-                                  focus:outline-none focus:ring-2 focus:ring-offset-2
+                                  focus:outline-none focus:ring-2 focus:ring-offset-2 
                                   ${isFavorite ? 'focus:ring-red-500' : 'focus:ring-primary-500'}`}
                     >
                       {favoriteLoading ? (
@@ -308,15 +308,15 @@ export default function ProfilePage() {
                         </svg>
                       )}
                     </button>
-
+          
                     <button
                       onClick={() => setShowSendServiceModal(true)}
-                      disabled={isLoading}
+                      disabled={isLoading} 
                       aria-label="Enviar Serviço Diretamente"
-                      title="Enviar Serviço Diretamente"
+                      title="Enviar Serviço Diretamente" 
                       className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
-                      {sendServiceLoading ? (
+                      {sendServiceLoading ? ( 
                         <svg className="animate-spin h-5 w-5 text-currentColor" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -331,7 +331,7 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-
+            
             <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
               {user.professions && user.professions.map((profession) => (
                 <span key={profession.id} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-primary-100 text-primary-800">
@@ -344,7 +344,7 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-
+        
         <div className="border-t border-secondary-200">
           <nav className="flex overflow-x-auto">
             <button
@@ -390,7 +390,7 @@ export default function ProfilePage() {
           </nav>
         </div>
       </div>
-
+      
       <div className="mt-6 bg-white shadow-md rounded-lg p-6">
         {activeTab === 'sobre' && (
           <div>
@@ -402,7 +402,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-
+        
         {activeTab === 'avaliacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Avaliações</h2>
@@ -419,10 +419,10 @@ export default function ProfilePage() {
                                   width={40}
                                   height={40}
                                   className="object-cover w-full h-full"
-                                  onError={(e) => {
+                                  onError={(e) => { 
                                     const target = e.target as HTMLImageElement;
-                                    target.onerror = null;
-                                    target.src = '/img/avatar_placeholder.png';
+                                    target.onerror = null; 
+                                    target.src = '/img/avatar_placeholder.png'; 
                                   }}
                                 />
                               ) : (
@@ -456,7 +456,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-
+        
         {activeTab === 'certificacoes' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Certificações</h2>
@@ -487,7 +487,7 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-
+        
         {activeTab === 'galeria' && (
           <div>
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Galeria de Trabalhos</h2>
@@ -495,9 +495,9 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {user.photos.map((photo) => (
                   <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
-                    <img
-                      src={photo.url}
-                      alt="Trabalho"
+                    <img 
+                      src={photo.url} 
+                      alt="Trabalho" 
                       className="h-full w-full object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).onerror = null;
@@ -518,7 +518,7 @@ export default function ProfilePage() {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex justify-center items-center">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md mx-auto">
             <h2 className="text-xl font-bold text-secondary-900 mb-4">Enviar Serviço Diretamente</h2>
-
+            
             {sendServiceLoading && !userServices.length ? (
               <p>Carregando seus serviços...</p>
             ) : userServices.length === 0 ? (
@@ -548,7 +548,7 @@ export default function ProfilePage() {
                 onClick={() => {
                   setShowSendServiceModal(false);
                   setSelectedServiceId(null);
-                  setUserServices([]);
+                  setUserServices([]); 
                 }}
                 className="btn-outline py-2 px-4"
                 disabled={sendServiceLoading && userServices.length > 0}
