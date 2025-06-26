@@ -388,17 +388,6 @@ export default function ServiceDetailPage() {
     );
   };
 
-  if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando detalhes do serviço...</p></div>;
-  if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
-
-  const isCreator = session?.user?.id === service.creatorId;
-  const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
-  const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
-  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
-  const isServiceInProgress = service.status === 'IN_PROGRESS';
-  const isServiceOpen = service.status === 'OPEN';
-  const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
-
   const {
     currentUserConfirmed,
     otherPartyConfirmed,
