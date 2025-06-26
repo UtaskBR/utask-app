@@ -452,6 +452,7 @@ export default function ServiceDetailPage() {
   // The original declarations of these constants were higher up and could run when service was null.
   // 'acceptedBid' is also defined here as it depends on 'service'.
   // This is the single, correct block of these declarations.
+  // Triggering new deployment - v1
   const isCreator = session?.user?.id === service.creatorId;
   const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
