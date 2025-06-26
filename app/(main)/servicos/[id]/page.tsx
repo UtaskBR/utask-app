@@ -252,43 +252,24 @@ export default function ServiceDetailPage() {
     }
 
     try {
-      // result is expected to be the updated service object from the API
-      const updatedService = await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
-      console.log('API Response for confirm-completion:', updatedService); // DEBUGGING LINE
+      // Call the API to confirm completion.
+      // The API response itself is not used to directly update the service state,
+      // as it was found to be sparse or incomplete.
+      await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
 
-      if (updatedService) {
-        // Immediately update the local service state
-        setService(updatedService);
+      // Always re-fetch the full service details after a confirmation attempt.
+      // This ensures the UI reflects the complete and current state from the DB.
+      fetchService();
 
-        // Check conditions for automatic review popup for the Service Creator
-        const amIServiceCreator = session.user.id === updatedService.creatorId;
-        const isServiceNowCompleted = updatedService.status === 'COMPLETED';
-        const isPaidService = updatedService.price && updatedService.price > 0;
+      // Note: The automatic review popup logic that was here has been removed.
+      // It will now rely on the updated 'service' state (after fetchService)
+      // to trigger the 'Avaliar Prestador' button via 'isCreatorReviewPending'
+      // or the '?promptReview=true' URL parameter.
+      // A more immediate popup could be implemented by awaiting fetchService()
+      // and then checking conditions, if required in a future iteration.
 
-        if (amIServiceCreator && isServiceNowCompleted && isPaidService) {
-          const acceptedBidForReview = updatedService.bids?.find(bid => bid.status === 'ACCEPTED');
-          if (acceptedBidForReview && acceptedBidForReview.provider) {
-            setServiceProviderForReview({
-              id: acceptedBidForReview.provider.id,
-              name: acceptedBidForReview.provider.name || 'Prestador Desconhecido',
-              image: acceptedBidForReview.provider.image,
-            });
-            setShowReviewPopup(true);
-          } else {
-            // This case should ideally not happen if a service is COMPLETED and paid,
-            // as it implies an accepted bid with a provider should exist.
-            console.warn('Service completed and paid, but no accepted bid provider found for review.');
-          }
-        }
-      } else {
-        // If callApi was successful but returned no data (should not happen if API is designed to return updated service)
-        // Fallback to refetch, though immediate UI update is preferred.
-        console.warn('Confirm completion API did not return updated service data, refetching...');
-        fetchService();
-      }
     } catch (err: any) {
       setError(err.message || 'Ocorreu um erro ao confirmar a conclusão do serviço.');
-      // No need to call fetchService() here as callApi does not call it on error
     }
   };
 
