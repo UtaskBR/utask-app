@@ -52,6 +52,7 @@ export default function ServiceDetailPage() {
     creator: ServiceCreator;
     photos?: Photo[];
     bids?: Bid[];
+    completionConfirmations?: Array<{ userId: string; confirmedAt: string | Date; }>; // Added this line
   };
 
   const [service, setService] = useState<Service | null>(null);
@@ -91,6 +92,13 @@ export default function ServiceDetailPage() {
   useEffect(() => {
     fetchService();
   }, [fetchService]);
+
+  useEffect(() => {
+    if (service) {
+      console.log('Service state updated (from fetchService):', JSON.stringify(service, null, 2));
+      console.log('Service completionConfirmations (from fetchService):', service.completionConfirmations);
+    }
+  }, [service]);
 
   // Define constants that depend on service and session.
   // These are placed here so they are available for hooks like useEffect and useMemo below.
