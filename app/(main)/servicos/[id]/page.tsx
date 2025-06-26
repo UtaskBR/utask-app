@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import ReviewPopup from '../../../components/ReviewPopup'; // Using relative path
-import InsufficientFundsModal from '@/components/InsufficientFundsModal'; // Corrected Import Path
+import ReviewPopup from '@/app/components/ReviewPopup'; // Import ReviewPopup
 
 // Placeholder icons (Heroicons)
 const ArrowLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" /></svg>;
@@ -22,7 +21,6 @@ export default function ServiceDetailPage() {
   const { data: session } = useSession();
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams(); // Initialize useSearchParams
   const serviceId = params.id as string;
 
   type Photo = { id: string; url: string };
@@ -67,7 +65,6 @@ export default function ServiceDetailPage() {
   const [showUserProfile, setShowUserProfile] = useState<string | null>(null);
   const [showReviewPopup, setShowReviewPopup] = useState(false);
   const [serviceProviderForReview, setServiceProviderForReview] = useState<{ id: string; name: string; image?: string | null; } | null>(null);
-  const [showInsufficientFundsModal, setShowInsufficientFundsModal] = useState(false);
 
   const fetchService = useCallback(async () => {
     if (!serviceId) return;
@@ -91,31 +88,6 @@ export default function ServiceDetailPage() {
   useEffect(() => {
     fetchService();
   }, [fetchService]);
-
-  // Effect to check for ?promptReview=true query parameter
-  useEffect(() => {
-    if (!service || !session?.user || !acceptedBid || !searchParams) return; // Guard: ensure data & searchParams are available
-
-    const shouldPromptReview = searchParams.get('promptReview') === 'true';
-
-    const currentUserId = session.user.id; // session.user is confirmed by the guard
-    const isCreator = service.creatorId === currentUserId; // service is confirmed by the guard
-    const localIsCreatorReviewPending = service.status === 'COMPLETED' && isCreator && !showReviewPopup;
-
-    if (shouldPromptReview && localIsCreatorReviewPending && acceptedBid.provider) {
-      setServiceProviderForReview({
-        id: acceptedBid.provider.id,
-        name: acceptedBid.provider.name || 'Prestador Desconhecido',
-        image: acceptedBid.provider.image,
-      });
-      setShowReviewPopup(true);
-
-      // Remove the query parameter to prevent re-triggering on refresh
-      const newPath = window.location.pathname;
-      router.replace(newPath, undefined);
-    }
-  // Ensure all dependencies that are used and could change are listed.
-  }, [service, session, router, showReviewPopup, acceptedBid, searchParams]);
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -174,6 +146,7 @@ export default function ServiceDetailPage() {
 
   const callApi = async (url: string, method: string, body?: any, successMessage?: string) => {
     setActionLoading(url + method + (body ? JSON.stringify(body.bidId || body.id || '') : ''));
+    // let operationSucceeded = false; // Flag to track success - Not strictly needed if not re-throwing
     try {
       const response = await fetch(url, {
         method,
@@ -182,38 +155,25 @@ export default function ServiceDetailPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        // Throw an error object that includes the structured error from API if possible
-        const errorToThrow = new Error(data.error || `Falha na operação: ${response.status} ${response.statusText}`);
-        (errorToThrow as any).isApiError = true;
-        (errorToThrow as any).apiData = data; // Attach full API error data
-        throw errorToThrow;
+        throw new Error(data.error || `Falha na operação: ${response.status} ${response.statusText}`);
       }
       if (successMessage) {
         console.log(successMessage); // Or use a toast notification
       }
-      return data; // Return data on success
+      // operationSucceeded = true; // Not strictly needed
+      return data;
     } catch (err: any) {
-      // Re-throw the error to be caught by the caller
-      throw err;
+      setError(err.message);
+      // Do not re-throw if setError is the intended way to communicate failure to UI
     } finally {
-      // Removed fetchService() from here to give caller more control
+      // Always refresh service data to get the latest state from the server
+      fetchService();
       setActionLoading(null);
     }
   };
 
   // --- Bid Actions by Service Creator ---
-  const handleAcceptBid = async (bidId: string) => {
-    try {
-      await callApi(`/api/services/${serviceId}/bids/${bidId}/accept`, 'POST', { bidId }, 'Proposta aceita');
-      fetchService(); // Fetch service only on successful bid acceptance
-    } catch (err: any) {
-      if (err.isApiError && err.apiData && err.apiData.error === 'INSUFFICIENT_FUNDS') {
-        setShowInsufficientFundsModal(true);
-      } else {
-        setError(err.message || 'Ocorreu um erro ao aceitar a proposta.');
-      }
-    }
-  };
+  const handleAcceptBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/accept`, 'POST', { bidId }, 'Proposta aceita');
   const handleRejectBid = (bidId: string) => callApi(`/api/services/${serviceId}/bids/${bidId}/reject`, 'POST', { bidId }, 'Proposta rejeitada');
   const handleCounterOfferToProvider = (bidId: string) => {
     const newPrice = prompt('Digite o novo valor para a contraproposta (R$):');
@@ -334,7 +294,7 @@ export default function ServiceDetailPage() {
                   <p className="text-sm text-gray-600">{user.about}</p>
                 </div>
               )}
-
+              
               {user.professions && user.professions.length > 0 && (
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-1">Profissões</h4>
@@ -347,7 +307,7 @@ export default function ServiceDetailPage() {
                   </div>
                 </div>
               )}
-
+              
               {user.reviews && user.reviews.length > 0 && (
                 <div>
                   <h4 className="text-sm font-medium text-gray-700 mb-1">Avaliações Recentes</h4>
@@ -369,7 +329,7 @@ export default function ServiceDetailPage() {
           ) : (
             <p className="text-center text-gray-600">Não foi possível carregar o perfil.</p>
           )}
-
+          
           <div className="mt-4 space-y-2">
             <Link href={`/perfil/${userId}`} passHref>
               <button className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium text-center">
@@ -388,78 +348,16 @@ export default function ServiceDetailPage() {
     );
   };
 
-  const {
-    currentUserConfirmed,
-    otherPartyConfirmed,
-    otherPartyName,
-    isCreatorReviewPending
-  } = useMemo(() => {
-    let CUC = false;
-    let OPC = false;
-    let OPN = '';
-    let ICRP = false;
-
-    if (service && session?.user && acceptedBid) {
-      const creatorId = service.creatorId;
-      const providerId = acceptedBid.providerId;
-      const currentUserId = session.user.id;
-
-      if (service.completionConfirmations) {
-        CUC = service.completionConfirmations.some(c => c.userId === currentUserId);
-        const creatorConfirmation = service.completionConfirmations.some(c => c.userId === creatorId);
-        const providerConfirmation = service.completionConfirmations.some(c => c.userId === providerId);
-
-        if (currentUserId === creatorId) {
-          OPC = providerConfirmation;
-          OPN = acceptedBid.provider?.name || 'Prestador';
-        } else if (currentUserId === providerId) {
-          OPC = creatorConfirmation;
-          OPN = service.creator?.name || 'Criador do serviço';
-        }
-      }
-
-      if (service.status === 'COMPLETED' && currentUserId === creatorId) {
-        ICRP = !showReviewPopup;
-      }
-
-      console.log({
-        currentUserId_memo: currentUserId,
-        creatorId_memo: creatorId,
-        providerId_memo: providerId,
-        completionConfirmations_memo: service.completionConfirmations,
-        currentUserConfirmed_memo: CUC,
-        otherPartyConfirmed_memo: OPC,
-        otherPartyName_memo: OPN,
-        serviceStatus_memo: service.status,
-        isCreatorReviewPending_memo: ICRP
-      });
-    }
-    return {
-      currentUserConfirmed: CUC,
-      otherPartyConfirmed: OPC,
-      otherPartyName: OPN,
-      isCreatorReviewPending: ICRP
-    };
-  }, [service, session, acceptedBid, showReviewPopup]); // Dependencies for useMemo
-
-  // Early returns must come AFTER all hooks are called.
   if (isLoading) return <div className="flex justify-center items-center min-h-screen"><p>Carregando detalhes do serviço...</p></div>;
-
-  // Check for service after isLoading is false, because service is fetched asynchronously.
   if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
 
-  // Define constants that depend on 'service' and 'session' only after service is guaranteed to exist.
-  // The original declarations of these constants were higher up and could run when service was null.
-  // 'acceptedBid' is also defined here as it depends on 'service'.
-  // This is the single, correct block of these declarations.
   const isCreator = session?.user?.id === service.creatorId;
-  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
   const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
+  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
   const isServiceInProgress = service.status === 'IN_PROGRESS';
   const isServiceOpen = service.status === 'OPEN';
-  const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
-
+  const isUserAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
 
   let bidsToDisplay = [];
   if (isCreator) {
@@ -569,51 +467,13 @@ export default function ServiceDetailPage() {
             )}
           </div>
 
-          {/* Service Actions Logic Updated */}
-          <div className="p-6 border-t border-gray-200">
-            {service.status === 'DISPUTED' ? (
-              <p className="text-red-600 font-semibold">Este serviço está em disputa.</p>
-            ) : service.status === 'COMPLETED' ? (
-              isCreator && isCreatorReviewPending && service.price && service.price > 0 ? ( // Only show evaluate if paid service
-                <button
-                  onClick={() => {
-                    if (acceptedBid?.provider) {
-                      setServiceProviderForReview({
-                        id: acceptedBid.provider.id,
-                        name: acceptedBid.provider.name || 'Prestador Desconhecido',
-                        image: acceptedBid.provider.image,
-                      });
-                      setShowReviewPopup(true);
-                    }
-                  }}
-                  className={`${btnPrimary} w-full`}
-                >
-                  Avaliar {acceptedBid?.provider?.name || 'Prestador'}
-                </button>
-              ) : (
-                <p className="text-green-600 font-semibold">Serviço concluído.</p>
-              )
-            ) : service.status === 'IN_PROGRESS' && (isCreator || isUserAcceptedProvider) ? (
-              currentUserConfirmed && !otherPartyConfirmed ? (
-                <p className="text-blue-600 font-semibold">Aguardando confirmação de {otherPartyName}.</p>
-              ) : !currentUserConfirmed ? (
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    onClick={handleConfirmCompletion}
-                    className={`${btnSuccess} w-full sm:w-auto`}
-                    disabled={!!actionLoading}>
-                      <CheckCircleIcon /> Confirmar Conclusão
-                  </button>
-                  <button
-                    onClick={handleReportProblem}
-                    className={`${btnDanger} w-full sm:w-auto`}
-                    disabled={!!actionLoading}>
-                      <ExclamationTriangleIcon /> Tenho um Problema
-                  </button>
-                </div>
-              ) : null // Both confirmed, should move to COMPLETED (handled by above) or this state shouldn't be hit if logic is right
-            ) : null}
-          </div>
+          {/* Service Actions: Confirm Completion / Report Problem */}
+          {isServiceInProgress && (isCreator || isUserAcceptedProvider) && (
+            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
+              <button onClick={handleConfirmCompletion} className={`${btnSuccess} w-full sm:w-auto`} disabled={!!actionLoading}><CheckCircleIcon /> Confirmar Conclusão</button>
+              <button onClick={handleReportProblem} className={`${btnDanger} w-full sm:w-auto`} disabled={!!actionLoading}><ExclamationTriangleIcon /> Tenho um Problema</button>
+            </div>
+          )}
         </div>
 
         {/* Creator Info & Bid Form/List Column */}
@@ -621,7 +481,7 @@ export default function ServiceDetailPage() {
           <div className="bg-white shadow-md rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-3">Criador do Serviço</h2>
             <div className="flex items-center space-x-3">
-              <div
+              <div 
                 className="h-12 w-12 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
                 onClick={() => setShowUserProfile(service.creatorId)}
               >
@@ -634,7 +494,7 @@ export default function ServiceDetailPage() {
                 )}
               </div>
               <div>
-                <p
+                <p 
                   className="font-medium text-gray-900 cursor-pointer hover:underline"
                   onClick={() => setShowUserProfile(service.creatorId)}
                 >
@@ -657,17 +517,17 @@ export default function ServiceDetailPage() {
             <div className="bg-white shadow-md rounded-lg p-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">Candidatar-se para este Serviço</h2>
               <div className="space-y-4">
-                <button
-                  onClick={handleApplyDirectly}
-                  className={`${btnSuccess} w-full`}
+                <button 
+                  onClick={handleApplyDirectly} 
+                  className={`${btnSuccess} w-full`} 
                   disabled={!!actionLoading}
                 >
                   {actionLoading === 'applyDirectly' ? 'Enviando...' : <><ThumbUpIcon /> Aceitar Serviço</>}
                 </button>
                 <div className="text-center">
                   <p className="text-sm text-gray-600">ou</p>
-                  <button
-                    onClick={() => setShowBidForm(!showBidForm)}
+                  <button 
+                    onClick={() => setShowBidForm(!showBidForm)} 
                     className={`mt-2 ${btnSecondary}`}
                   >
                     {showBidForm ? 'Cancelar Proposta' : 'Fazer uma Proposta Personalizada'}
@@ -725,7 +585,7 @@ export default function ServiceDetailPage() {
                     <div key={bid.id} className="border border-gray-200 rounded-lg p-4 space-y-2">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
-                          <div
+                          <div 
                             className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
                             onClick={() => setShowUserProfile(bid.providerId)}
                           >
@@ -737,7 +597,7 @@ export default function ServiceDetailPage() {
                               </div>
                             )}
                           </div>
-                          <p
+                          <p 
                             className="font-semibold text-gray-800 cursor-pointer hover:underline"
                             onClick={() => setShowUserProfile(bid.providerId)}
                           >
@@ -755,7 +615,7 @@ export default function ServiceDetailPage() {
                         </p>
                       )}
                       {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
-
+                      
                       {/* Actions for Service Creator */}
                       {isCreator && isServiceOpen && !acceptedBid && (
                         <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100 mt-2">
@@ -810,9 +670,9 @@ export default function ServiceDetailPage() {
 
       {/* User Profile Modal */}
       {showUserProfile && (
-        <UserProfileModal
-          userId={showUserProfile}
-          onClose={() => setShowUserProfile(null)}
+        <UserProfileModal 
+          userId={showUserProfile} 
+          onClose={() => setShowUserProfile(null)} 
         />
       )}
 
@@ -823,7 +683,7 @@ export default function ServiceDetailPage() {
             setShowReviewPopup(false);
             setServiceProviderForReview(null);
             // Optionally, refresh service data again after review popup closes
-            // fetchService();
+            // fetchService(); 
           }}
           serviceProvider={serviceProviderForReview}
           serviceId={service.id}
@@ -834,11 +694,7 @@ export default function ServiceDetailPage() {
           }}
         />
       )}
-
-      <InsufficientFundsModal
-        show={showInsufficientFundsModal}
-        onClose={() => setShowInsufficientFundsModal(false)}
-      />
     </div>
   );
 }
+
