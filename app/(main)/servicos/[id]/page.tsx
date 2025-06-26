@@ -92,6 +92,18 @@ export default function ServiceDetailPage() {
     fetchService();
   }, [fetchService]);
 
+  // Define constants that depend on service and session.
+  // These are placed here so they are available for hooks like useEffect and useMemo below.
+  // Optional chaining is used (service?.) as service might be null initially.
+  // Hooks using these (e.g. acceptedBid) should have guards for null/undefined.
+  const isCreator = session?.user?.id === service?.creatorId;
+  const acceptedBid = service?.bids?.find(bid => bid.status === 'ACCEPTED');
+  const canCurrentUserBid = session?.user && !isCreator && service?.status === 'OPEN';
+  const existingUserBid = service?.bids?.find(bid => bid.providerId === session?.user?.id);
+  const isServiceInProgress = service?.status === 'IN_PROGRESS';
+  const isServiceOpen = service?.status === 'OPEN';
+  const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
+
   // Effect to check for ?promptReview=true query parameter
   useEffect(() => {
     if (!service || !session?.user || !acceptedBid || !searchParams) return; // Guard: ensure data & searchParams are available
@@ -99,7 +111,7 @@ export default function ServiceDetailPage() {
     const shouldPromptReview = searchParams.get('promptReview') === 'true';
 
     const currentUserId = session.user.id; // session.user is confirmed by the guard
-    const isCreator = service.creatorId === currentUserId; // service is confirmed by the guard
+    // Use the component-scoped 'isCreator' constant, which handles service potentially being null
     const localIsCreatorReviewPending = service.status === 'COMPLETED' && isCreator && !showReviewPopup;
 
     if (shouldPromptReview && localIsCreatorReviewPending && acceptedBid.provider) {
@@ -115,7 +127,7 @@ export default function ServiceDetailPage() {
       router.replace(newPath, undefined);
     }
   // Ensure all dependencies that are used and could change are listed.
-  }, [service, session, router, showReviewPopup, acceptedBid, searchParams]);
+  }, [service, session, router, showReviewPopup, acceptedBid, searchParams, isCreator]); // Added isCreator to dependencies
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -448,19 +460,8 @@ export default function ServiceDetailPage() {
   // Check for service after isLoading is false, because service is fetched asynchronously.
   if (!service) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><p className="text-red-600">{error || 'Serviço não encontrado.'}</p><Link href="/explorar" className="mt-4 inline-block btn-primary">Voltar</Link></div>;
 
-  // Define constants that depend on 'service' and 'session' only after service is guaranteed to exist.
-  // The original declarations of these constants were higher up and could run when service was null.
-  // 'acceptedBid' is also defined here as it depends on 'service'.
-  // This is the single, correct block of these declarations.
-  // Triggering new deployment - v1
-  const isCreator = session?.user?.id === service.creatorId;
-  const acceptedBid = service.bids?.find(bid => bid.status === 'ACCEPTED');
-  const canCurrentUserBid = session?.user && !isCreator && service.status === 'OPEN';
-  const existingUserBid = service.bids?.find(bid => bid.providerId === session?.user?.id);
-  const isServiceInProgress = service.status === 'IN_PROGRESS';
-  const isServiceOpen = service.status === 'OPEN';
-  const isUserAcceptedProvider = !!session?.user?.id && !!acceptedBid?.providerId && acceptedBid.providerId === session.user.id;
-
+  // The constants (isCreator, acceptedBid, etc.) have been moved to earlier in the component
+  // to be available for hooks like useEffect and useMemo.
 
   let bidsToDisplay = [];
   if (isCreator) {
