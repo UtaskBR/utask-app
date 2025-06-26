@@ -254,6 +254,7 @@ export default function ServiceDetailPage() {
     try {
       // result is expected to be the updated service object from the API
       const updatedService = await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
+      console.log('API Response for confirm-completion:', updatedService); // DEBUGGING LINE
 
       if (updatedService) {
         // Immediately update the local service state
