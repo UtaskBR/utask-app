@@ -545,25 +545,25 @@ export default function ServiceDetailPage() {
             </Link>
             <h1 className="text-3xl font-bold text-gray-900">{service.title}</h1>
             <div className="mt-2 flex items-center space-x-2">
-              <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(service.status)}`}>
-                {getStatusText(service.status)}
+              <span className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${getStatusClass(service?.status)}`}>
+                {getStatusText(service?.status)}
               </span>
-              {service.profession && <span className="text-gray-600 text-sm">{service.profession.name}</span>}
+              {service?.profession?.name && <span className="text-gray-600 text-sm">{service.profession.name}</span>}
             </div>
-            {service.price ? (
+            {service?.price ? (
               <div className="mt-3 text-2xl font-bold text-blue-600">R$ {service.price.toFixed(2)}</div>
             ) : (
               <div className="mt-3 text-gray-700">Valor a combinar (aberto a propostas)</div>
             )}
           </div>
 
-          {service.photos && service.photos.length > 0 && (
+          {service?.photos && service.photos.length > 0 && (
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800 mb-3">Fotos do Serviço</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {service.photos.map((photo) => (
-                  <div key={photo.id} className="aspect-square overflow-hidden rounded-lg shadow">
-                    <img src={photo.url} alt={`Foto do serviço ${service.title}`} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
+                  <div key={photo?.id} className="aspect-square overflow-hidden rounded-lg shadow">
+                    <img src={photo?.url} alt={`Foto do serviço ${service?.title}`} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-image.png'; }} />
                   </div>
                 ))}
               </div>
@@ -646,32 +646,32 @@ export default function ServiceDetailPage() {
             <div className="flex items-center space-x-3">
               <div
                 className="h-12 w-12 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
-                onClick={() => setShowUserProfile(service.creatorId)}
+                onClick={() => setShowUserProfile(service?.creatorId)}
               >
-                {service.creator.image ? (
-                  <img src={service.creator.image} alt={service.creator.name || 'Criador'} className="h-full w-full object-cover" />
+                {service?.creator?.image ? (
+                  <img src={service.creator.image} alt={service?.creator?.name || 'Criador'} className="h-full w-full object-cover" />
                 ) : (
                   <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-xl font-bold">
-                    {service.creator.name?.charAt(0) || '?'}
+                    {service?.creator?.name?.charAt(0) || '?'}
                   </div>
                 )}
               </div>
               <div>
                 <p
                   className="font-medium text-gray-900 cursor-pointer hover:underline"
-                  onClick={() => setShowUserProfile(service.creatorId)}
+                  onClick={() => setShowUserProfile(service?.creatorId)}
                 >
-                  {service.creator.name}
+                  {service?.creator?.name}
                 </p>
                 <div className="flex items-center">
                   <span className="text-yellow-400">★</span>
-                  <span className="ml-1 text-sm text-gray-600">{service.creator.rating?.toFixed(1) || 'N/A'}</span>
+                  <span className="ml-1 text-sm text-gray-600">{service?.creator?.rating?.toFixed(1) || 'N/A'}</span>
                 </div>
               </div>
             </div>
-            {service.creator.about && <p className="mt-3 text-sm text-gray-600">{service.creator.about}</p>}
-            {isCreator && service.status === 'OPEN' && (
-                <Link href={`/editar-servico/${service.id}`} className={`mt-4 block text-center ${btnSecondary}`}>Editar Serviço</Link>
+            {service?.creator?.about && <p className="mt-3 text-sm text-gray-600">{service.creator.about}</p>}
+            {isCreator && service?.status === 'OPEN' && (
+                <Link href={`/editar-servico/${service?.id}`} className={`mt-4 block text-center ${btnSecondary}`}>Editar Serviço</Link>
             )}
           </div>
 
@@ -750,34 +750,34 @@ export default function ServiceDetailPage() {
                         <div className="flex items-center space-x-2">
                           <div
                             className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 cursor-pointer"
-                            onClick={() => setShowUserProfile(bid.providerId)}
+                            onClick={() => setShowUserProfile(bid?.providerId)}
                           >
-                            {bid.provider.image ? (
-                              <img src={bid.provider.image} alt={bid.provider.name || 'Prestador'} className="h-full w-full object-cover" />
+                            {bid?.provider?.image ? (
+                              <img src={bid.provider.image} alt={bid?.provider?.name || 'Prestador'} className="h-full w-full object-cover" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center bg-primary-100 text-primary-600 text-sm font-bold">
-                                {bid.provider.name?.charAt(0) || '?'}
+                                {bid?.provider?.name?.charAt(0) || '?'}
                               </div>
                             )}
                           </div>
                           <p
                             className="font-semibold text-gray-800 cursor-pointer hover:underline"
-                            onClick={() => setShowUserProfile(bid.providerId)}
+                            onClick={() => setShowUserProfile(bid?.providerId)}
                           >
-                            {isCreator || bid.providerId === session?.user?.id ? bid.provider.name : 'Prestador'} {/* Show name if creator or own bid */}
+                            {isCreator || bid?.providerId === session?.user?.id ? bid?.provider?.name : 'Prestador'} {/* Show name if creator or own bid */}
                           </p>
                         </div>
-                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid.status)}`}>
-                          {getBidStatusText(bid.status)}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getBidStatusClass(bid?.status)}`}>
+                          {getBidStatusText(bid?.status)}
                         </span>
                       </div>
-                      {bid.price && <p className="text-lg font-bold text-blue-600">R$ {bid.price.toFixed(2)}</p>}
-                      {bid.proposedDate && (
+                      {bid?.price && <p className="text-lg font-bold text-blue-600">R$ {bid.price.toFixed(2)}</p>}
+                      {bid?.proposedDate && (
                         <p className="text-sm text-gray-500">
                           Data: {new Date(bid.proposedDate).toLocaleDateString('pt-BR')} às {new Date(bid.proposedDate).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
                         </p>
                       )}
-                      {bid.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
+                      {bid?.message && <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{bid.message}</p>}
 
                       {/* Actions for Service Creator */}
                       {isCreator && isServiceOpen && !acceptedBid && (
