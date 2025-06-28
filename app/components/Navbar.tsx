@@ -5,6 +5,17 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Image from 'next/image';
+import {
+  UserCircleIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  CreditCardIcon,
+  HeartIcon,
+  ArrowLeftOnRectangleIcon,
+  BellIcon, // For notifications, if not already there
+  Bars3Icon, // For mobile menu hamburger
+  XMarkIcon, // For mobile menu close
+} from '@heroicons/react/24/outline';
 
 export default function Navbar() {
   const { data: session } = useSession();
@@ -23,13 +34,13 @@ export default function Navbar() {
     { name: 'Como Funciona', href: '/como-funciona' },
   ];
 
-  const userNavigation = [
-    { name: 'Meu Perfil', href: `/perfil/${session?.user?.id}` },
-    { name: 'Meus Serviços', href: '/meus-servicos' },
-    { name: 'Agenda', href: '/agenda' },
-    { name: 'Carteira', href: '/carteira' },
-    { name: 'Favoritos', href: '/favoritos' },
-  ];
+  const userNavigation = session?.user?.id ? [
+    { name: 'Meu Perfil', href: `/perfil/${session.user.id}`, icon: UserCircleIcon },
+    { name: 'Meus Serviços', href: '/meus-servicos', icon: BriefcaseIcon },
+    { name: 'Agenda', href: '/agenda', icon: CalendarIcon },
+    { name: 'Carteira', href: '/carteira', icon: CreditCardIcon },
+    { name: 'Favoritos', href: '/favoritos', icon: HeartIcon },
+  ] : [];
 
   // Buscar contagem de notificações não lidas
   useEffect(() => {
@@ -168,18 +179,27 @@ export default function Navbar() {
                       className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10"
                     >
                       {userNavigation.map((item) => (
-                        <Link
-                          key={item.name}
-                          href={item.href}
-                          className="block px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100"
-                        >
-                          {item.name}
-                        </Link>
-                      ))}
+                        {userNavigation.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.name}
+                              href={item.href}
+                              className="group flex items-center px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100 hover:text-secondary-900 rounded-md"
+                            >
+                              <Icon className="h-5 w-5 mr-3 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
+                              {item.name}
+                            </Link>
+                          );
+                        })}
+                      <div className="my-1"> {/* Removed px-4, border will span full width of items if items have px-4 */}
+                        <div className="border-t border-gray-200 mx-2"></div> {/* Added mx-2 to not have border hit edges of dropdown if items have padding */}
+                      </div>
                       <button
                         onClick={() => signOut()}
-                        className="block w-full text-left px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100"
+                        className="group flex items-center w-full text-left px-4 py-2 text-sm text-secondary-700 hover:bg-secondary-100 hover:text-secondary-900 rounded-md"
                       >
+                        <ArrowLeftOnRectangleIcon className="h-5 w-5 mr-3 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
                         Sair
                       </button>
                     </div>
