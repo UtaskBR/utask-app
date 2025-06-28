@@ -66,6 +66,7 @@ export default function ServiceDetailPage() {
   const [showUserProfile, setShowUserProfile] = useState<string | null>(null);
   const [showReviewPopup, setShowReviewPopup] = useState(false);
   const [serviceProviderForReview, setServiceProviderForReview] = useState<{ id: string; name: string; image?: string | null; } | null>(null);
+  const [reviewPromptedForServiceId, setReviewPromptedForServiceId] = useState<string | null>(null);
 
   const fetchService = useCallback(async () => {
     if (!serviceId) return;
@@ -94,27 +95,22 @@ export default function ServiceDetailPage() {
   useEffect(() => {
     if (service && service.status === 'COMPLETED' &&
         session?.user?.id === service.creatorId &&
-        !showReviewPopup) { // Ensure it doesn't re-trigger if already shown or being shown
+        service.id !== reviewPromptedForServiceId) { // Check if we haven't prompted for this service ID yet
 
-      const acceptedBidForReview = service.bids?.find(b => b.status === 'ACCEPTED' || (b.providerId === service.bids?.find(sBid => sBid.status === 'ACCEPTED')?.providerId));
-      // The above find logic for acceptedBidForReview might be simplified if service structure guarantees only one accepted bid remains,
-      // or if the backend provides a clear "finalProviderId" on the service model upon completion.
-      // For now, it tries to find an accepted bid.
+      const acceptedBidForReview = service.bids?.find(b => b.status === 'ACCEPTED');
+      // Simplified find logic: assuming only one truly accepted bid relevant for review.
 
       if (acceptedBidForReview && acceptedBidForReview.provider) {
-        // Check if a review has already been submitted for this service by this user for this provider
-        // This is a future enhancement. For now, we assume if popup is shown, review is pending.
-        // A more robust check would involve looking at `service.reviews` or a dedicated flag.
-
         setServiceProviderForReview({
           id: acceptedBidForReview.provider.id,
           name: acceptedBidForReview.provider.name || 'Prestador Desconhecido',
           image: acceptedBidForReview.provider.image,
         });
         setShowReviewPopup(true);
+        setReviewPromptedForServiceId(service.id); // Mark this service ID as prompted
       }
     }
-  }, [service, session, showReviewPopup, serviceId]); // Added serviceId to dependencies for safety, though service itself should be enough.
+  }, [service, session, serviceId, reviewPromptedForServiceId]); // Added reviewPromptedForServiceId to dependency array
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
