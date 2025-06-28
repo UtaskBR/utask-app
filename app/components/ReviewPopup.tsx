@@ -89,17 +89,25 @@ const ReviewPopup: React.FC<ReviewPopupProps> = ({
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Falha ao enviar avaliação.');
-      }
+      console.log('[ReviewPopup] Submission Response Status:', response.status);
+      console.log('[ReviewPopup] Submission Response OK:', response.ok);
+      console.log('[ReviewPopup] Submission Response Data:', data);
 
-      // Successfully submitted
-      if (onReviewSubmitted) {
-        onReviewSubmitted();
+      // Explicitly check status code for success (200-299 range)
+      if (response.status >= 200 && response.status < 300) {
+        // Successfully submitted
+        if (onReviewSubmitted) {
+          onReviewSubmitted();
+        }
+        onClose(); // Close popup
+        // Potentially show a success toast message here
+      } else {
+        // Handle non-successful responses (including 409)
+        const errorMessage = data?.error || `Falha ao enviar avaliação. Status: ${response.status}`;
+        throw new Error(errorMessage);
       }
-      onClose(); // Close popup
-      // Potentially show a success toast message here
     } catch (err: any) {
+      // This catch block will now handle errors from parsing, network issues, or explicitly thrown errors above.
       setError(err.message || 'Ocorreu um erro. Tente novamente.');
     } finally {
       setSubmitting(false);

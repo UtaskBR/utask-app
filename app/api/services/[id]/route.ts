@@ -80,6 +80,13 @@ WHERE "receiverId" IN (SELECT "providerId" FROM "Bid" WHERE "serviceId" = ${serv
 GROUP BY "receiverId"
 `;
 
+    // Buscar confirmações de conclusão
+    const completionConfirmations = await prisma.$queryRaw`
+      SELECT "userId", "confirmedAt"
+      FROM "CompletionConfirmation"
+      WHERE "serviceId" = ${serviceId}
+    `;
+
     let evaluation = null;
     const acceptedBid = (bids as any[]).find(bid => bid.status === 'ACCEPTED');
     if (acceptedBid) {
@@ -158,7 +165,8 @@ GROUP BY "receiverId"
           })()
         }
       })),
-      evaluation: evaluation // Add evaluation here
+      evaluation: evaluation, // Add evaluation here
+      completionConfirmations: (completionConfirmations as any[]).map(cc => ({ userId: cc.userId, confirmedAt: cc.confirmedAt }))
     };    
     console.log(`[Service ID: ${serviceId}] Formatted photos being sent to client:`, JSON.stringify(formattedService.photos, null, 2));
     
