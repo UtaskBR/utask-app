@@ -597,7 +597,7 @@ export default function ServiceDetailPage() {
                   <p className="text-sm text-gray-600">ou</p>
                   <button 
                     onClick={() => setShowBidForm(!showBidForm)} 
-                    className={`mt-2 ${btnSecondary}`}
+                    className={`mt-4 ${btnSecondary}`}
                   >
                     {showBidForm ? 'Cancelar Proposta' : 'Fazer uma Proposta Personalizada'}
                   </button>
