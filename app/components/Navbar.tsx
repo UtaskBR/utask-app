@@ -12,9 +12,15 @@ import {
   CreditCardIcon,
   HeartIcon,
   ArrowLeftOnRectangleIcon,
-  BellIcon, // For notifications, if not already there
-  Bars3Icon, // For mobile menu hamburger
-  XMarkIcon, // For mobile menu close
+  BellIcon,
+  Bars3Icon,
+  XMarkIcon,
+  HomeIcon,
+  MagnifyingGlassIcon,
+  MapIcon,
+  UsersIcon,
+  QuestionMarkCircleIcon,
+  PlusCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function Navbar() {
@@ -27,11 +33,11 @@ export default function Navbar() {
   const userButtonRef = useRef<HTMLButtonElement>(null);
 
   const navigation = [
-    { name: 'Início', href: '/' },
-    { name: 'Explorar', href: '/explorar' },
-    { name: 'Mapa', href: '/mapa' },
-    { name: 'Encontrar Profissionais', href: '/buscar-profissionais' },
-    { name: 'Como Funciona', href: '/como-funciona' },
+    { name: 'Início', href: '/', icon: HomeIcon },
+    { name: 'Explorar', href: '/explorar', icon: MagnifyingGlassIcon },
+    { name: 'Mapa', href: '/mapa', icon: MapIcon },
+    { name: 'Encontrar Profissionais', href: '/buscar-profissionais', icon: UsersIcon },
+    { name: 'Como Funciona', href: '/como-funciona', icon: QuestionMarkCircleIcon },
   ];
 
   const userNavigation = session?.user?.id ? [
@@ -277,8 +283,9 @@ export default function Navbar() {
                   pathname === item.href
                     ? 'bg-primary-50 border-primary-500 text-primary-700'
                     : 'border-transparent text-secondary-600 hover:bg-secondary-50 hover:border-secondary-300 hover:text-secondary-800'
-                } block pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
+                } group flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium`}
               >
+                <item.icon className="mr-3 h-6 w-6 flex-shrink-0 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
                 {item.name}
               </Link>
             ))}
@@ -320,29 +327,39 @@ export default function Navbar() {
               <div className="mt-3 space-y-1">
                 <Link
                   href="/criar-servico"
-                  className="block px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100"
+                  className="group flex items-center px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100 rounded-md"
                 >
+                  <PlusCircleIcon className="mr-3 h-6 w-6 flex-shrink-0 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
                   Criar Serviço
                 </Link>
                 <Link
                   href="/notificacoes"
-                  className="block px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100"
+                  className="group flex items-center px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100 rounded-md"
                 >
-                  Notificações {notificationsCount > 0 && `(${notificationsCount})`}
+                  <BellIcon className="mr-3 h-6 w-6 flex-shrink-0 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
+                  Notificações {notificationsCount > 0 && <span className="ml-1">({notificationsCount})</span>}
                 </Link>
-                {userNavigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="block px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100"
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                {userNavigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="group flex items-center px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100 rounded-md"
+                    >
+                      <Icon className="mr-3 h-6 w-6 flex-shrink-0 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+                <div className="my-1 px-2"> {/* Using px-2 to align with items that have px-4 but icons take some space */}
+                  <div className="border-t border-gray-200"></div>
+                </div>
                 <button
                   onClick={() => signOut()}
-                  className="block w-full text-left px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100"
+                  className="group flex items-center w-full text-left px-4 py-2 text-base font-medium text-secondary-600 hover:text-secondary-800 hover:bg-secondary-100 rounded-md"
                 >
+                  <ArrowLeftOnRectangleIcon className="mr-3 h-6 w-6 flex-shrink-0 text-secondary-400 group-hover:text-secondary-500" aria-hidden="true" />
                   Sair
                 </button>
               </div>
