@@ -50,6 +50,7 @@ export default function ServiceDetailPage() {
     creator: ServiceCreator;
     photos?: Photo[];
     bids?: Bid[];
+    completionConfirmations?: { userId: string; confirmedAt: string }[];
   };
 
   const [service, setService] = useState<Service | null>(null);
@@ -88,6 +89,32 @@ export default function ServiceDetailPage() {
   useEffect(() => {
     fetchService();
   }, [fetchService]);
+
+  // Effect to trigger Review Popup
+  useEffect(() => {
+    if (service && service.status === 'COMPLETED' &&
+        session?.user?.id === service.creatorId &&
+        !showReviewPopup) { // Ensure it doesn't re-trigger if already shown or being shown
+
+      const acceptedBidForReview = service.bids?.find(b => b.status === 'ACCEPTED' || (b.providerId === service.bids?.find(sBid => sBid.status === 'ACCEPTED')?.providerId));
+      // The above find logic for acceptedBidForReview might be simplified if service structure guarantees only one accepted bid remains,
+      // or if the backend provides a clear "finalProviderId" on the service model upon completion.
+      // For now, it tries to find an accepted bid.
+
+      if (acceptedBidForReview && acceptedBidForReview.provider) {
+        // Check if a review has already been submitted for this service by this user for this provider
+        // This is a future enhancement. For now, we assume if popup is shown, review is pending.
+        // A more robust check would involve looking at `service.reviews` or a dedicated flag.
+
+        setServiceProviderForReview({
+          id: acceptedBidForReview.provider.id,
+          name: acceptedBidForReview.provider.name || 'Prestador Desconhecido',
+          image: acceptedBidForReview.provider.image,
+        });
+        setShowReviewPopup(true);
+      }
+    }
+  }, [service, session, showReviewPopup, serviceId]); // Added serviceId to dependencies for safety, though service itself should be enough.
 
   const handleBidChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -196,26 +223,12 @@ export default function ServiceDetailPage() {
   const handleConfirmCompletion = async () => {
     // The actual acceptedBid details are needed to pass to the review popup
     // This might already be available in the `service` state or might need to be part of the API response from confirm-completion
-    const currentServiceState = service; // Use the current state of service
-    if (!currentServiceState) return;
+    // const currentServiceState = service; // Use the current state of service - Not needed here anymore
+    // if (!currentServiceState) return; // Guarded by service check earlier
 
-    const result = await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Conclusão confirmada');
-
-    if (result && result.serviceStatus === 'COMPLETED') {
-      // Check if current user is the creator
-      const isCreator = session?.user?.id === currentServiceState.creatorId;
-      if (isCreator) {
-        const acceptedBid = currentServiceState.bids?.find(bid => bid.status === 'ACCEPTED');
-        if (acceptedBid && acceptedBid.provider) {
-          setServiceProviderForReview({
-            id: acceptedBid.provider.id,
-            name: acceptedBid.provider.name || 'Prestador Desconhecido',
-            image: acceptedBid.provider.image,
-          });
-          setShowReviewPopup(true);
-        }
-      }
-    }
+    // The callApi function will refetch service data in its finally block.
+    // The review popup logic will be handled by a useEffect hook watching service state.
+    await callApi(`/api/services/${serviceId}/confirm-completion`, 'POST', {}, 'Confirmação de conclusão processada');
   };
 
   const handleReportProblem = () => {
@@ -359,6 +372,41 @@ export default function ServiceDetailPage() {
   const isServiceOpen = service.status === 'OPEN';
   const isUserAcceptedProvider = acceptedBid?.providerId === session?.user?.id;
 
+  // --- Confirmation States ---
+  let currentUserConfirmed = false;
+  let otherPartyConfirmed = false;
+  let waitingForPartyName: string | null = null;
+
+  if (session?.user?.id && service && service.completionConfirmations && service.bids) {
+    const acceptedBidForConfirmation = service.bids.find(b => b.status === 'ACCEPTED');
+    if (acceptedBidForConfirmation) {
+      const creatorId = service.creatorId;
+      const providerId = acceptedBidForConfirmation.providerId;
+      const currentUserIsCreator = session.user.id === creatorId;
+      const currentUserIsProvider = session.user.id === providerId;
+
+      service.completionConfirmations.forEach(conf => {
+        if (conf.userId === session.user.id) {
+          currentUserConfirmed = true;
+        }
+        if (currentUserIsCreator && conf.userId === providerId) {
+          otherPartyConfirmed = true;
+        } else if (currentUserIsProvider && conf.userId === creatorId) {
+          otherPartyConfirmed = true;
+        }
+      });
+
+      if (currentUserConfirmed && !otherPartyConfirmed) {
+        if (currentUserIsCreator) {
+          waitingForPartyName = acceptedBidForConfirmation.provider?.name || 'Prestador';
+        } else if (currentUserIsProvider) {
+          waitingForPartyName = service.creator?.name || 'Cliente';
+        }
+      }
+    }
+  }
+  // --- End Confirmation States ---
+
   let bidsToDisplay = [];
   if (isCreator) {
     bidsToDisplay = service.bids || [];
@@ -469,9 +517,34 @@ export default function ServiceDetailPage() {
 
           {/* Service Actions: Confirm Completion / Report Problem */}
           {isServiceInProgress && (isCreator || isUserAcceptedProvider) && (
-            <div className="p-6 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
-              <button onClick={handleConfirmCompletion} className={`${btnSuccess} w-full sm:w-auto`} disabled={!!actionLoading}><CheckCircleIcon /> Confirmar Conclusão</button>
-              <button onClick={handleReportProblem} className={`${btnDanger} w-full sm:w-auto`} disabled={!!actionLoading}><ExclamationTriangleIcon /> Tenho um Problema</button>
+            <div className="p-6 border-t border-gray-200 space-y-3">
+              {currentUserConfirmed && !otherPartyConfirmed && waitingForPartyName && (
+                <div className="p-3 bg-blue-100 text-blue-700 rounded-md text-sm">
+                  <CheckCircleIcon /> Aguardando confirmação de {waitingForPartyName}...
+                </div>
+              )}
+              {!currentUserConfirmed && (
+                <button
+                  onClick={handleConfirmCompletion}
+                  className={`${btnSuccess} w-full sm:w-auto`}
+                  disabled={!!actionLoading || currentUserConfirmed}
+                >
+                  <CheckCircleIcon /> Confirmar Conclusão
+                </button>
+              )}
+              {/* "Tenho um Problema" button should likely always be available if service is IN_PROGRESS,
+                  regardless of own confirmation status, until service is COMPLETED or CANCELLED.
+                  If both confirmed and something goes wrong before status changes, this button might be needed.
+                  However, if the service moves to COMPLETED quickly after both confirm, this might not be an issue.
+                  For now, keeping it available if IN_PROGRESS and user is part of the transaction.
+              */}
+              <button
+                onClick={handleReportProblem}
+                className={`${btnDanger} w-full sm:w-auto`}
+                disabled={!!actionLoading}
+              >
+                <ExclamationTriangleIcon /> Tenho um Problema
+              </button>
             </div>
           )}
         </div>
