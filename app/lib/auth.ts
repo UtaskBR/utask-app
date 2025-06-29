@@ -1,4 +1,10 @@
 
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import prisma from "@/lib/prisma";
+import { compare } from "bcryptjs";
+import { normalizeEmail } from "@/utils/formatters";
+
 // Extend the Session type to include the id property
 declare module "next-auth" {
   interface Session {
