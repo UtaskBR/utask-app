@@ -200,193 +200,196 @@ export default function RegisterPage() {
     }
   };
 
+  // Re-wrapping the return in a fragment as a test, and ensuring no leading/trailing spaces issues.
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-secondary-900">
-            Crie sua conta
-          </h2>
-          <p className="mt-2 text-center text-sm text-secondary-600">
-            Ou{' '}
-            <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
-              entre com sua conta existente
-            </Link>
-          </p>
-        </div>
-        
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 my-4"> {/* Added my-4 for spacing */}
-            <p className="text-sm text-red-700">{error}</p>
-          </div>
-        )}
-        
-        {isSuccess ? (
-          <div className="text-center p-4 mt-8 border border-green-300 bg-green-50 rounded-md">
-            <h3 className="text-lg font-medium text-green-800">Cadastro realizado com sucesso!</h3>
-            <p className="text-sm text-green-700 mt-2">
-              Verifique seu email para ativar sua conta. Você receberá um link de confirmação em breve.
-            </p>
-            <p className="mt-4">
+    <>
+      <div className="min-h-screen flex items-center justify-center bg-secondary-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+          <div>
+            <h2 className="mt-6 text-center text-3xl font-extrabold text-secondary-900">
+              Crie sua conta
+            </h2>
+            <p className="mt-2 text-center text-sm text-secondary-600">
+              Ou{' '}
               <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
-                Ir para Login
+                entre com sua conta existente
               </Link>
             </p>
           </div>
-        ) : (
-          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-            <div className="rounded-md shadow-sm space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-secondary-700">
-                Nome completo *
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                className="input-field mt-1"
-                placeholder="Seu nome completo"
-                value={formData.name}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-secondary-700">
-                Email *
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="input-field mt-1"
-                placeholder="seu@email.com"
-                value={formData.email}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-secondary-700">
-                Senha *
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="input-field mt-1"
-                placeholder="Sua senha"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-secondary-700">
-                Confirmar senha *
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                className="input-field mt-1"
-                placeholder="Confirme sua senha"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-              />
-            </div>
 
-            <div>
-              <label htmlFor="cpf" className="block text-sm font-medium text-secondary-700">
-                CPF *
-              </label>
-              <input
-                id="cpf"
-                name="cpf"
-                type="text" // Use text to allow formatting characters
-                required
-                className="input-field mt-1"
-                placeholder="000.000.000-00"
-                value={formData.cpf}
-                onChange={handleChange}
-                maxLength={14} // Max length for "###.###.###-##"
-              />
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 my-4">
+              <p className="text-sm text-red-700">{error}</p>
             </div>
-            
-            {/* State and City Dropdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="stateReg" className="block text-sm font-medium text-secondary-700">Estado *</label>
-                <select
-                  id="stateReg"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleStateChange}
-                  className="input-field mt-1 w-full"
-                  disabled={isLoadingStates}
-                  required // Added required
-                >
-                  <option value="">{isLoadingStates ? 'Carregando...' : 'Selecione um estado'}</option>
-                  {statesList.map(s => (
-                    <option key={s.sigla} value={s.sigla}>{s.nome}</option>
-                  ))}
-                </select>
+          )}
+
+          {isSuccess ? (
+            <div className="text-center p-4 mt-8 border border-green-300 bg-green-50 rounded-md">
+              <h3 className="text-lg font-medium text-green-800">Cadastro realizado com sucesso!</h3>
+              <p className="text-sm text-green-700 mt-2">
+                Verifique seu email para ativar sua conta. Você receberá um link de confirmação em breve.
+              </p>
+              <p className="mt-4">
+                <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
+                  Ir para Login
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+              <div className="rounded-md shadow-sm space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-secondary-700">
+                  Nome completo *
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  className="input-field mt-1"
+                  placeholder="Seu nome completo"
+                  value={formData.name}
+                  onChange={handleChange}
+                />
               </div>
+
               <div>
-                <label htmlFor="cityReg" className="block text-sm font-medium text-secondary-700">Cidade *</label>
-                <select
-                  id="cityReg"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange} 
-                  className="input-field mt-1 w-full"
-                  disabled={!formData.state || isLoadingCities || citiesList.length === 0}
-                  required // Added required
-                >
-                  <option value="">
-                    {isLoadingCities ? 'Carregando...' : (!formData.state ? 'Selecione um estado primeiro' : (citiesList.length === 0 && !isLoadingCities ? 'Nenhuma cidade' : 'Selecione uma cidade'))}
-                  </option>
-                  {citiesList.map(c => (
-                    <option key={c.id} value={c.nome}>{c.nome}</option> 
-                  ))}
-                </select>
+                <label htmlFor="email" className="block text-sm font-medium text-secondary-700">
+                  Email *
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  className="input-field mt-1"
+                  placeholder="seu@email.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-secondary-700">
+                  Senha *
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  className="input-field mt-1"
+                  placeholder="Sua senha"
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-secondary-700">
+                  Confirmar senha *
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  className="input-field mt-1"
+                  placeholder="Confirme sua senha"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="cpf" className="block text-sm font-medium text-secondary-700">
+                  CPF *
+                </label>
+                <input
+                  id="cpf"
+                  name="cpf"
+                  type="text"
+                  required
+                  className="input-field mt-1"
+                  placeholder="000.000.000-00"
+                  value={formData.cpf}
+                  onChange={handleChange}
+                  maxLength={14}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="stateReg" className="block text-sm font-medium text-secondary-700">Estado *</label>
+                  <select
+                    id="stateReg"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleStateChange}
+                    className="input-field mt-1 w-full"
+                    disabled={isLoadingStates}
+                    required
+                  >
+                    <option value="">{isLoadingStates ? 'Carregando...' : 'Selecione um estado'}</option>
+                    {statesList.map(s => (
+                      <option key={s.sigla} value={s.sigla}>{s.nome}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="cityReg" className="block text-sm font-medium text-secondary-700">Cidade *</label>
+                  <select
+                    id="cityReg"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="input-field mt-1 w-full"
+                    disabled={!formData.state || isLoadingCities || citiesList.length === 0}
+                    required
+                  >
+                    <option value="">
+                      {isLoadingCities ? 'Carregando...' : (!formData.state ? 'Selecione um estado primeiro' : (citiesList.length === 0 && !isLoadingCities ? 'Nenhuma cidade' : 'Selecione uma cidade'))}
+                    </option>
+                    {citiesList.map(c => (
+                      <option key={c.id} value={c.nome}>{c.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="about" className="block text-sm font-medium text-secondary-700">
+                  Sobre mim
+                </label>
+                <textarea
+                  id="about"
+                  name="about"
+                  rows={3}
+                  className="input-field mt-1"
+                  placeholder="Conte um pouco sobre você"
+                  value={formData.about}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
             <div>
-              <label htmlFor="about" className="block text-sm font-medium text-secondary-700">
-                Sobre mim
-              </label>
-              <textarea
-                id="about"
-                name="about"
-                rows={3}
-                className="input-field mt-1"
-                placeholder="Conte um pouco sobre você"
-                value={formData.about}
-                onChange={handleChange}
-              />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full btn-primary py-3 flex justify-center items-center"
+              >
+                {isLoading ? 'Processando...' : 'Criar conta'}
+              </button>
             </div>
-          </div>
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full btn-primary py-3 flex justify-center items-center"
-            >
-              {isLoading ? 'Processando...' : 'Criar conta'}
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
