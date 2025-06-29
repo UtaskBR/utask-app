@@ -22,12 +22,23 @@ export default function RegisterPage() {
     email: '',
     password: '',
     confirmPassword: '',
+    cpf: '', // Added CPF
     about: '',
     city: '', // Will be populated by select
     state: ''  // Will be populated by select
   });
   const [error, setError] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false); // Added success state
   const [isLoading, setIsLoading] = useState(false); // For form submission
+
+  // CPF Input mask function
+  const formatCpf = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9, 11)}`;
+  };
 
   // State for location dropdowns
   const [statesList, setStatesList] = useState<AppEstado[]>([]);
@@ -82,7 +93,11 @@ export default function RegisterPage() {
   // Handle input changes for text, textarea, and city select
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'cpf') {
+      setFormData(prev => ({ ...prev, [name]: formatCpf(value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   // Handle state dropdown change specifically
@@ -97,15 +112,23 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError(''); // Clear previous errors at the start of a new submission
+    setIsSuccess(false); // Clear previous success state
     
-    if (!formData.name || !formData.email || !formData.password) {
-      setError('Nome, email e senha são obrigatórios');
+    const rawCpf = formData.cpf.replace(/\D/g, '');
+
+    if (!formData.name || !formData.email || !formData.password || !rawCpf) {
+      setError('Nome, email, senha e CPF são obrigatórios');
       return;
     }
     
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem');
+      return;
+    }
+
+    if (rawCpf.length !== 11) {
+      setError('CPF deve conter 11 dígitos');
       return;
     }
     
@@ -127,6 +150,7 @@ export default function RegisterPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          cpf: rawCpf, // Send raw CPF digits
           about: formData.about,
           city: formData.city,
           state: formData.state
@@ -139,9 +163,38 @@ export default function RegisterPage() {
         throw new Error(data.error || 'Erro ao registrar usuário');
       }
       
-      router.push('/auth/login?registered=true');
+      // Display success message instead of immediate redirect
+      // The backend now returns { user: { id, name, email }, message, emailVerificationToken }
+      // For now, we can just show a generic success message.
+      // Later, we might use data.message if it's suitable for direct display.
+      setFormData({ // Clear form
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        cpf: '',
+        about: '',
+        city: '',
+        state: ''
+      });
+      // Optionally, display the token for testing if needed: console.log("Verification token for testing:", data.emailVerificationToken);
+      setError(''); // Clear previous errors
+      // We need a way to show a persistent success message.
+      // For now, replacing the form or showing a message above it.
+      // A simple way is to set a success state.
+      // Let's add a success state:
+      // const [isSuccess, setIsSuccess] = useState(false);
+      // And in the JSX, if isSuccess, show message.
+      // For now, let's alert and then redirect to login page with a specific query param
+      // Or, better, display the message directly on the page.
+      // To keep it simple for now, I'll use an alert and then clear the form,
+      // preventing immediate redirect. The user should see the page content change.
+      // alert("Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.");
+      // router.push('/auth/login?verification_pending=true'); // Or redirect to a page that says "check your email"
+      setIsSuccess(true); // Set success state to true
     } catch (err: any) {
       setError(err.message);
+      setIsSuccess(false);
     } finally {
       setIsLoading(false);
     }
@@ -168,10 +221,23 @@ export default function RegisterPage() {
           </div>
         )}
         
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-secondary-700">
+        {isSuccess ? (
+          <div className="text-center p-4 mt-8 border border-green-300 bg-green-50 rounded-md">
+            <h3 className="text-lg font-medium text-green-800">Cadastro realizado com sucesso!</h3>
+            <p className="text-sm text-green-700 mt-2">
+              Verifique seu email para ativar sua conta. Você receberá um link de confirmação em breve.
+            </p>
+            <p className="mt-4">
+              <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
+                Ir para Login
+              </Link>
+            </p>
+          </div>
+        ) : (
+          <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+            <div className="rounded-md shadow-sm space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-secondary-700">
                 Nome completo *
               </label>
               <input
@@ -234,6 +300,23 @@ export default function RegisterPage() {
                 placeholder="Confirme sua senha"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="cpf" className="block text-sm font-medium text-secondary-700">
+                CPF *
+              </label>
+              <input
+                id="cpf"
+                name="cpf"
+                type="text" // Use text to allow formatting characters
+                required
+                className="input-field mt-1"
+                placeholder="000.000.000-00"
+                value={formData.cpf}
+                onChange={handleChange}
+                maxLength={14} // Max length for "###.###.###-##"
               />
             </div>
             

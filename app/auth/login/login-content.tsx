@@ -45,7 +45,15 @@ export default function LoginContent() {
       });
       
       if (result?.error) {
-        throw new Error(result.error);
+        if (result.error === "EMAIL_NOT_VERIFIED") {
+          // Specific message for email not verified
+          setError("Por favor, verifique seu email antes de fazer login. Cheque sua caixa de entrada para o link de confirmação.");
+        } else {
+          // General error message for other NextAuth errors (e.g., "CredentialsSignin")
+          setError("Email ou senha inválidos. Por favor, tente novamente.");
+        }
+        setIsLoading(false); // Stop loading indicator
+        return; // Stop further execution in handleSubmit
       }
       
       if (result?.ok) {

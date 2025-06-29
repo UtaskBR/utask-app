@@ -1,7 +1,3 @@
-import { NextAuthOptions, Session } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import prisma from "./prisma";
 
 // Extend the Session type to include the id property
 declare module "next-auth" {
@@ -28,15 +24,19 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Credenciais inválidas");
         }
         
-        const email = credentials.email.toLowerCase();
+        const normalizedEmail = normalizeEmail(credentials.email);
+        if (!normalizedEmail) {
+          throw new Error("Email inválido");
+        }
         
         const user = await prisma.user.findUnique({
           where: {
-            email: credentials.email
+            email: normalizedEmail // Use normalized email for lookup
           }
         });
 
         if (!user || !user.password) {
+          // Standard error message for security (don't reveal if user exists or password is wrong)
           throw new Error("Usuário ou senha inválidos");
         }
 
@@ -47,6 +47,12 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) {
           throw new Error("Usuário ou senha inválidos");
+        }
+
+        // Check if email is verified
+        if (!user.emailIsVerified) {
+          // Custom error message that the frontend can specifically handle
+          throw new Error("EMAIL_NOT_VERIFIED");
         }
 
         return {

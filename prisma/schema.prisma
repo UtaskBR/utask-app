@@ -205,12 +205,16 @@ model User {
   id                    String         @id @default(cuid())
   name                  String?
   email                 String?        @unique
-  emailVerified         DateTime?
+  // emailVerified         DateTime? // Replaced by emailIsVerified and emailVerificationToken
   password              String?
   image                 String?        // Avatar URL
   about                 String?
   city                  String?
   state                 String?
+  cpf                   String?        @unique // Brazilian CPF number
+  emailIsVerified       Boolean        @default(false)
+  emailVerificationToken String?       @unique
+
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
   accounts              Account[]
@@ -230,6 +234,8 @@ model User {
   completionConfirmations CompletionConfirmation[] // Added relation
   favoritedBy     UserFavorite[] @relation("FavoritedUser") // Users who favorited this user
   favoritedUsers  UserFavorite[] @relation("FavoritedBy")   // Users this user has favorited
+
+  @@index([cpf])
 }
 
 // New model for Completion Confirmations

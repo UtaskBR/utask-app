@@ -96,7 +96,7 @@ echo "Verificando rotas de API..."
 
 # Verificar integrações externas
 echo "Verificando integrações externas..."
-[ -f "app/lib/cloudinary.js" ] || echo "Erro: app/lib/cloudinary.js não encontrado"
+[ -f "app/lib/cloudinary.ts" ] || echo "Erro: app/lib/cloudinary.ts não encontrado" # Changed .js to .ts
 [ -f "app/lib/prisma.ts" ] || echo "Erro: app/lib/prisma.ts não encontrado"
 
 echo "Testes concluídos!"

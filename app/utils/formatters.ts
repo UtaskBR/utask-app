@@ -102,3 +102,17 @@ export const getStatusColorClass = (status: string): string => {
   
   return colorMap[status] || 'bg-gray-100 text-gray-800';
 };
+
+/**
+ * Normalizes an email address.
+ * - Trims whitespace from both ends.
+ * - Converts to lowercase.
+ * @param email The email string to normalize.
+ * @returns The normalized email string.
+ */
+export const normalizeEmail = (email: string | null | undefined): string => {
+  if (!email) {
+    return '';
+  }
+  return email.trim().toLowerCase();
+};
