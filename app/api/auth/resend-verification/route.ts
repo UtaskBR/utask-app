@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: {
         emailVerificationToken: newVerificationToken,
-        emailVerificationTokenExpiresAt: new Date(Date.now() + 3600 * 1000 * 24), // Optional: token expiry (e.g., 24 hours)
+        // emailVerificationTokenExpiresAt: new Date(Date.now() + 3600 * 1000 * 24), // Removed: Field does not exist in schema
       },
     });
 
