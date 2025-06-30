@@ -30,6 +30,10 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false); // Added success state
   const [isLoading, setIsLoading] = useState(false); // For form submission
+  const [registeredEmail, setRegisteredEmail] = useState(''); // For resend functionality
+  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [resendMessage, setResendMessage] = useState('');
+
 
   // CPF Input mask function
   const formatCpf = (value: string) => {
@@ -163,10 +167,9 @@ export default function RegisterPage() {
         throw new Error(data.error || 'Erro ao registrar usuário');
       }
       
-      // Display success message instead of immediate redirect
-      // The backend now returns { user: { id, name, email }, message, emailVerificationToken }
-      // For now, we can just show a generic success message.
-      // Later, we might use data.message if it's suitable for direct display.
+      setRegisteredEmail(formData.email); // Store email for resend functionality
+      setIsSuccess(true); // Set success state to true
+
       setFormData({ // Clear form
         name: '',
         email: '',
@@ -200,6 +203,32 @@ export default function RegisterPage() {
     }
   };
 
+  const handleResendVerificationEmail = async () => {
+    if (!registeredEmail) {
+      setResendMessage('Nenhum email registrado para reenvio.');
+      setResendStatus('error');
+      return;
+    }
+    setResendStatus('loading');
+    setResendMessage('');
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha ao reenviar o email.');
+      }
+      setResendMessage(data.message || 'Email de verificação reenviado com sucesso!');
+      setResendStatus('success');
+    } catch (err: any) {
+      setResendMessage(err.message || 'Ocorreu um erro ao reenviar o email.');
+      setResendStatus('error');
+    }
+  };
+
   // Re-wrapping the return in a fragment as a test, and ensuring no leading/trailing spaces issues.
   return (
     <>
@@ -227,9 +256,23 @@ export default function RegisterPage() {
             <div className="text-center p-4 mt-8 border border-green-300 bg-green-50 rounded-md">
               <h3 className="text-lg font-medium text-green-800">Cadastro realizado com sucesso!</h3>
               <p className="text-sm text-green-700 mt-2">
-                Verifique seu email para ativar sua conta. Você receberá um link de confirmação em breve.
+                Verifique seu email (<strong>{registeredEmail}</strong>) para ativar sua conta. Você receberá um link de confirmação em breve.
               </p>
-              <p className="mt-4">
+              <div className="mt-4 space-y-2">
+                <button
+                  onClick={handleResendVerificationEmail}
+                  disabled={resendStatus === 'loading'}
+                  className="w-full text-sm btn-secondary py-2 px-4 disabled:opacity-50"
+                >
+                  {resendStatus === 'loading' ? 'Enviando...' : 'Reenviar email de verificação'}
+                </button>
+                {resendMessage && (
+                  <p className={`text-sm ${resendStatus === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                    {resendMessage}
+                  </p>
+                )}
+              </div>
+              <p className="mt-6">
                 <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
                   Ir para Login
                 </Link>

@@ -17,6 +17,10 @@ export default function LoginContent() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showResendVerification, setShowResendVerification] = useState(false);
+  const [emailForResend, setEmailForResend] = useState('');
+  const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [resendMessage, setResendMessage] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -45,31 +49,66 @@ export default function LoginContent() {
       });
       
       if (result?.error) {
-        if (result.error === "EMAIL_NOT_VERIFIED") {
-          // Specific message for email not verified
-          setError("Por favor, verifique seu email antes de fazer login. Cheque sua caixa de entrada para o link de confirmação.");
+        // The error from NextAuth for custom errors thrown in `authorize`
+        // is often the error message itself, or "CredentialsSignin" with the message sometimes embedded.
+        // We specifically used `throw new EmailNotVerifiedError()` which has message "EMAIL_NOT_VERIFIED".
+        if (result.error === "EMAIL_NOT_VERIFIED" || result.error.includes("EMAIL_NOT_VERIFIED")) {
+          setError("Seu email ainda não foi verificado. Por favor, verifique sua caixa de entrada.");
+          setShowResendVerification(true);
+          setEmailForResend(formData.email);
+          setResendStatus('idle'); // Reset resend status
+          setResendMessage('');
         } else {
-          // General error message for other NextAuth errors (e.g., "CredentialsSignin")
           setError("Email ou senha inválidos. Por favor, tente novamente.");
+          setShowResendVerification(false);
         }
-        setIsLoading(false); // Stop loading indicator
-        return; // Stop further execution in handleSubmit
+        setIsLoading(false);
+        return;
       }
       
       if (result?.ok) {
-        // Usar o router para navegação do lado do cliente
+        setShowResendVerification(false); // Clear any resend UI on successful login
         router.push(callbackUrl);
-        
-        // Fallback para redirecionamento direto após um curto delay
-        setTimeout(() => {
+        setTimeout(() => { // Fallback redirection
           window.location.href = callbackUrl;
         }, 500);
+      } else {
+        // Handle cases where result is not ok and no specific error was caught above
+        setError("Falha no login. Por favor, tente novamente.");
+        setShowResendVerification(false);
       }
     } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro durante o login');
+      setError(err.message || 'Ocorreu um erro inesperado durante o login.');
+      setShowResendVerification(false);
       console.error("Erro no login:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerificationEmail = async () => {
+    if (!emailForResend) {
+      setResendMessage('Email não disponível para reenvio.');
+      setResendStatus('error');
+      return;
+    }
+    setResendStatus('loading');
+    setResendMessage('');
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailForResend }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha ao reenviar o email de verificação.');
+      }
+      setResendMessage(data.message || 'Email de verificação reenviado com sucesso!');
+      setResendStatus('success');
+    } catch (err: any) {
+      setResendMessage(err.message || 'Ocorreu um erro ao tentar reenviar o email.');
+      setResendStatus('error');
     }
   };
 
@@ -97,6 +136,26 @@ export default function LoginContent() {
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4">
             <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        {showResendVerification && (
+          <div className="mt-4 p-4 border border-blue-300 bg-blue-50 rounded-md text-center">
+            <p className="text-sm text-blue-700 mb-2">
+              Seu email (<strong>{emailForResend}</strong>) precisa ser verificado.
+            </p>
+            <button
+              onClick={handleResendVerificationEmail}
+              disabled={resendStatus === 'loading'}
+              className="w-full text-sm btn-secondary py-2 px-4 disabled:opacity-50"
+            >
+              {resendStatus === 'loading' ? 'Enviando...' : 'Reenviar email de verificação'}
+            </button>
+            {resendMessage && (
+              <p className={`text-sm mt-2 ${resendStatus === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                {resendMessage}
+              </p>
+            )}
           </div>
         )}
         

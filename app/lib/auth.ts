@@ -5,6 +5,14 @@ import prisma from "@/lib/prisma";
 import { compare } from "bcryptjs";
 import { normalizeEmail } from "@/utils/formatters";
 
+// Custom error for email not verified
+export class EmailNotVerifiedError extends Error {
+  constructor(message = "EMAIL_NOT_VERIFIED") {
+    super(message);
+    this.name = "EmailNotVerifiedError";
+  }
+}
+
 // Extend the Session type to include the id property
 declare module "next-auth" {
   interface Session {
@@ -57,8 +65,7 @@ export const authOptions: NextAuthOptions = {
 
         // Check if email is verified
         if (!user.emailIsVerified) {
-          // Custom error message that the frontend can specifically handle
-          throw new Error("EMAIL_NOT_VERIFIED");
+          throw new EmailNotVerifiedError(); // Use custom error
         }
 
         return {
