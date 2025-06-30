@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 import { normalizeEmail } from "@/utils/formatters";
 import { isValidCpfFormat } from "@/utils/validators";
 import { cpfValidationService } from "@/services/cpfValidationService"; // Import mock CPF service
+import { sendVerificationEmail } from "@/lib/email"; // Added import for email service
 
 export async function POST(request: NextRequest) {
   try {
@@ -100,12 +101,22 @@ export async function POST(request: NextRequest) {
       },
     });
     
-    // For testing purposes, return the token. In production, an email would be sent.
+    // Send verification email
+    const emailResult = await sendVerificationEmail(normalizedEmail, emailVerificationToken);
+
+    if (!emailResult.success) {
+      // Log the error, but don't necessarily fail the registration.
+      // The user is created, they might be able to request verification again later.
+      console.error(`Failed to send verification email to ${normalizedEmail}:`, emailResult.error);
+      // Depending on policy, you might want to alert the user or handle this differently.
+      // For now, the registration is considered successful even if email sending fails.
+    }
+
+    // Return a success message without the token
     return NextResponse.json(
       {
         user: { id: user.id, name: user.name, email: user.email },
-        message: "Registration successful. Please verify your email.",
-        emailVerificationToken: emailVerificationToken // Return token for testing
+        message: "Registration successful. Please check your email to verify your account.",
       },
       { status: 201 }
     );

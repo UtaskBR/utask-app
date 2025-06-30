@@ -38,6 +38,7 @@
     "react-calendar": "^5.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
+    "resend": "^4.6.0",
     "swiper": "^11.2.6",
     "typescript": "^5.8.3"
   },
