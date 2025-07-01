@@ -10,8 +10,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "postinstall": "prisma migrate deploy",
-    "seed-professions": "ts-node prisma/seed-professions.ts",
+    "seed-all": "ts-node prisma/seed/seed-all.ts",
     "prisma:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed/seed-all.ts"
   },
   "keywords": [],
   "author": "",

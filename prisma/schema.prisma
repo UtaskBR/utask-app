@@ -76,7 +76,7 @@ model Service {
   updatedAt     DateTime       @updatedAt
   creatorId     String
   professionId  String?
-  status        String         @default("OPEN") // OPEN, IN_PROGRESS, COMPLETED, CANCELLED, DISPUTED
+  status        ServiceStatus  @default(OPEN) // OPEN, IN_PROGRESS, COMPLETED, CANCELLED, DISPUTED, RESOLVED
   bids          Bid[]
   cancellations Cancellation[]
   favorites     Favorite[]
@@ -86,6 +86,7 @@ model Service {
   profession    Profession?    @relation(fields: [professionId], references: [id])
   completionConfirmations CompletionConfirmation[] // Added relation
   reviews       Review[]
+  disputeResolutions DisputeResolution[] // Relation to dispute resolutions
 }
 
 model Bid {
@@ -234,8 +235,16 @@ model User {
   completionConfirmations CompletionConfirmation[] // Added relation
   favoritedBy     UserFavorite[] @relation("FavoritedUser") // Users who favorited this user
   favoritedUsers  UserFavorite[] @relation("FavoritedBy")   // Users this user has favorited
+  role                  Role           @default(USER) // Add role field
+  isBlocked             Boolean        @default(false) // For admin to block users
+  resolvedDisputes      DisputeResolution[] @relation("AdminResolver") // Disputes resolved by this admin
 
   @@index([cpf])
+}
+
+enum Role {
+  USER
+  ADMIN
 }
 
 // New model for Completion Confirmations
@@ -275,4 +284,32 @@ model UserFavorite {
   @@unique([favoritedById, favoritedUserId], name: "unique_user_favorite")
   @@index([favoritedById])
   @@index([favoritedUserId])
+}
+
+model DisputeResolution {
+  id            String    @id @default(cuid())
+  serviceId     String    @unique // Um serviço só pode ter uma resolução de disputa final
+  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade) // Added onDelete
+
+  adminId       String    // ID do admin que resolveu
+  admin         User      @relation("AdminResolver", fields: [adminId], references: [id], onDelete: Cascade) // Added onDelete
+
+  decision      String    // e.g., "RELEASE_TO_PROVIDER", "REFUND_TO_CLIENT", "PARTIAL_REFUND", "NO_ACTION"
+  justification String?
+  resolvedAt    DateTime  @default(now())
+
+  amountReleasedToProvider Float? // Quanto foi liberado para o prestador (pode ser parte do valor em disputa)
+  amountRefundedToClient   Float? // Quanto foi estornado para o cliente (pode ser parte do valor em disputa)
+
+  @@index([serviceId]) // Index for faster queries by serviceId
+  @@index([adminId])   // Index for faster queries by adminId
+}
+
+enum ServiceStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  DISPUTED
+  RESOLVED // Added for dispute resolution
 }
