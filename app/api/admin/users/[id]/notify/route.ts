@@ -2,6 +2,7 @@ import prisma from "@/app/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { Role } from "@prisma/client";
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog";
 
 interface RouteParams {
   params: { id: string };
@@ -9,9 +10,11 @@ interface RouteParams {
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || token.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  if (!token || token.role !== Role.ADMIN || !token.id || !token.email) {
+    return NextResponse.json({ error: "Acesso não autorizado ou token inválido" }, { status: 403 });
   }
+  const adminId = token.id as string;
+  const adminEmail = token.email as string;
 
   const { id: targetUserId } = params;
   if (!targetUserId) {
@@ -19,7 +22,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const { title, message } = await req.json();
+    const body = await req.json();
+    const { title, message } = body;
 
     if (!title || !message) {
       return NextResponse.json({ error: "Título e mensagem são obrigatórios" }, { status: 400 });
@@ -27,15 +31,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const targetUser = await prisma.user.findUnique({
       where: { id: targetUserId },
+      select: { id: true, email: true, name: true } // Selecionar dados para o log
     });
 
     if (!targetUser) {
       return NextResponse.json({ error: "Usuário destinatário não encontrado" }, { status: 404 });
     }
 
-    // O senderId pode ser o ID do admin que está enviando, ou pode ser nulo/sistema.
-    // Por ora, vamos assumir que o admin logado é o remetente.
-    const senderId = token.id as string;
+    const senderId = adminId; // Admin logado é o remetente
 
     const notification = await prisma.notification.create({
       data: {
@@ -46,6 +49,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         type: "ADMIN_CUSTOM", // Um novo tipo para notificações personalizadas do admin
         read: false,
       },
+    });
+
+    await createAuditLog({
+      adminId,
+      adminEmail,
+      action: AuditActions.USER_NOTIFY,
+      targetEntityType: AuditEntityTypes.USER,
+      targetEntityId: targetUser.id,
+      details: { notifiedUserEmail: targetUser.email, notificationTitle: title, notificationId: notification.id },
     });
 
     return NextResponse.json(notification, { status: 201 });

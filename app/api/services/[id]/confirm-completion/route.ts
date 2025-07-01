@@ -223,7 +223,7 @@ export async function POST(
       let platformWallet = await prisma.wallet.findFirst({
         where: {
           platform: {
-            name: "UTASK"
+            name: "UTASK_PLATFORM" // Ajustado para corresponder ao seed
           }
         }
       });
@@ -232,14 +232,14 @@ export async function POST(
       if (!platformWallet) {
         // Primeiro, verificar se existe uma entidade Platform
         let platform = await prisma.platform.findFirst({
-          where: { name: "UTASK" }
+          where: { name: "UTASK_PLATFORM" } // Ajustado para corresponder ao seed
         });
 
         // Se não existir, criar a entidade Platform
         if (!platform) {
           platform = await prisma.platform.create({
             data: {
-              name: "UTASK",
+              name: "UTASK_PLATFORM", // Ajustado para corresponder ao seed
               description: "Plataforma de serviços autônomos"
             }
           });

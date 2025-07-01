@@ -2,6 +2,7 @@ import prisma from "@/app/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { Role } from "@prisma/client";
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog"; // Import audit log helper
 
 interface RouteParams {
   params: { id: string };
@@ -10,9 +11,11 @@ interface RouteParams {
 // PUT: Editar uma profissão existente
 export async function PUT(req: NextRequest, { params }: RouteParams) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || token.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  if (!token || token.role !== Role.ADMIN || !token.id || !token.email) {
+    return NextResponse.json({ error: "Acesso não autorizado ou token inválido" }, { status: 403 });
   }
+  const adminId = token.id as string;
+  const adminEmail = token.email as string;
 
   const { id } = params;
   if (!id) {
@@ -20,7 +23,8 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const { name, icon } = await req.json();
+    const body = await req.json();
+    const { name, icon } = body;
 
     if (!name) {
       return NextResponse.json({ error: "O nome da profissão é obrigatório" }, { status: 400 });
@@ -54,6 +58,16 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         icon, // O ícone é opcional
       },
     });
+
+    await createAuditLog({
+      adminId,
+      adminEmail,
+      action: AuditActions.PROFESSION_UPDATE,
+      targetEntityType: AuditEntityTypes.PROFESSION,
+      targetEntityId: updatedProfession.id,
+      details: { old: existingProfessionById, new: updatedProfession },
+    });
+
     return NextResponse.json(updatedProfession);
   } catch (error) {
     console.error(`Erro ao atualizar profissão ${id}:`, error);
@@ -67,9 +81,11 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
 // DELETE: Deletar uma profissão
 export async function DELETE(req: NextRequest, { params }: RouteParams) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || token.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  if (!token || token.role !== Role.ADMIN || !token.id || !token.email) {
+    return NextResponse.json({ error: "Acesso não autorizado ou token inválido" }, { status: 403 });
   }
+  const adminId = token.id as string;
+  const adminEmail = token.email as string;
 
   const { id } = params;
   if (!id) {
@@ -78,17 +94,17 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
 
   try {
     // Verificar se a profissão existe
-    const profession = await prisma.profession.findUnique({
+    const professionToDelete = await prisma.profession.findUnique({
       where: { id },
       include: { services: { take: 1 } }, // Inclui um serviço para verificar se há algum associado
     });
 
-    if (!profession) {
+    if (!professionToDelete) {
       return NextResponse.json({ error: "Profissão não encontrada" }, { status: 404 });
     }
 
     // Validação para evitar exclusão de profissões com serviços associados
-    if (profession.services && profession.services.length > 0) {
+    if (professionToDelete.services && professionToDelete.services.length > 0) {
       return NextResponse.json(
         { error: "Não é possível excluir a profissão pois existem serviços associados a ela." },
         { status: 400 } // Bad Request ou 409 Conflict
@@ -108,9 +124,17 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-
     await prisma.profession.delete({
       where: { id },
+    });
+
+    await createAuditLog({
+      adminId,
+      adminEmail,
+      action: AuditActions.PROFESSION_DELETE,
+      targetEntityType: AuditEntityTypes.PROFESSION,
+      targetEntityId: id, // o ID da profissão deletada
+      details: { name: professionToDelete.name, icon: professionToDelete.icon }, // Log dos dados da profissão deletada
     });
 
     return NextResponse.json({ message: "Profissão deletada com sucesso" }, { status: 200 }); // Ou 204 No Content

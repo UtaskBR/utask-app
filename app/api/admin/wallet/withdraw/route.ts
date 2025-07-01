@@ -20,16 +20,21 @@ import { Role, TransactionType, TransactionStatus } from "@prisma/client"; // As
 //   CANCELLED
 // }
 // No schema atual, Transaction.type e Transaction.status são Strings.
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog";
+
 // Vamos usar valores string diretamente por enquanto, mas o ideal seria ter enums.
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || token.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  if (!token || token.role !== Role.ADMIN || !token.id || !token.email) {
+    return NextResponse.json({ error: "Acesso não autorizado ou token inválido" }, { status: 403 });
   }
+  const adminId = token.id as string;
+  const adminEmail = token.email as string;
 
   try {
-    const { amount, description } = await req.json();
+    const body = await req.json();
+    const { amount, description } = body;
 
     if (!amount || typeof amount !== 'number' || amount <= 0) {
       return NextResponse.json({ error: "Valor do saque inválido ou não fornecido." }, { status: 400 });
@@ -52,26 +57,40 @@ export async function POST(req: NextRequest) {
     }
 
     // Lógica de Saque Simplificada:
-    // 1. Debitar da carteira do admin
-    // 2. Criar uma transação de SAQUE
-    // Em um sistema real, isso seria uma "solicitação de saque" e não uma transação imediata.
-    const updatedWallet = await prisma.wallet.update({
-      where: { id: adminWallet.id },
-      data: {
-        balance: {
-          decrement: amount,
+    // Envolver em uma transação Prisma para garantir atomicidade
+    const { updatedWallet, withdrawalTransaction } = await prisma.$transaction(async (tx) => {
+      const walletAfterUpdate = await tx.wallet.update({
+        where: { id: adminWallet.id },
+        data: {
+          balance: {
+            decrement: amount,
+          },
         },
-      },
+      });
+
+      const transactionRecord = await tx.transaction.create({
+        data: {
+          walletId: adminWallet.id,
+          amount: -amount, // Saques são registrados como valor negativo na carteira
+          type: "WITHDRAWAL_REQUEST", // Usar um tipo específico
+          status: "PENDING", // Saques devem iniciar como pendentes
+          description: description || `Solicitação de saque de ${amount.toFixed(2)} BRL`,
+        },
+      });
+      return { updatedWallet: walletAfterUpdate, withdrawalTransaction: transactionRecord };
     });
 
-    const withdrawalTransaction = await prisma.transaction.create({
-      data: {
-        walletId: adminWallet.id,
-        amount: -amount, // Saques são registrados como valor negativo na carteira
-        type: "WITHDRAWAL_REQUEST", // Usar um tipo específico
-        status: "PENDING", // Saques devem iniciar como pendentes
-        description: description || `Solicitação de saque de ${amount.toFixed(2)}`,
-        // serviceId: null, // Saques não estão ligados a um serviço específico
+    await createAuditLog({
+      adminId,
+      adminEmail,
+      action: AuditActions.WALLET_WITHDRAWAL_REQUEST,
+      targetEntityType: AuditEntityTypes.WALLET,
+      targetEntityId: adminWallet.id,
+      details: {
+        amount: amount,
+        description: description,
+        transactionId: withdrawalTransaction.id,
+        newBalance: updatedWallet.balance
       },
     });
 

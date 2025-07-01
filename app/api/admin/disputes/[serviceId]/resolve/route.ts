@@ -14,6 +14,8 @@ interface ResolveDisputeBody {
   amountRefundedToClient?: number;   // Obrigatório se decision for REFUND_TO_CLIENT ou PARTIAL_PAYMENT
 }
 
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog";
+
 // Função auxiliar para garantir que os valores financeiros sejam números válidos
 function isValidAmount(amount: any): amount is number {
   return typeof amount === 'number' && amount >= 0;
@@ -21,10 +23,11 @@ function isValidAmount(amount: any): amount is number {
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || !token.id || token.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  if (!token || !token.id || !token.email || token.role !== Role.ADMIN) {
+    return NextResponse.json({ error: "Acesso não autorizado ou token inválido" }, { status: 403 });
   }
   const adminId = token.id as string;
+  const adminEmail = token.email as string;
 
   const { serviceId } = params;
   if (!serviceId) {
@@ -187,6 +190,22 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       // Se NO_ACTION, apenas registra a resolução, sem movimentação financeira.
 
       return newResolution;
+    });
+
+    await createAuditLog({
+      adminId,
+      adminEmail,
+      action: AuditActions.DISPUTE_RESOLVE,
+      targetEntityType: AuditEntityTypes.SERVICE, // Ou AuditEntityTypes.DISPUTE_RESOLUTION
+      targetEntityId: serviceId, // ID do serviço em disputa
+      details: {
+        serviceId: serviceId,
+        decision: resolution.decision,
+        justification: resolution.justification,
+        resolutionId: resolution.id,
+        amountToProvider: resolution.amountReleasedToProvider,
+        amountToClient: resolution.amountRefundedToClient
+      },
     });
 
     return NextResponse.json(resolution, { status: 201 });

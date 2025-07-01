@@ -24,15 +24,20 @@ export async function GET(req: NextRequest) {
   }
 }
 
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog"; // Import audit log helper
+
 // POST: Adicionar uma nova profissão
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token || token.role !== Role.ADMIN) {
-    return NextResponse.json({ error: "Acesso não autorizado" }, { status: 403 });
+  if (!token || token.role !== Role.ADMIN || !token.id || !token.email) {
+    return NextResponse.json({ error: "Acesso não autorizado ou token inválido" }, { status: 403 });
   }
+  const adminId = token.id as string;
+  const adminEmail = token.email as string;
 
   try {
-    const { name, icon } = await req.json();
+    const body = await req.json();
+    const { name, icon } = body;
 
     if (!name) {
       return NextResponse.json({ error: "O nome da profissão é obrigatório" }, { status: 400 });
@@ -53,6 +58,16 @@ export async function POST(req: NextRequest) {
         icon, // O ícone é opcional
       },
     });
+
+    await createAuditLog({
+      adminId,
+      adminEmail,
+      action: AuditActions.PROFESSION_CREATE,
+      targetEntityType: AuditEntityTypes.PROFESSION,
+      targetEntityId: newProfession.id,
+      details: { name: newProfession.name, icon: newProfession.icon },
+    });
+
     return NextResponse.json(newProfession, { status: 201 });
   } catch (error) {
     console.error("Erro ao criar profissão:", error);

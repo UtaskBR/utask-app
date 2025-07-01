@@ -308,10 +308,10 @@ model AdminAuditLog {
 model DisputeResolution {
   id            String    @id @default(cuid())
   serviceId     String    @unique // Um serviço só pode ter uma resolução de disputa final
-  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade) // Added onDelete
+  service       Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   adminId       String    // ID do admin que resolveu
-  admin         User      @relation("AdminResolver", fields: [adminId], references: [id], onDelete: Cascade) // Added onDelete
+  admin         User      @relation("AdminResolver", fields: [adminId], references: [id], onDelete: Restrict) // Changed to Restrict
 
   decision      String    // e.g., "RELEASE_TO_PROVIDER", "REFUND_TO_CLIENT", "PARTIAL_REFUND", "NO_ACTION"
   justification String?
