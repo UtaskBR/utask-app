@@ -238,6 +238,7 @@ model User {
   role                  Role           @default(USER) // Add role field
   isBlocked             Boolean        @default(false) // For admin to block users
   resolvedDisputes      DisputeResolution[] @relation("AdminResolver") // Disputes resolved by this admin
+  adminAudits           AdminAuditLog[]     @relation("AdminAudits")   // Audits performed by this admin
 
   @@index([cpf])
 }
@@ -284,6 +285,24 @@ model UserFavorite {
   @@unique([favoritedById, favoritedUserId], name: "unique_user_favorite")
   @@index([favoritedById])
   @@index([favoritedUserId])
+}
+
+model AdminAuditLog {
+  id               String    @id @default(cuid())
+  timestamp        DateTime  @default(now())
+  adminId          String
+  adminEmail       String    // Para facilitar a visualização sem joins complexos sempre
+  action           String    // Ex: "USER_BLOCKED", "PROFESSION_CREATED", "DISPUTE_RESOLVED"
+  targetEntityType String?   // Ex: "User", "Profession", "Service"
+  targetEntityId   String?   // ID da entidade que foi afetada
+  details          Json?     // Detalhes da ação, como payload da request ou old/new values
+  admin            User      @relation("AdminAudits", fields: [adminId], references: [id], onDelete: Restrict) // Evitar que logs sumam se admin for deletado
+
+  @@index([adminId])
+  @@index([action])
+  @@index([targetEntityType])
+  @@index([targetEntityId])
+  @@index([timestamp])
 }
 
 model DisputeResolution {
