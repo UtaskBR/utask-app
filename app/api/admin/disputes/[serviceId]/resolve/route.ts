@@ -1,4 +1,4 @@
-import prisma from "@/app/lib/prisma";
+import prisma from "@/lib/prisma"; // CORRIGIDO
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { Role, ServiceStatus, Prisma } from "@prisma/client"; // Import ServiceStatus e Prisma
@@ -14,7 +14,7 @@ interface ResolveDisputeBody {
   amountRefundedToClient?: number;   // Obrigatório se decision for REFUND_TO_CLIENT ou PARTIAL_PAYMENT
 }
 
-import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog";
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/lib/auditLog"; // CORRIGIDO
 
 // Função auxiliar para garantir que os valores financeiros sejam números válidos
 function isValidAmount(amount: any): amount is number {

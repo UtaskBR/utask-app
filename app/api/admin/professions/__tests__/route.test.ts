@@ -1,13 +1,16 @@
+/**
+ * @jest-environment node
+ */
 import { POST, GET } from '../route'; // Ajuste o caminho conforme necessário
 import { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import prisma from '@/app/lib/prisma';
-import { createAuditLog } from '@/app/lib/auditLog';
+import prisma from '@/lib/prisma';
+import { createAuditLog } from '@/lib/auditLog';
 import { Role } from '@prisma/client';
 
 // Mock das dependências
 jest.mock('next-auth/jwt');
-jest.mock('@/app/lib/prisma', () => ({
+jest.mock('@/lib/prisma', () => ({
   __esModule: true,
   default: {
     profession: {
@@ -18,7 +21,7 @@ jest.mock('@/app/lib/prisma', () => ({
     // Adicione outros modelos e métodos conforme necessário para outros testes
   },
 }));
-jest.mock('@/app/lib/auditLog');
+jest.mock('@/lib/auditLog'); // CORRIGIDO
 
 // Tipagem para o mock do getToken
 const mockedGetToken = getToken as jest.MockedFunction<typeof getToken>;
@@ -39,10 +42,18 @@ describe('/api/admin/professions API endpoint', () => {
       });
 
       const mockProfessionData = { name: 'Nova Profissão', icon: 'briefcase' };
-      const mockCreatedProfession = { id: 'prof1', ...mockProfessionData, createdAt: new Date(), updatedAt: new Date() };
+      const dateNow = new Date();
+      // Ajustar o mock para que as datas sejam strings, como seriam após JSON.stringify/parse
+      const mockCreatedProfessionForDb = { id: 'prof1', ...mockProfessionData, createdAt: dateNow, updatedAt: dateNow };
+      const mockExpectedProfessionResponse = {
+        id: 'prof1',
+        ...mockProfessionData,
+        createdAt: dateNow.toISOString(),
+        updatedAt: dateNow.toISOString()
+      };
 
       (prisma.profession.findFirst as jest.Mock).mockResolvedValue(null); // Nenhuma profissão existente com o mesmo nome
-      (prisma.profession.create as jest.Mock).mockResolvedValue(mockCreatedProfession);
+      (prisma.profession.create as jest.Mock).mockResolvedValue(mockCreatedProfessionForDb);
 
       const req = new NextRequest('http://localhost/api/admin/professions', {
         method: 'POST',
@@ -54,7 +65,7 @@ describe('/api/admin/professions API endpoint', () => {
       const body = await response.json();
 
       expect(response.status).toBe(201);
-      expect(body).toEqual(mockCreatedProfession);
+      expect(body).toEqual(mockExpectedProfessionResponse); // Comparar com o objeto que tem datas como string
       expect(prisma.profession.create).toHaveBeenCalledWith({
         data: mockProfessionData,
       });

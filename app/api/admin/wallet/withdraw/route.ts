@@ -1,4 +1,4 @@
-import prisma from "@/app/lib/prisma";
+import prisma from "@/lib/prisma"; // CORRIGIDO
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { Role, TransactionType, TransactionStatus } from "@prisma/client"; // Assuming TransactionType and Status enums/types exist or will be added
@@ -20,7 +20,7 @@ import { Role, TransactionType, TransactionStatus } from "@prisma/client"; // As
 //   CANCELLED
 // }
 // No schema atual, Transaction.type e Transaction.status são Strings.
-import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog";
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/lib/auditLog"; // CORRIGIDO
 
 // Vamos usar valores string diretamente por enquanto, mas o ideal seria ter enums.
 

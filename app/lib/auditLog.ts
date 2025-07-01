@@ -1,4 +1,4 @@
-import prisma from "@/app/lib/prisma";
+import prisma from "@/lib/prisma"; // CORRIGIDO
 import { Prisma } from "@prisma/client"; // Para usar o tipo Json
 
 interface AuditLogData {

@@ -1,8 +1,8 @@
-import prisma from "@/app/lib/prisma";
+import prisma from "@/lib/prisma"; // CORRIGIDO
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { Role } from "@prisma/client";
-import { createAuditLog, AuditActions, AuditEntityTypes } from "@/app/lib/auditLog"; // Import audit log helper
+import { createAuditLog, AuditActions, AuditEntityTypes } from "@/lib/auditLog"; // CORRIGIDO - Import audit log helper
 
 interface RouteParams {
   params: { id: string };

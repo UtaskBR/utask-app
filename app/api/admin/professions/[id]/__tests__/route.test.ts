@@ -1,13 +1,16 @@
+/**
+ * @jest-environment node
+ */
 import { PUT, DELETE } from '../route'; // Ajuste o caminho conforme necessário
 import { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import prisma from '@/app/lib/prisma';
-import { createAuditLog } from '@/app/lib/auditLog';
+import prisma from '@/lib/prisma';
+import { createAuditLog } from '@/lib/auditLog';
 import { Role } from '@prisma/client';
 
 // Mock das dependências
 jest.mock('next-auth/jwt');
-jest.mock('@/app/lib/prisma', () => ({
+jest.mock('@/lib/prisma', () => ({
   __esModule: true,
   default: {
     profession: {
@@ -22,7 +25,7 @@ jest.mock('@/app/lib/prisma', () => ({
     // Adicione outros modelos e métodos conforme necessário
   },
 }));
-jest.mock('@/app/lib/auditLog');
+jest.mock('@/lib/auditLog'); // CORRIGIDO
 
 const mockedGetToken = getToken as jest.MockedFunction<typeof getToken>;
 const mockProfessionId = 'prof123';
