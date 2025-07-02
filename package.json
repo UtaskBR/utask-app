@@ -19,7 +19,7 @@
     "@heroicons/react": "^2.2.0",
     "@mapbox/mapbox-gl-geocoder": "^5.0.3",
     "@mapbox/mapbox-gl-supported": "^3.0.0",
-    "@prisma/client": "^6.10.1",
+    "@prisma/client": "^6.11.0",
     "@types/mapbox-gl": "^3.4.1",
     "@types/react-dom": "^19.1.2",
     "bcrypt": "^5.1.1",
